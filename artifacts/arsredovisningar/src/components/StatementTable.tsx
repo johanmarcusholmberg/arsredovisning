@@ -45,6 +45,53 @@ function formatAmount(val: string | null | undefined): string {
   }).format(n);
 }
 
+/**
+ * Render the line's presented amount (mapped value + active
+ * reclassification delta). Shows a subtle indicator when the line is
+ * affected by an approved reclassification so users can tell at a glance
+ * that the value has been netted, with a hover tooltip showing the
+ * mapped value, the inflows/outflows, and the resulting net delta.
+ *
+ * This component is the single rendering site for statement amounts —
+ * keeping it centralized prevents future code paths from accidentally
+ * displaying the raw `currentYearAmount` and skipping the presentation
+ * adjustment.
+ */
+function PresentedAmountCell({ line }: { line: FinancialStatementLine }) {
+  const presented = line.presentedCurrentYearAmount ?? line.currentYearAmount;
+  const delta = line.reclassificationDelta ?? null;
+  const hasDelta = delta !== null && Number(delta.netDelta) !== 0;
+  const tooltip = hasDelta
+    ? `Mappat: ${formatAmount(line.currentYearAmount)} · ` +
+      `Inflöden: ${formatAmount(delta.inflowsCurrentYear)} · ` +
+      `Utflöden: ${formatAmount(delta.outflowsCurrentYear)} · ` +
+      `Netto: ${formatAmount(delta.netDelta)}`
+    : undefined;
+  return (
+    <span className="inline-flex items-center gap-1" title={tooltip}>
+      {hasDelta && (
+        <span
+          className="inline-flex items-center rounded-sm border border-amber-300 bg-amber-50 px-1 py-0 text-[10px] font-semibold uppercase text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+          aria-label="Omklassificerad"
+          data-testid={`reclass-indicator-${line.id}`}
+        >
+          Omkl.
+        </span>
+      )}
+      <span
+        className={cn(
+          "font-mono text-sm tabular-nums",
+          line.isTotal && "text-base font-bold",
+          line.isSubtotal && "font-semibold",
+        )}
+        data-testid={`presented-amount-${line.id}`}
+      >
+        {formatAmount(presented)}
+      </span>
+    </span>
+  );
+}
+
 // ─── Note Reference Cell ──────────────────────────────────────────────────────
 
 function NoteReferenceCell({
@@ -605,20 +652,15 @@ export function StatementTable({ lines, reportId, statementType, onLineUpdated }
                   )}
                 </div>
 
-                {/* Current year */}
+                {/* Current year — render the *presented* amount so approved
+                    reclassifications are reflected here, in the export, and in
+                    reconciliation. Falls back to mappad amount when no
+                    reclassification touches the line. */}
                 <div className="text-right flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                   {!line.isHeading && (
                     <>
                       <ManualAdjustmentCell line={line} reportId={reportId} onUpdated={() => onLineUpdated?.()} />
-                      <span
-                        className={cn(
-                          "font-mono text-sm tabular-nums",
-                          line.isTotal && "text-base font-bold",
-                          line.isSubtotal && "font-semibold",
-                        )}
-                      >
-                        {formatAmount(line.currentYearAmount)}
-                      </span>
+                      <PresentedAmountCell line={line} />
                     </>
                   )}
                 </div>

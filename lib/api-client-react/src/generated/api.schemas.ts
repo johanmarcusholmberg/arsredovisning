@@ -275,6 +275,21 @@ export const FinancialStatementLineStatementType = {
   cash_flow: "cash_flow",
 } as const;
 
+/**
+ * Per-line summary of the active reclassifications that
+adjust this statement line. Null when no reclassification
+touches the line.
+
+ */
+export type FinancialStatementLineReclassificationDelta = {
+  /** Sum of inflows applied to this line (SEK). */
+  inflowsCurrentYear: string;
+  /** Sum of outflows applied to this line (SEK). */
+  outflowsCurrentYear: string;
+  /** inflows − outflows (SEK). */
+  netDelta: string;
+} | null;
+
 export type FinancialStatementLinePreviousYearSource =
   | (typeof FinancialStatementLinePreviousYearSource)[keyof typeof FinancialStatementLinePreviousYearSource]
   | null;
@@ -303,8 +318,26 @@ export interface FinancialStatementLine {
   isSubtotal: boolean;
   isTotal: boolean;
   isHeading: boolean;
-  /** Numeric amount as string (SEK) */
+  /** Mapped amount as string (SEK), before any approved
+reclassifications are applied. Use
+`presentedCurrentYearAmount` for what should be shown to
+the user / exported.
+ */
   currentYearAmount?: string | null;
+  /** Canonical user-facing amount = `currentYearAmount` plus
+the net delta from active reclassifications whose
+effectType affects this line (`report_node_only` or
+`note_and_report_node`). UI, preview, and export must
+render this value so user-approved netting is reflected
+consistently. Falls back to `currentYearAmount` when no
+reclassifications touch the line.
+ */
+  presentedCurrentYearAmount?: string | null;
+  /** Per-line summary of the active reclassifications that
+adjust this statement line. Null when no reclassification
+touches the line.
+ */
+  reclassificationDelta?: FinancialStatementLineReclassificationDelta;
   previousYearAmount?: string | null;
   previousYearSource?: FinancialStatementLinePreviousYearSource;
   linkedAccountIds?: string | null;

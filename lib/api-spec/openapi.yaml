@@ -2207,7 +2207,43 @@ components:
         currentYearAmount:
           type: string
           nullable: true
-          description: Numeric amount as string (SEK)
+          description: |
+            Mapped amount as string (SEK), before any approved
+            reclassifications are applied. Use
+            `presentedCurrentYearAmount` for what should be shown to
+            the user / exported.
+        presentedCurrentYearAmount:
+          type: string
+          nullable: true
+          description: |
+            Canonical user-facing amount = `currentYearAmount` plus
+            the net delta from active reclassifications whose
+            effectType affects this line (`report_node_only` or
+            `note_and_report_node`). UI, preview, and export must
+            render this value so user-approved netting is reflected
+            consistently. Falls back to `currentYearAmount` when no
+            reclassifications touch the line.
+        reclassificationDelta:
+          nullable: true
+          description: |
+            Per-line summary of the active reclassifications that
+            adjust this statement line. Null when no reclassification
+            touches the line.
+          type: object
+          properties:
+            inflowsCurrentYear:
+              type: string
+              description: Sum of inflows applied to this line (SEK).
+            outflowsCurrentYear:
+              type: string
+              description: Sum of outflows applied to this line (SEK).
+            netDelta:
+              type: string
+              description: inflows − outflows (SEK).
+          required:
+            - inflowsCurrentYear
+            - outflowsCurrentYear
+            - netDelta
         previousYearAmount:
           type: string
           nullable: true

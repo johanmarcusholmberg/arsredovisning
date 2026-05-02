@@ -383,7 +383,29 @@ export const GetFinancialStatementsResponse = zod.object({
       currentYearAmount: zod
         .string()
         .nullish()
-        .describe("Numeric amount as string (SEK)"),
+        .describe(
+          "Mapped amount as string (SEK), before any approved\nreclassifications are applied. Use\n`presentedCurrentYearAmount` for what should be shown to\nthe user \/ exported.\n",
+        ),
+      presentedCurrentYearAmount: zod
+        .string()
+        .nullish()
+        .describe(
+          "Canonical user-facing amount = `currentYearAmount` plus\nthe net delta from active reclassifications whose\neffectType affects this line (`report_node_only` or\n`note_and_report_node`). UI, preview, and export must\nrender this value so user-approved netting is reflected\nconsistently. Falls back to `currentYearAmount` when no\nreclassifications touch the line.\n",
+        ),
+      reclassificationDelta: zod
+        .object({
+          inflowsCurrentYear: zod
+            .string()
+            .describe("Sum of inflows applied to this line (SEK)."),
+          outflowsCurrentYear: zod
+            .string()
+            .describe("Sum of outflows applied to this line (SEK)."),
+          netDelta: zod.string().describe("inflows − outflows (SEK)."),
+        })
+        .nullish()
+        .describe(
+          "Per-line summary of the active reclassifications that\nadjust this statement line. Null when no reclassification\ntouches the line.\n",
+        ),
       previousYearAmount: zod.string().nullish(),
       previousYearSource: zod
         .enum(["imported", "manual", "previous_report_placeholder"])
@@ -420,7 +442,29 @@ export const GetFinancialStatementsResponse = zod.object({
       currentYearAmount: zod
         .string()
         .nullish()
-        .describe("Numeric amount as string (SEK)"),
+        .describe(
+          "Mapped amount as string (SEK), before any approved\nreclassifications are applied. Use\n`presentedCurrentYearAmount` for what should be shown to\nthe user \/ exported.\n",
+        ),
+      presentedCurrentYearAmount: zod
+        .string()
+        .nullish()
+        .describe(
+          "Canonical user-facing amount = `currentYearAmount` plus\nthe net delta from active reclassifications whose\neffectType affects this line (`report_node_only` or\n`note_and_report_node`). UI, preview, and export must\nrender this value so user-approved netting is reflected\nconsistently. Falls back to `currentYearAmount` when no\nreclassifications touch the line.\n",
+        ),
+      reclassificationDelta: zod
+        .object({
+          inflowsCurrentYear: zod
+            .string()
+            .describe("Sum of inflows applied to this line (SEK)."),
+          outflowsCurrentYear: zod
+            .string()
+            .describe("Sum of outflows applied to this line (SEK)."),
+          netDelta: zod.string().describe("inflows − outflows (SEK)."),
+        })
+        .nullish()
+        .describe(
+          "Per-line summary of the active reclassifications that\nadjust this statement line. Null when no reclassification\ntouches the line.\n",
+        ),
       previousYearAmount: zod.string().nullish(),
       previousYearSource: zod
         .enum(["imported", "manual", "previous_report_placeholder"])
@@ -457,7 +501,29 @@ export const GetFinancialStatementsResponse = zod.object({
       currentYearAmount: zod
         .string()
         .nullish()
-        .describe("Numeric amount as string (SEK)"),
+        .describe(
+          "Mapped amount as string (SEK), before any approved\nreclassifications are applied. Use\n`presentedCurrentYearAmount` for what should be shown to\nthe user \/ exported.\n",
+        ),
+      presentedCurrentYearAmount: zod
+        .string()
+        .nullish()
+        .describe(
+          "Canonical user-facing amount = `currentYearAmount` plus\nthe net delta from active reclassifications whose\neffectType affects this line (`report_node_only` or\n`note_and_report_node`). UI, preview, and export must\nrender this value so user-approved netting is reflected\nconsistently. Falls back to `currentYearAmount` when no\nreclassifications touch the line.\n",
+        ),
+      reclassificationDelta: zod
+        .object({
+          inflowsCurrentYear: zod
+            .string()
+            .describe("Sum of inflows applied to this line (SEK)."),
+          outflowsCurrentYear: zod
+            .string()
+            .describe("Sum of outflows applied to this line (SEK)."),
+          netDelta: zod.string().describe("inflows − outflows (SEK)."),
+        })
+        .nullish()
+        .describe(
+          "Per-line summary of the active reclassifications that\nadjust this statement line. Null when no reclassification\ntouches the line.\n",
+        ),
       previousYearAmount: zod.string().nullish(),
       previousYearSource: zod
         .enum(["imported", "manual", "previous_report_placeholder"])
@@ -511,7 +577,29 @@ export const UpdateStatementLineResponse = zod.object({
   currentYearAmount: zod
     .string()
     .nullish()
-    .describe("Numeric amount as string (SEK)"),
+    .describe(
+      "Mapped amount as string (SEK), before any approved\nreclassifications are applied. Use\n`presentedCurrentYearAmount` for what should be shown to\nthe user \/ exported.\n",
+    ),
+  presentedCurrentYearAmount: zod
+    .string()
+    .nullish()
+    .describe(
+      "Canonical user-facing amount = `currentYearAmount` plus\nthe net delta from active reclassifications whose\neffectType affects this line (`report_node_only` or\n`note_and_report_node`). UI, preview, and export must\nrender this value so user-approved netting is reflected\nconsistently. Falls back to `currentYearAmount` when no\nreclassifications touch the line.\n",
+    ),
+  reclassificationDelta: zod
+    .object({
+      inflowsCurrentYear: zod
+        .string()
+        .describe("Sum of inflows applied to this line (SEK)."),
+      outflowsCurrentYear: zod
+        .string()
+        .describe("Sum of outflows applied to this line (SEK)."),
+      netDelta: zod.string().describe("inflows − outflows (SEK)."),
+    })
+    .nullish()
+    .describe(
+      "Per-line summary of the active reclassifications that\nadjust this statement line. Null when no reclassification\ntouches the line.\n",
+    ),
   previousYearAmount: zod.string().nullish(),
   previousYearSource: zod
     .enum(["imported", "manual", "previous_report_placeholder"])
