@@ -1,0 +1,495 @@
+PHASE 1.5
+
+GLOBAL REPLIT INSTRUCTIONS FOR “ÅRSREDOVISNINGAR”
+
+Before making changes:
+- Inspect the existing project structure.
+- Reuse existing components, routes, types, helpers, schemas and styling.
+- Do not replace the whole app.
+- Do not create duplicate systems for the same concept.
+- Do not create separate “simple” and “expert” product modes.
+- Use one unified annual-report workflow for all users.
+- Handle UX differences through adaptive guidance and progressive disclosure.
+- Keep demo data separated from real customer/project data.
+- Keep annual report output Swedish only at launch.
+- Website/app UI may support Swedish and English.
+- Do not claim legal approval, guaranteed compliance or 100% correctness.
+- Position validation as a compliance assistant, not a guarantee.
+- Use wording such as: “No blocking validation issues were found. Please review before filing.”
+- If Supabase is configured, use Supabase Auth, database, RLS and Storage through secure helpers.
+- If Supabase is not configured, create clean placeholders and document exactly what needs to be configured.
+- Do not expose service-role keys or secrets in browser/frontend code.
+- Do not rely on hidden frontend buttons as the only security layer.
+- Do not implement final Stripe production payment logic unless Stripe is actually configured.
+- If payment, AI, export or storage providers are missing, create clean integration points and document assumptions.
+- After implementation, summarize:
+  - what was changed
+  - what files were touched
+  - what is incomplete
+  - what assumptions were made
+  - what I should test before continuing
+
+Continue working on “Årsredovisningar”.
+
+This is Phase 1.5: UX/UI Design System and App Shell.
+
+Use the Functionality Specification and MVP Build Blueprint as source of truth.
+
+Phase 1 should already have:
+- Landing page
+- Auth-ready structure
+- Dashboard
+- Demo workspace
+- Payment gate placeholder
+- Basic product shell
+
+Your task in this phase:
+Create a consistent UX/UI foundation for the application before building the deeper product modules.
+
+Do not build real import, mapping, notes, validation or export logic yet.
+Do not change the product model.
+Focus on visual structure, navigation, reusable UI components, colors, typography, spacing, interaction patterns and app shell.
+
+Product design direction:
+“Financial Stripe + Swedish minimalism.”
+
+The product should feel:
+- trustworthy
+- clean
+- modern
+- calm
+- professional
+- lightweight despite complex functionality
+- suitable for accountants, consultants, small business owners and condominium associations
+
+The product should not feel:
+- like a generic admin dashboard
+- like a heavy ERP system
+- like a colorful consumer app
+- like a chatbot-first product
+- like a cluttered compliance portal
+
+Core UX principle:
+One unified annual-report workflow for all users.
+Do not create separate simple/expert modes.
+Do not create reduced compliance modes.
+Use adaptive guidance and progressive disclosure instead.
+
+1. Design token system
+
+Create a central design token system for:
+
+- colors
+- typography
+- spacing
+- border radius
+- shadows
+- table styling
+- status states
+- locked/demo states
+- light/dark readiness
+
+The design token system should be easy to reuse across all later phases.
+
+2. Palette strategy
+
+Use the color direction already defined in the Functionality Specification.
+
+Primary design direction:
+“Financial Stripe + Swedish minimalism.”
+
+Palette families from the specification:
+- Nordic Calm
+- Midnight Ledger
+- Sand & Ink
+- Arctic Minimal
+- Nordic Night
+
+For MVP:
+- Use “Nordic Calm” as the default application palette.
+- Prepare the token system so other palettes can become future theme options.
+- Do not overbuild full custom theme management in MVP unless it is simple and does not distract from the core product.
+
+Nordic Calm should feel:
+- Swedish/Nordic
+- calm
+- premium
+- financial
+- trustworthy
+- light and minimal
+
+Suggested MVP color roles:
+- Primary: deep navy / ledger blue
+- Secondary: cool grey-blue
+- Accent: muted Nordic blue or restrained teal
+- Background: off-white / very light warm grey
+- Surface: white
+- Border: soft grey
+- Text: near-black / dark slate
+- Muted text: grey-blue
+- Success: muted green
+- Warning: muted amber
+- Blocking/error: restrained red
+- Info: blue-grey
+- Demo/locked state: soft neutral grey with subtle blue accent
+
+Do not use:
+- bright SaaS gradients
+- neon colors
+- playful consumer-app colors
+- heavy purple
+- overly saturated green/red/yellow
+- decorative color blocks inside the annual report export
+
+Important:
+The app UI may use the selected palette more visibly.
+The exported annual report should remain formal, mostly black/grey/white, and should not inherit decorative app theme colors.
+
+3. Future palette support
+
+Prepare structure for future palettes, but do not make them a major MVP feature.
+
+Future palettes:
+- Nordic Calm
+- Midnight Ledger
+- Sand & Ink
+- Arctic Minimal
+- Nordic Night
+
+Implement as design-token presets if easy.
+
+If theme switching is implemented:
+- keep it simple
+- store preference per user
+- do not affect exported annual report layout
+- do not allow custom colors that damage accessibility
+
+If theme switching is not implemented now:
+- document where future palette switching should be added
+
+4. Typography
+
+Define typography tokens for:
+
+- page title
+- section heading
+- card heading
+- body text
+- helper text
+- labels
+- table text
+- validation text
+- small metadata text
+
+Style should be clean and professional.
+
+Recommended:
+- modern sans-serif font
+- strong readability
+- not overly playful
+- not overly corporate-heavy
+
+5. App shell
+
+Create a consistent authenticated app shell.
+
+Desktop layout:
+- Top bar with logo, company/project context, language switcher, user menu
+- Left sidebar for workspace navigation
+- Main content area
+- Optional right-side contextual guidance area
+
+Mobile/tablet:
+- Sidebar collapses
+- Navigation becomes drawer or compact top navigation
+- Tables become horizontally scrollable or adapt where needed
+
+6. Workspace navigation
+
+Create the primary paid workspace navigation:
+
+- Overview
+- Import
+- Mapping
+- Financial statements
+- Notes
+- Validation
+- Review
+- Preview & export
+
+Rules:
+- Do not create separate top-level items for income statement, balance sheet and cash flow.
+- These belong inside Financial statements as internal tabs.
+- Use clear active states.
+- Show completion/status indicator per section where useful.
+- Show locked/future states clearly.
+- Keep navigation visually calm.
+
+7. Internal tabs
+
+Define internal tab style for sections such as Financial statements.
+
+Financial statements tabs:
+- Resultaträkning
+- Balansräkning
+- Kassaflöde
+- Rapportstruktur
+
+Tab rules:
+- Tabs should be understated.
+- Active tab should be clear but not loud.
+- On mobile, tabs can become segmented control or horizontal scroll.
+- Tabs should support badges, for example warning count or status.
+- Note-reference warnings should be possible to show as small badges later.
+
+8. Workflow progress component
+
+Create a reusable workflow progress component for:
+
+1. Import accounting data
+2. Review mapping
+3. Generate report structure
+4. Review financial statements
+5. Review notes
+6. Validate
+7. Collaborate/review
+8. Preview
+9. Final export
+
+Rules:
+- Use this on project overview.
+- Show current step.
+- Show completed/needs review/blocked states.
+- Do not make it visually overwhelming.
+- It should help users understand where they are without making the app feel like a heavy process.
+
+9. Cards and section layout
+
+Create reusable card patterns:
+
+- Summary card
+- Status card
+- Action card
+- Locked feature card
+- Demo data card
+- Warning card
+- Validation issue card
+- Financial statement summary card
+- Note card
+- Comment/review card
+- Export readiness card
+
+Cards should use:
+- clear heading
+- short description
+- primary action
+- optional secondary action
+- status badge where needed
+
+10. Tables
+
+Create table patterns for:
+
+- account mapping table
+- financial statement table
+- notes table
+- validation issue table
+- audit log table
+- users/roles table
+
+Table rules:
+- row labels left-aligned
+- amounts right-aligned
+- note references centered or right-aligned
+- headers readable
+- good empty states
+- filters/search pattern
+- expandable rows for details
+- avoid dense spreadsheet feeling unless necessary
+
+Financial statement table must support a “Not” column for note references.
+
+11. Status badges
+
+Create reusable status badges for:
+
+Project status:
+- Not started
+- In progress
+- Needs review
+- Ready for export
+- Exported
+
+Validation:
+- OK
+- Info
+- Warning
+- Blocking
+
+Mapping:
+- Auto-mapped
+- Suggested
+- Needs review
+- Manual override
+- Unmapped
+
+Notes:
+- Suggested
+- Needs review
+- Reviewed
+- Complete
+- Not applicable
+- Missing required information
+
+Access/payment:
+- Demo
+- Locked
+- Paid project
+- Subscription placeholder
+
+Export:
+- Draft
+- Ready for preview
+- Blocked
+- Exported
+- Demo watermark
+
+12. Adaptive guidance components
+
+Create reusable components for:
+
+- “Why is this required?”
+- “Show source accounts”
+- “Show calculation”
+- “Show BAS logic”
+- “Manual override”
+- “AI-suggested — confirmation required”
+- “Reviewed and accepted”
+- “Demo data”
+- “Locked until payment”
+- “Linked note”
+- “Note reference”
+
+These should appear as expandable help sections or compact inline help, not large instructional blocks.
+
+13. Demo vs paid visual treatment
+
+Define clear visual difference between demo and production workspace.
+
+Demo:
+- show “Demo data” badge
+- read-only indicators
+- watermark preview
+- locked controls
+- clear CTA to start real report
+
+Paid:
+- show project/company context
+- editable controls based on role
+- status/progress indicators
+- audit/review indicators
+
+Avoid making demo feel broken.
+It should feel intentionally read-only.
+
+14. Forms
+
+Create consistent form styles for:
+
+- company creation
+- project creation
+- file upload metadata
+- mapping override
+- manual adjustment
+- note editing
+- warning dismissal
+- invite user
+- cover sheet settings
+
+Form rules:
+- clear labels
+- helper text
+- validation errors
+- save/cancel actions
+- disabled states
+- confirmation when important
+
+15. Empty, loading and error states
+
+Create standard states for:
+
+Empty:
+- no imports yet
+- no mapping issues
+- no notes generated yet
+- no validation run yet
+- no comments yet
+- no exports yet
+
+Loading:
+- uploading
+- parsing
+- generating
+- validating
+- exporting
+
+Errors:
+- permission denied
+- payment required
+- file unsupported
+- validation blocked
+- export blocked
+- AI unavailable
+- broken note reference
+- missing note number
+
+Use helpful, non-technical language.
+
+16. Light/dark mode
+
+The Functionality Specification includes light/dark mode and custom color themes as design-system support.
+
+For MVP:
+- Prioritize a polished light mode using Nordic Calm.
+- Prepare tokens for dark mode.
+- Do not overbuild advanced theme customization unless it is simple.
+
+If dark mode is implemented:
+- make sure status colors remain accessible
+- make sure tables remain readable
+- do not affect exported annual report styling
+
+17. Language switch
+
+Ensure the UI text system supports Swedish and English.
+
+Rules:
+- UI can switch Swedish/English.
+- Exported annual report remains Swedish.
+- Do not translate Swedish annual-report section names inside exported documents.
+- The UI may explain in English that annual report output is Swedish only.
+
+18. Accessibility
+
+Ensure basic accessibility:
+- sufficient color contrast
+- focus states
+- keyboard-friendly controls
+- form labels
+- readable font sizes
+- status indicators not relying only on color
+
+19. Acceptance criteria
+
+This phase is complete when:
+- A consistent design token system exists.
+- Nordic Calm is implemented as the MVP default palette.
+- Other palette names from the Functionality Specification are preserved as future theme options.
+- The app shell is consistent across dashboard, demo workspace and future paid workspace.
+- Workspace navigation is defined.
+- Financial statements internal tab pattern is defined.
+- Reusable cards, tables, badges and guidance components exist.
+- Financial statement tables support a “Not” column.
+- Demo vs paid visual treatment is clear.
+- The product feels lighter and more coherent.
+- Later phases can reuse the UI system instead of inventing new layouts.

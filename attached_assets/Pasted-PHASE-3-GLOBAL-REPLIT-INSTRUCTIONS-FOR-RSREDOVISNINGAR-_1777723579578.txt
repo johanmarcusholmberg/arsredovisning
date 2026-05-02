@@ -1,0 +1,289 @@
+PHASE 3
+GLOBAL REPLIT INSTRUCTIONS FOR “ÅRSREDOVISNINGAR”
+
+Before making changes:
+- Inspect the existing project structure.
+- Reuse existing components, routes, types, helpers, schemas and styling.
+- Do not replace the whole app.
+- Do not create duplicate systems for the same concept.
+- Do not create separate “simple” and “expert” product modes.
+- Use one unified annual-report workflow for all users.
+- Handle UX differences through adaptive guidance and progressive disclosure.
+- Keep demo data separated from real customer/project data.
+- Keep annual report output Swedish only at launch.
+- Website/app UI may support Swedish and English.
+- Do not claim legal approval, guaranteed compliance or 100% correctness.
+- Position validation as a compliance assistant, not a guarantee.
+- Use wording such as: “No blocking validation issues were found. Please review before filing.”
+- If Supabase is configured, use Supabase Auth, database, RLS and Storage through secure helpers.
+- If Supabase is not configured, create clean placeholders and document exactly what needs to be configured.
+- Do not expose service-role keys or secrets in browser/frontend code.
+- Do not rely on hidden frontend buttons as the only security layer.
+- Do not implement final Stripe production payment logic unless Stripe is actually configured.
+- If payment, AI, export or storage providers are missing, create clean integration points and document assumptions.
+- After implementation, summarize:
+  - what was changed
+  - what files were touched
+  - what is incomplete
+  - what assumptions were made
+  - what I should test before continuing
+
+Continue working on “Årsredovisningar”.
+PHASE 3 IMPORTANT SCOPE CLARIFICATION
+
+SIE is the primary import format, but full support for every possible SIE section is not required in this phase.
+
+Prioritize in this order:
+
+1. Secure upload and file metadata
+2. Staging model
+3. Basic SIE account and balance parsing
+4. Clear parser status and user-friendly parser errors
+5. Controlled CSV/Excel MVP template support
+6. Staging preview
+7. Confirmation flow
+8. Mapping foundation
+
+If full SIE parsing is too large for one phase:
+- implement a robust parser foundation
+- parse the most important account/balance/year metadata first
+- mark unsupported SIE sections clearly
+- show user-friendly partial-success messages
+- do not silently ignore important data
+
+CSV/Excel support should be controlled and template-based in MVP.
+
+Do not attempt to support every possible spreadsheet layout.
+
+The user should always understand whether the import was:
+- fully successful
+- partially successful
+- failed
+
+Do not promote imported data into the annual-report project until the user has reviewed and confirmed the staging preview.
+
+
+Use the secure file upload, storage bucket, file metadata, permission helpers and RLS policies created in Phase 2.5. Do not implement import upload using public URLs or frontend-only permission checks.
+
+Previous phases should already have:
+- Landing page
+- Demo workspace
+- Payment gate
+- Paid project workspace
+- Company/project creation
+- Role foundation
+- Audit event foundation
+- Snapshot foundation
+- Future-ready note numbering data model
+
+Your task in this phase:
+Build the accounting data import and mapping foundation.
+
+Important:
+SIE is the primary import format.
+Excel/CSV are secondary formats.
+All imported data must first land in staging.
+Users must preview and confirm before data becomes part of the annual-report project.
+Do not generate the full annual report yet.
+Do not build final export yet.
+
+Core product principles:
+- Free users cannot import real data.
+- Only paid/unlocked projects can import accounting data.
+- The system should guide both non-professionals and accountants without separate user modes.
+- Mapping should be mostly invisible when confidence is high but clearly reviewable when needed.
+- Manual overrides must be tracked.
+- Mapping should later support note requirement detection and note references in financial statements.
+
+Build the following:
+
+1. Import page
+Create a real Import page in the paid project workspace.
+
+It should include:
+- Upload area
+- Supported formats: SIE, Excel, CSV
+- Explanation that SIE is recommended
+- Import history
+- Current import status
+- Staging preview
+- Confirm import action
+- Cancel import action
+
+For free/demo workspace:
+- Show demo import state only
+- No real file upload allowed
+
+2. File upload handling
+Implement secure file upload foundation.
+
+Requirements:
+- Only allow supported file types
+- Validate file size
+- Store original file metadata
+- Do not trust file content blindly
+- Use staging records before confirmation
+- Add clear error handling
+
+Suggested tables:
+- import_files
+- import_batches
+- staging_accounts
+- staging_transactions
+- staging_balances
+
+Track:
+- file name
+- file type
+- file size
+- uploaded by
+- uploaded at
+- project_id
+- parsing status
+- parsing errors
+- confirmed status
+
+3. SIE parser foundation
+Implement initial SIE parsing support.
+
+At minimum, parse and store:
+- account numbers
+- account names if available
+- opening balances if available
+- closing balances if available
+- transactions if available
+- financial year metadata if available
+
+If full SIE parsing is too large for one phase, implement a robust parser foundation and clearly mark unsupported SIE sections with user-friendly errors.
+
+Important:
+The user should understand whether the import was fully successful, partially successful, or failed.
+
+4. Excel/CSV import
+Implement guided Excel/CSV import foundation.
+
+Support:
+- Column preview
+- Column mapping step
+- Required fields:
+  - account number
+  - account name or description if available
+  - amount/balance
+  - period/date if available
+- Handle common delimiters for CSV
+- Show clear errors for missing required fields
+
+Do not try to support every possible spreadsheet format.
+Support a controlled MVP template and make that clear in the UI.
+
+5. Import staging preview
+Before confirming import, show:
+- Number of accounts detected
+- Number of transactions/balances detected
+- Financial year detected
+- Accounts with missing names
+- Data quality warnings
+- Potential mismatch with selected financial year
+- Import summary
+
+User must confirm before staging data is promoted.
+
+6. Account mapping engine
+Create mapping foundation.
+
+Suggested tables:
+- account_mappings
+- mapping_rules
+- mapping_overrides
+- mapping_templates
+
+Mapping should support:
+- BAS account ranges
+- K3/K2 report line mapping
+- Future note requirement detection
+- Future note reference generation
+- Confidence levels:
+  - High
+  - Medium
+  - Low
+  - Unmapped
+- Manual override
+- Save mapping override for future reuse
+
+Mapping statuses:
+- Auto-mapped
+- Suggested
+- Needs review
+- Manually mapped
+- Unmapped
+
+7. Mapping page
+Create the Mapping page.
+
+Show:
+- All imported accounts
+- Suggested report line
+- Future note impact indicator where relevant
+- Confidence badge
+- Status badge
+- Source account details
+- Manual override control
+- Filter: unmapped / low confidence / all
+- Search by account number/name
+- Save reusable mapping override
+
+Default UX:
+- High confidence mappings can be collapsed/hidden behind summary.
+- Low confidence/unmapped accounts should be visible and actionable.
+
+8. Note impact preparation
+Add metadata so mapped accounts can later trigger notes.
+
+Examples:
+- Fixed asset account groups may trigger a fixed asset note.
+- Personnel accounts may trigger an employee/personnel cost note.
+- Equity accounts may trigger an equity note.
+- Loan accounts may trigger liability notes.
+
+Do not build the full notes engine yet.
+Only prepare the mapping metadata and UI indication.
+
+9. Audit logging
+Log important actions:
+- import_file_uploaded
+- import_parse_started
+- import_parse_completed
+- import_parse_failed
+- import_confirmed
+- mapping_auto_applied
+- mapping_override_created
+- mapping_template_saved
+
+10. Adaptive guidance
+Include:
+- “Why was this account mapped here?”
+- “Show BAS logic”
+- “Show source account”
+- “What happens if I override this?”
+- “May affect notes”
+- Plain-language explanations for non-accountants
+- Technical details available through expanders
+
+11. Acceptance criteria
+The phase is complete when:
+- Unsupported SIE sections are reported clearly and not silently ignored.
+- CSV/Excel import is limited to a controlled MVP template or guided column mapping.
+- Partial imports clearly show what was parsed and what was not parsed.
+- Paid users can upload SIE, Excel or CSV files.
+- Free/demo users cannot upload real files.
+- Imported data lands in staging first.
+- User can preview import before confirmation.
+- User can confirm import into the project.
+- Accounts are mapped automatically where possible.
+- Low-confidence/unmapped accounts are highlighted.
+- Manual mapping override works.
+- Mapping overrides can be saved for reuse.
+- Mapping metadata can later support note generation and note references.
+- Import/mapping actions are logged.
+- No final annual report generation/export is implemented yet.
+Summarize what was changed, what files were touched, what is incomplete, what assumptions were made, and what I should test before continuing to the next phase.

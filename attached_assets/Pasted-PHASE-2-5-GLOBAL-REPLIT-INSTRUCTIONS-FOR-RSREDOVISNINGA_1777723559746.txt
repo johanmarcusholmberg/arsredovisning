@@ -1,0 +1,397 @@
+PHASE 2.5
+GLOBAL REPLIT INSTRUCTIONS FOR “ÅRSREDOVISNINGAR”
+
+Before making changes:
+- Inspect the existing project structure.
+- Reuse existing components, routes, types, helpers, schemas and styling.
+- Do not replace the whole app.
+- Do not create duplicate systems for the same concept.
+- Do not create separate “simple” and “expert” product modes.
+- Use one unified annual-report workflow for all users.
+- Handle UX differences through adaptive guidance and progressive disclosure.
+- Keep demo data separated from real customer/project data.
+- Keep annual report output Swedish only at launch.
+- Website/app UI may support Swedish and English.
+- Do not claim legal approval, guaranteed compliance or 100% correctness.
+- Position validation as a compliance assistant, not a guarantee.
+- Use wording such as: “No blocking validation issues were found. Please review before filing.”
+- If Supabase is configured, use Supabase Auth, database, RLS and Storage through secure helpers.
+- If Supabase is not configured, create clean placeholders and document exactly what needs to be configured.
+- Do not expose service-role keys or secrets in browser/frontend code.
+- Do not rely on hidden frontend buttons as the only security layer.
+- Do not implement final Stripe production payment logic unless Stripe is actually configured.
+- If payment, AI, export or storage providers are missing, create clean integration points and document assumptions.
+- After implementation, summarize:
+  - what was changed
+  - what files were touched
+  - what is incomplete
+  - what assumptions were made
+  - what I should test before continuing
+
+Continue working on “Årsredovisningar”.
+
+This is a backend/security/storage preparation phase before real import and export functionality.
+
+Do not build SIE/Excel/CSV import parsing yet.
+Do not build financial statement generation yet.
+Do not build notes, validation or export yet.
+
+Your task is to create a secure backend foundation for a financial-data application using Supabase.
+
+This project handles sensitive accounting and annual-report data. Security, file storage, project access, audit logging and Row Level Security must be designed before import/export features are built.
+
+Core product rules:
+- Free users can only access the demo workspace.
+- Free users cannot upload real files.
+- Real projects require a paid project entitlement.
+- Payment unlocks one real annual-report project for one company and one financial year.
+- Users must only access projects they own or have been invited to.
+- Demo data and real customer data must never be mixed.
+- Annual report output is Swedish only, but website/app UI supports Swedish and English.
+
+Build the following:
+
+1. Backend architecture review
+
+Review the existing backend structure and create a clean architecture for:
+
+- Supabase database
+- Supabase Auth
+- Supabase Storage
+- server-side actions/API routes/edge functions
+- frontend data access helpers
+- permission helpers
+- audit logging helpers
+
+Document where backend logic should live.
+
+Rules:
+- Sensitive authorization checks must not rely only on frontend logic.
+- File upload and export access must be checked server-side.
+- Project access must always be checked through database policies or server-side helpers.
+- Do not expose service-role keys to the browser.
+
+2. Supabase Auth and profile foundation
+
+Ensure the app supports or is ready to support Supabase Auth.
+
+Create/verify tables:
+- profiles
+- user_preferences
+
+profiles should include:
+- id linked to auth.users
+- email
+- display_name
+- default_ui_language
+- created_at
+- updated_at
+
+user_preferences should include:
+- ui_language: sv/en
+- theme preference if already used
+- notification preferences placeholder
+
+Add safe profile creation logic when a new user signs up.
+
+3. Core database schema
+
+Create/verify tables for:
+
+- companies
+- annual_report_projects
+- project_access
+- project_entitlements
+- audit_events
+- project_snapshots
+
+companies:
+- id
+- owner_user_id
+- company_name
+- organization_number
+- company_type
+- created_at
+- updated_at
+
+annual_report_projects:
+- id
+- company_id
+- financial_year_start
+- financial_year_end
+- framework: K3/K2
+- annual_report_language: sv
+- status
+- current_step
+- entitlement_id
+- created_by
+- created_at
+- updated_at
+
+project_access:
+- id
+- project_id
+- user_id
+- role
+- invited_by
+- created_at
+- revoked_at nullable
+
+project_entitlements:
+- id
+- user_id
+- entitlement_type: single_report / subscription
+- status: active / consumed / expired / cancelled
+- company_id nullable
+- project_id nullable
+- financial_year_start nullable
+- financial_year_end nullable
+- stripe_customer_id nullable
+- stripe_checkout_session_id nullable
+- stripe_subscription_id nullable
+- created_at
+- updated_at
+
+audit_events:
+- id
+- project_id nullable
+- company_id nullable
+- user_id nullable
+- event_type
+- event_data JSONB
+- created_at
+
+project_snapshots:
+- id
+- project_id
+- snapshot_name
+- snapshot_type
+- created_by
+- snapshot_data JSONB
+- created_at
+
+4. Row Level Security
+
+Enable RLS for all customer/project-related tables.
+
+Create policies so that:
+
+profiles:
+- users can read/update their own profile only
+
+companies:
+- users can read companies where they have project access or are owner
+- only owner/admin can update company metadata
+
+annual_report_projects:
+- users can read projects where they have project_access
+- only users with owner/admin/accountant role can update project data
+- free users cannot create real projects unless they have an active entitlement
+
+project_access:
+- users can read access rows for projects they belong to
+- only owner/admin can invite/revoke access
+
+project_entitlements:
+- users can read their own entitlements
+- entitlement creation/update should be server-side only
+
+audit_events:
+- users can read audit events for projects they can access
+- audit event insertion should be through server-side helper or controlled function
+
+project_snapshots:
+- users can read snapshots for projects they can access
+- only owner/admin/accountant can create snapshots
+
+Important:
+Do not rely on hidden frontend buttons as the only security layer.
+
+5. Permission helper functions
+
+Create reusable permission helpers.
+
+Examples:
+- getCurrentUser()
+- getUserProjectRole(projectId)
+- canViewProject(projectId)
+- canEditProject(projectId)
+- canManageProjectUsers(projectId)
+- canUploadFiles(projectId)
+- canRunValidation(projectId)
+- canExportProject(projectId)
+- hasPaidProjectEntitlement(userId)
+- canCreateRealProject(userId)
+
+Use these helpers consistently in future phases.
+
+6. Supabase Storage buckets
+
+Create/define secure storage buckets for:
+
+- import-files
+- previous-annual-reports
+- cover-sheets
+- exports
+- demo-assets
+
+Rules:
+- import-files: private
+- previous-annual-reports: private
+- cover-sheets: private
+- exports: private
+- demo-assets: public or controlled read-only
+
+Storage path convention:
+import-files/{project_id}/{import_file_id}/{original_filename}
+previous-annual-reports/{project_id}/{file_id}/{filename}
+cover-sheets/{project_id}/{cover_sheet_id}/{filename}
+exports/{project_id}/{export_id}/{filename}
+demo-assets/{asset_name}
+
+Rules:
+- Users can only access files for projects they can access.
+- Free users cannot upload to real project buckets.
+- Demo assets must never share storage paths with real customer data.
+- Exports should use signed URLs with expiration, not public permanent URLs.
+- Imported files and exports should not be publicly accessible.
+
+7. File metadata tables
+
+Create/verify file metadata tables:
+
+- project_files
+- export_files
+
+project_files:
+- id
+- project_id
+- file_type: import / previous_report / cover_sheet
+- storage_bucket
+- storage_path
+- original_filename
+- mime_type
+- file_size
+- uploaded_by
+- upload_status
+- parse_status nullable
+- created_at
+
+export_files:
+- id
+- project_id
+- export_type: pdf / word / package
+- storage_bucket
+- storage_path
+- generated_by
+- validation_status_at_export
+- note_numbering_state JSONB nullable
+- watermark boolean
+- created_at
+
+8. File upload security
+
+Implement or prepare secure upload flow.
+
+Requirements:
+- Check user permission before allowing upload.
+- Check project entitlement before allowing real import upload.
+- Allow only approved file types:
+  - SIE
+  - CSV
+  - XLS/XLSX
+  - PDF for previous annual report/cover sheet
+  - image formats for cover image if needed
+- Validate file size.
+- Store file metadata in database.
+- Store file in private bucket.
+- Log upload events.
+- Show friendly errors.
+
+Do not parse files yet in this phase.
+Just create the secure upload/storage foundation.
+
+9. File download/security
+
+Prepare secure file access.
+
+Requirements:
+- Downloads must check project access.
+- Export downloads should use signed URLs.
+- Import files should not be directly exposed.
+- Users without project access must not retrieve file URLs.
+- Demo sample files can be public or read-only demo assets.
+
+10. Server-side audit logging
+
+Create a reusable audit logging helper.
+
+Audit events should be created for:
+- project created
+- user invited/revoked
+- entitlement consumed
+- file uploaded
+- file deleted/replaced
+- permission denied event if appropriate
+- snapshot created
+- future import/export events
+
+Do not let audit events be easily modified/deleted by normal users.
+
+11. Environment variables and secrets
+
+Review and document required environment variables.
+
+Examples:
+- Supabase URL
+- Supabase anon key
+- Supabase service role key, server-side only
+- Stripe keys placeholder
+- AI provider keys placeholder
+- export service dependencies placeholder
+
+Rules:
+- No secrets in frontend code.
+- No service-role key in browser.
+- Document which variables are server-only.
+
+12. Demo vs production data separation
+
+Make sure demo workspace uses hardcoded/demo seed data or demo tables clearly separated from production customer data.
+
+Rules:
+- Demo data should not require paid entitlement.
+- Demo data should not write to real project tables unless intentionally seeded as read-only demo.
+- Demo actions should not create real import files, real companies, real exports or real audit events for customer projects.
+- Demo export must always be watermarked.
+
+13. Backend documentation
+
+Create a short internal backend/security document in the project.
+
+Include:
+- data model overview
+- RLS strategy
+- storage bucket strategy
+- permission helper strategy
+- demo vs production separation
+- entitlement/payment gating logic
+- known limitations
+- what future phases should use
+
+14. Acceptance criteria
+
+This phase is complete when:
+
+- Core backend schema exists or is clearly defined.
+- RLS is enabled for customer/project tables.
+- Users can only access their own/authorized projects.
+- Permission helpers exist.
+- File storage buckets are defined.
+- File metadata tables exist.
+- Real project uploads require project access and paid entitlement.
+- Export storage is private and prepared for signed URLs.
+- Demo data is separated from real customer data.
+- Audit logging helper exists.
+- Secrets/environment variables are documented.
+- Phase 3 can safely build import functionality on top of this foundation.

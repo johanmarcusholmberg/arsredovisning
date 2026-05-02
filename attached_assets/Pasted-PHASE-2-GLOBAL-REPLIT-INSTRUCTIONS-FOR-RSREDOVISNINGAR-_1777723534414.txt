@@ -1,0 +1,256 @@
+PHASE 2
+
+GLOBAL REPLIT INSTRUCTIONS FOR “ÅRSREDOVISNINGAR”
+
+Before making changes:
+- Inspect the existing project structure.
+- Reuse existing components, routes, types, helpers, schemas and styling.
+- Do not replace the whole app.
+- Do not create duplicate systems for the same concept.
+- Do not create separate “simple” and “expert” product modes.
+- Use one unified annual-report workflow for all users.
+- Handle UX differences through adaptive guidance and progressive disclosure.
+- Keep demo data separated from real customer/project data.
+- Keep annual report output Swedish only at launch.
+- Website/app UI may support Swedish and English.
+- Do not claim legal approval, guaranteed compliance or 100% correctness.
+- Position validation as a compliance assistant, not a guarantee.
+- Use wording such as: “No blocking validation issues were found. Please review before filing.”
+- If Supabase is configured, use Supabase Auth, database, RLS and Storage through secure helpers.
+- If Supabase is not configured, create clean placeholders and document exactly what needs to be configured.
+- Do not expose service-role keys or secrets in browser/frontend code.
+- Do not rely on hidden frontend buttons as the only security layer.
+- Do not implement final Stripe production payment logic unless Stripe is actually configured.
+- If payment, AI, export or storage providers are missing, create clean integration points and document assumptions.
+- After implementation, summarize:
+  - what was changed
+  - what files were touched
+  - what is incomplete
+  - what assumptions were made
+  - what I should test before continuing
+Continue working on “Årsredovisningar”.
+
+Phase 1 should already have:
+- Landing page
+- Auth-ready structure
+- Dashboard
+- Demo workspace with dummy read-only report
+- Example note references in demo financial statements
+- Example numbered notes in demo report
+- Payment gate placeholder
+- Initial Supabase/schema foundation
+
+Your task in this phase:
+Important setup clarification:
+
+Phase 2 should preferably be implemented with Supabase already configured.
+
+If Supabase is configured:
+- create real database-backed company/project/entity logic
+- use Supabase Auth user identity where available
+- use secure helpers for project access and entitlement checks
+- prepare for RLS-compatible access control
+
+If Supabase is not configured:
+- do not create a large fake backend that later needs to be replaced
+- create clean frontend placeholders only
+- create schema documentation and typed interfaces
+- clearly document that Phase 2 must be revisited after Supabase is configured
+
+The goal is to avoid building important company/project/payment/role logic as disconnected mock state.
+
+Build the paid real-project workspace foundation.
+
+Important:
+Do not build real SIE/Excel/CSV import yet.
+Do not build full report generation yet.
+Do not build full validation/export yet.
+This phase is about enabling a paid user to create a real annual-report project shell after payment entitlement exists.
+
+Core product rules:
+- Free users only access demo workspace.
+- Real production workspace requires payment/project entitlement.
+- Payment unlocks one real annual-report project for one company and one financial year.
+- Subscriptions may later unlock multiple projects/workspaces.
+- All users follow one unified workflow.
+- Do not create separate user modes.
+- Adaptive guidance should be used instead of reduced compliance.
+- The project model must support future automatic note numbering and note references across income statement, balance sheet, cash flow and notes.
+
+Build the following:
+
+1. Project entitlement logic
+Create a clean access-control layer that determines whether a user can create/work on a real project.
+
+Support this logic:
+- Free user: can access demo only.
+- Paid report entitlement: can create one real annual-report project for one company and one financial year.
+- Future subscription entitlement: placeholder support for multiple projects.
+
+If Stripe is not yet implemented, use a safe mock entitlement state only for development/testing.
+Clearly separate mock payment state from production payment logic.
+
+2. Real company creation
+Create a “Create company” flow for paid users.
+
+Fields:
+- Company name
+- Organization number
+- Company type
+- Financial year start
+- Financial year end
+- Reporting framework selection: K3 default, K2 available
+- Language for website/app UI: Swedish/English
+- Annual report language: Swedish only at launch
+- Optional: condominium association terminology variant
+
+Company type options should include:
+- Limited company
+- Condominium association
+- Other / later
+
+Do not create a separate condominium association workflow.
+Treat it as a terminology/guidance variant within the same annual-report workflow.
+
+3. Annual-report project creation
+After company creation, create one annual-report project for one financial year.
+
+Project fields:
+- Company
+- Financial year
+- Framework: K3 or K2
+- Project status
+- Current workflow step
+- Paid/unlocked status
+- Created by
+- Created date
+- Last updated date
+
+Project statuses:
+- Not started
+- In progress
+- Needs review
+- Ready for export
+- Exported
+
+4. Paid project workspace
+Create the real paid workspace layout with navigation:
+- Overview
+- Import
+- Mapping
+- Financial statements
+- Notes
+- Validation
+- Review
+- Preview & export
+
+At this phase, pages can contain structured placeholders and future-state cards, but the workspace should be real and tied to actual company/project records.
+
+5. Workflow progress
+Add a unified workflow progress component:
+1. Import accounting data
+2. Review mapping
+3. Generate report structure
+4. Review financial statements
+5. Review notes
+6. Validate
+7. Collaborate/review
+8. Preview
+9. Final export
+
+Since payment already happened before real project creation, show the final step as “Preview & export” or “Final export”.
+Avoid confusing users by implying they pay again at the end.
+
+6. Roles and access model
+Implement role support foundation:
+- Owner
+- Admin
+- Accountant
+- Reviewer
+- Auditor
+- Read-only
+
+For MVP, implement basic role storage and future-ready permission checks.
+Do not overbuild full collaboration yet.
+
+Suggested basic permissions:
+- Owner/Admin: manage project and users
+- Accountant: edit project data
+- Reviewer/Auditor: comment/review
+- Read-only: view only
+
+7. Note numbering data model foundation
+Prepare the schema for future note numbering and note references.
+
+Add or document future-ready structures for:
+- report_notes
+- report_note_references
+- financial_statement_lines
+- note_number
+- note_order
+- note_reference_id
+- related_statement_line_id
+- statement_type: income_statement, balance_sheet, cash_flow
+- reference status: active, missing, broken, not_applicable
+
+Do not implement full note numbering logic yet, but make sure the project architecture can support it cleanly.
+
+8. Activity/audit log foundation
+Create audit_events table and logging helper.
+
+Track events like:
+- company_created
+- project_created
+- project_opened
+- framework_selected
+- user_invited placeholder
+- status_changed
+- payment_entitlement_used
+
+Each audit event should include:
+- project_id
+- user_id
+- event_type
+- event_data JSON
+- timestamp
+
+9. Snapshot/version foundation
+Create a simple snapshot/version foundation, but do not implement full version control yet.
+
+Support:
+- Manual “Create snapshot” button placeholder
+- Snapshot list placeholder
+- Future fields:
+  - snapshot name
+  - created by
+  - created at
+  - project state JSON
+  - notes
+
+This should support simple draft versions/snapshots later, not complex branching.
+
+10. UX guidance
+Continue using adaptive guidance:
+- Plain-language explanations
+- Expandable details
+- “Why is this required?”
+- Locked/future-state indicators
+- No separate simple/expert mode
+
+11. Acceptance criteria
+The phase is complete when:
+- If Supabase is not configured, all real backend-dependent logic is clearly marked as placeholder and documented for replacement.
+- If Supabase is configured, company/project creation uses real persistent storage rather than local-only mock state.
+- A paid/entitled user can create a company.
+- A paid/entitled user can create one annual-report project for one company and one financial year.
+- Free users cannot create a real company/project.
+- The real paid workspace exists and is tied to real database records.
+- K3 is default framework; K2 is selectable.
+- Swedish annual reports only at launch is clear.
+- UI can be shown in Swedish or English.
+- Basic roles are stored.
+- Audit event foundation exists.
+- Snapshot foundation exists.
+- Data model is prepared for automatic note numbering and financial statement note references.
+- Import/report generation are not yet implemented beyond placeholders.
+Summarize what was changed, what files were touched, what is incomplete, what assumptions were made, and what I should test before continuing to the next phase.

@@ -1,0 +1,116 @@
+PHASE 0 – Project setup and implementation readiness
+
+You are preparing the project “Årsredovisningar” before building Phase 1.
+
+This phase should not build product functionality yet.
+
+Your task is to prepare the Replit project structure so future phases can be implemented safely and incrementally.
+
+Important:
+- Do not build the annual-report engine.
+- Do not build import, mapping, notes, validation or export.
+- Do not implement Stripe checkout.
+- Do not implement real PDF/Word export.
+- Do not create large mock systems that later need to be replaced.
+
+1. Project structure review
+
+Inspect the current project structure.
+
+Identify:
+- frontend framework
+- routing structure
+- component structure
+- styling system
+- existing environment variable usage
+- whether Supabase is already configured
+- whether authentication is already configured
+- whether GitHub integration exists
+- whether documentation files exist
+
+Do not replace the app structure unless absolutely necessary.
+
+2. Documentation folder
+
+Create or verify a docs folder.
+
+Add or prepare documentation files:
+
+- docs/build-phases.md
+- docs/functionality-specification.md, if the content is available
+- docs/mvp-build-blueprint.md, if the content is available
+- docs/backend-security-notes.md
+- docs/replit-setup-notes.md
+
+3. Environment variable documentation
+
+Create a document listing required future environment variables.
+
+Include placeholders for:
+
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY, server-side only
+- STRIPE_SECRET_KEY, server-side only
+- STRIPE_WEBHOOK_SECRET, server-side only
+- AI provider key placeholder, server-side only
+- export service dependencies placeholder
+
+Rules:
+- Do not hardcode secrets.
+- Do not place service-role keys in frontend code.
+- Document which variables are frontend-safe and which are server-only.
+
+4. Supabase readiness check
+
+Check whether Supabase is already configured.
+
+If Supabase is configured:
+- verify Supabase client setup
+- verify server-side helper structure
+- verify environment variable names
+- document current status
+
+If Supabase is not configured:
+- create a clean placeholder structure
+- document exact setup steps needed before Phase 2/2.5
+- do not fake production Supabase behavior
+
+5. GitHub readiness
+
+Check whether the Replit project is connected to GitHub.
+
+If GitHub is connected:
+- document current branch/repository status
+
+If GitHub is not connected:
+- add a note recommending that GitHub should be connected before deeper phases begin
+
+Do not create branches or pull requests unless explicitly asked.
+
+6. Recommended implementation order
+
+Document the recommended order:
+
+1. GitHub repository connected to Replit
+2. Supabase project created
+3. Supabase URL and anon key added to Replit Secrets
+4. Phase 1
+5. Phase 1.5
+6. Phase 2 with Supabase available
+7. Phase 2.5 before real import/export
+8. Phase 3 and onward
+
+7. Acceptance criteria
+
+This phase is complete when:
+
+- The project structure has been reviewed.
+- A docs folder exists or is prepared.
+- Environment variables are documented.
+- Supabase readiness is documented.
+- GitHub readiness is documented.
+- The recommended phase implementation order is documented.
+- No real product functionality has been built yet.
+
+Summarize what was checked, what files were created or updated, what setup is still missing, and what I should configure before Phase 1 and Phase 2.

@@ -1,0 +1,224 @@
+GLOBAL REPLIT INSTRUCTIONS FOR “ÅRSREDOVISNINGAR”
+
+Before making changes:
+- Inspect the existing project structure.
+- Reuse existing components, routes, types, helpers, schemas and styling.
+- Do not replace the whole app.
+- Do not create duplicate systems for the same concept.
+- Do not create separate “simple” and “expert” product modes.
+- Use one unified annual-report workflow for all users.
+- Handle UX differences through adaptive guidance and progressive disclosure.
+- Keep demo data separated from real customer/project data.
+- Keep annual report output Swedish only at launch.
+- Website/app UI may support Swedish and English.
+- Do not claim legal approval, guaranteed compliance or 100% correctness.
+- Position validation as a compliance assistant, not a guarantee.
+- Use wording such as: “No blocking validation issues were found. Please review before filing.”
+- If Supabase is configured, use Supabase Auth, database, RLS and Storage through secure helpers.
+- If Supabase is not configured, create clean placeholders and document exactly what needs to be configured.
+- Do not expose service-role keys or secrets in browser/frontend code.
+- Do not rely on hidden frontend buttons as the only security layer.
+- Do not implement final Stripe production payment logic unless Stripe is actually configured.
+- If payment, AI, export or storage providers are missing, create clean integration points and document assumptions.
+- After implementation, summarize:
+  - what was changed
+  - what files were touched
+  - what is incomplete
+  - what assumptions were made
+  - what I should test before continuing
+
+You are working on the project “Årsredovisningar”.
+
+Context:
+This is a web application for creating Swedish annual reports with AI-supported guidance. The product should support both accountants/consultants and small business owners, but all users follow the same annual-report workflow. Do not create separate “simple” and “expert” product modes. Instead, use one unified workflow with adaptive guidance and progressive disclosure.
+
+Important product principles:
+- One unified annual-report workflow for all users.
+- No reduced compliance mode based on user type.
+- K3 is the primary MVP framework.
+- K2 should also be supported.
+- Free users should not be able to create real reports, import real accounting data, edit report content, collaborate on real reports, run real validation, or export clean documents.
+- Free users should only access a demo workspace with dummy values and a sample Swedish K3 annual report.
+- Payment is required before creating or working on a real annual-report project.
+- Payment unlocks one real annual-report project for one company and one financial year.
+- Website/application UI should support Swedish and English.
+- Annual report output itself should be Swedish only at launch.
+- Use temporary branding, logo and imagery placeholders.
+- Design direction: “Financial Stripe + Swedish minimalism”.
+- Product positioning: “Årsredovisningar – snabbt, korrekt och med AI-stöd.”
+
+Important annual-report output principle:
+The final report must follow Swedish annual-report conventions. The app should prepare for note numbering and note references throughout the report, even if the full note engine is implemented later. The demo workspace should show examples of note references in the income statement and balance sheet.
+
+Your task in this phase:
+Build the product shell, landing page, authentication-ready structure, demo workspace and payment-gated real project creation flow.
+
+Do not build the full annual-report engine yet.
+Do not build real SIE import yet.
+Do not build full mapping, notes, validation, collaboration, or export yet.
+Only create the foundation needed for those future phases.
+
+Build the following:
+
+1. Landing page
+Create a modern, clean landing page with:
+- Temporary logo/brand placeholder.
+- Hero section.
+- Tagline: “Årsredovisningar – snabbt, korrekt och med AI-stöd.”
+- Explanation that the app helps users go from accounting data to a reviewed Swedish annual report.
+- CTA 1: “Explore demo”
+- CTA 2: “Start real annual report”
+- Swedish/English language toggle for website UI.
+- Sections explaining:
+  - Import accounting data
+  - Review mapping
+  - Generate annual report structure
+  - Review financial statements
+  - Review notes
+  - Validate
+  - Collaborate/review
+  - Preview and export
+- Explain that annual report output is Swedish at launch.
+- Use sample screenshots/cards/placeholders showing the future workflow.
+- Keep the tone trustworthy, professional and non-technical.
+
+2. Auth-ready structure
+Create the frontend structure for login/signup flows.
+If authentication is already configured, use the existing system.
+If not configured, create placeholder routes/components that can be connected to Supabase Auth later.
+Do not overbuild.
+
+3. Dashboard
+Create a dashboard that shows:
+- Demo company/report for all users.
+- Locked “Create real annual report” CTA.
+- Subscription/payment status placeholder.
+- Status cards.
+- Recent activity placeholder.
+- Notifications placeholder.
+
+The dashboard should clearly separate:
+- Demo workspace: available
+- Real production workspace: payment required
+
+4. Demo workspace
+Create a demo workspace using dummy data only.
+
+The demo workspace should include read-only navigation for:
+- Overview
+- Import data
+- Mapping
+- Financial statements
+- Notes
+- Validation
+- Review
+- Preview & export
+
+The demo workspace should show sample values and sample states:
+- Example company name, for example “Nordic Design AB”.
+- Example financial year.
+- Example imported SIE file.
+- Example mapped accounts.
+- Example income statement and balance sheet.
+- Example note reference column in income statement.
+- Example note reference column in balance sheet.
+- Example numbered notes section.
+- Example cross-reference between financial statement lines and notes.
+- Example K3 notes.
+- Example validation warnings/blocking issue.
+- Example comments/review states.
+- Example watermarked PDF/Word export preview placeholder.
+
+Important:
+The demo workspace must feel interactive enough to show the product, but it must not allow real editing or real file upload.
+All editing controls should be disabled or marked as locked.
+Use labels such as:
+- “Demo data”
+- “Read-only demo”
+- “Start a real annual report to use your own data”
+
+5. Payment gate
+Create the UI logic for payment-gated production access.
+
+When a user clicks “Start real annual report”, show a pricing/payment gate screen explaining:
+- Free users can explore the demo.
+- A paid project unlocks one company, one financial year and one real annual-report project.
+- Future subscriptions can unlock multiple projects/workspaces.
+
+Include placeholder pricing cards:
+- Pay per report
+- Subscription for consultants/accountants — coming later or placeholder
+
+Do not implement final Stripe integration yet unless Stripe is already configured.
+Instead, create clean placeholder functions/components so Phase 2 or a later payment phase can connect Stripe checkout.
+
+6. Supabase/schema foundation
+If Supabase is configured, create or prepare basic tables/migrations for:
+- profiles
+- companies
+- annual_report_projects
+- project_access
+- payments or project_entitlements
+- audit_events
+
+If Supabase is not configured, create a clear data model file or schema documentation inside the project.
+
+The schema should support:
+- free demo access
+- paid real project access
+- one company
+- one financial year
+- one annual-report project
+- future roles
+- future audit trail
+- future note numbering
+- future note references from financial statements
+
+7. Navigation
+Use a clean layout:
+- Public landing page
+- Auth pages
+- Dashboard
+- Demo workspace
+- Payment/pricing gate
+- Future paid project workspace placeholder
+
+Recommended paid project navigation for later:
+- Overview
+- Import
+- Mapping
+- Financial statements
+- Notes
+- Validation
+- Review
+- Preview & export
+
+Do not create separate top-level pages for income statement, balance sheet and cash flow yet. These should later live under “Financial statements”.
+
+8. UX guidance principles
+Add reusable UI patterns/components for:
+- “Why is this required?”
+- “Show source accounts”
+- “Show calculation”
+- “Manual override” locked placeholder
+- Status badges
+- Confidence badges
+- Locked feature tooltip
+- Demo data badge
+- Note reference badge
+- Linked note indicator
+
+9. Acceptance criteria
+The phase is complete when:
+- The landing page clearly communicates the product.
+- The user can access a demo workspace.
+- The demo workspace uses dummy data only.
+- Demo financial statements show example note references.
+- Demo notes show automatic note numbering examples.
+- Free users cannot import, edit, validate, collaborate or export real reports.
+- “Start real annual report” leads to a payment gate.
+- The UI supports Swedish and English for website/app interface.
+- The future paid workspace structure is visible but not fully implemented.
+- The code is clean, modular and ready for Phase 2.
+- No real annual-report engine is built yet.
+Summarize what was changed, what files were touched, what is incomplete, what assumptions were made, and what I should test before continuing to the next phase.
