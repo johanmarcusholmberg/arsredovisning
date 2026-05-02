@@ -1,0 +1,55 @@
+Task: Heal Drizzle ↔ Postgres schema drift across the entire DB
+Context
+The Årsredovisningar project (Drizzle ORM + Postgres in lib/db) has drifted from its schema. In a single recent test session we found three drifted tables that broke real user flows:
+
+profiles was missing column default_ui_language → first-login auto-create-profile 500'd, blocking the dashboard.
+companies had columns named org_number/zip_code and was missing owner_profile_id (schema expects organization_number/postal_code/owner_profile_id) → create-company 500'd.
+audit_events had payload (schema expects event_data) → audit writes silently failed after every mutation.
+Patches were applied via ad-hoc ALTER TABLE statements:
+
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS default_ui_language text NOT NULL DEFAULT 'sv';
+ALTER TABLE companies RENAME COLUMN org_number TO organization_number;
+ALTER TABLE companies RENAME COLUMN zip_code TO postal_code;
+ALTER TABLE companies ADD COLUMN owner_profile_id uuid REFERENCES profiles(id);
+ALTER TABLE companies ADD CONSTRAINT companies_organization_number_unique UNIQUE (organization_number);
+ALTER TABLE audit_events RENAME COLUMN payload TO event_data;
+
+These are bandages. There are ~30+ tables in lib/db/src/schema/ (companies, profiles, audit_events, projectAccess, projectFiles, projectSnapshots, projectEntitlements, sectionReviews, sectionComments, reportCollaborators, accountMappings, importBatches, mappingOverrides, mappingTemplates, validationRuns, validationDismissals, annualReportProjects, annualReportReclassifications, annualReportReclassificationSuggestions, annualReportReclassificationAuditLog, userPreferences, cashFlow* (4 tables from Phase 7.5), notes/numbering, etc.) and the drift is almost certainly broader than what the user has accidentally exercised.
+
+Goal
+Bring the live Postgres schema into 100% agreement with lib/db/src/schema/* and put the project on a durable migration footing so this drift cannot silently recur.
+
+Constraints
+Preserve data in profiles, companies, annual_report_projects, and any other table with non-test rows. Inspect row counts before touching each table.
+Preserve RLS policies — the schema files reference RLS expectations (e.g. profiles row visible only to its auth.uid()). Don't drop policies the app depends on; if drizzle-kit push would drop them, recreate them after.
+Never silently drop a column that contains data without explicit confirmation in the work log.
+The pnpm-workspace skill at .local/skills/pnpm-workspace/references/db.md is the canonical reference for db ops.
+Do not edit drizzle.config.ts.
+Steps
+Audit drift table-by-table. For each table file in lib/db/src/schema/*.ts, compare the schema definition to information_schema.columns for that table (column names, types, nullability, defaults). Produce a markdown report listing every drift category: missing column / extra column / renamed column / type mismatch / missing constraint / missing FK / missing index. Include current row counts.
+Decide rename-vs-recreate per drifted column. Anything that looks like a rename (similar column with same type/data) → ALTER ... RENAME COLUMN. Anything that's truly new → add column. Anything extra in DB but not in schema → confirm safe to drop, then drop. Document each decision in the report.
+Apply the corrective SQL in a single transaction per table where possible. Use idempotent guards (IF NOT EXISTS / IF EXISTS / DO $$ ... $$ blocks) so the script is rerunnable.
+Run pnpm --filter @workspace/db run push interactively to confirm zero remaining drift. drizzle-kit should report "No changes detected" at the end.
+Generate a baseline migration snapshot with pnpm --filter @workspace/db run generate so future lib/db/drizzle/*.sql files capture only intentional changes from this point forward.
+Add a check in CI / a pre-deploy script that runs drizzle-kit push --dry-run (or equivalent) and fails if drift is detected. Or: make pnpm typecheck also run a drift check. Pick whichever fits the existing root scripts and document it in replit.md.
+Smoke-test the critical flows end-to-end after the sync, using the testing skill:
+sign in (e2e-tester@arsredovisningar.test / Test1234!)
+dashboard loads
+create company
+create annual report project
+upload SIE (if a fixture exists)
+generate cash flow
+validate report
+export PDF/Word
+Each should return 2xx, no 500s in artifacts/api-server logs.
+Update replit.md with a short "Database migrations" section explaining how to make schema changes going forward (edit lib/db/src/schema/*.ts → pnpm --filter @workspace/db run push in dev → generate to capture migration → commit the SQL file).
+Acceptance criteria
+drizzle-kit push reports zero pending changes.
+Smoke-test list above passes with no 500s.
+A drift-detection step exists and is wired into either CI or a root command, and is documented.
+replit.md has the migrations section.
+The drift audit report is committed under lib/db/drizzle/_drift-audit-<date>.md for posterity.
+Out of scope
+Renaming tables or restructuring the schema (this task is purely about reconciling DB ↔ schema as-defined-today).
+Adding new features.
+Changing RLS policy semantics (only re-applying any that get dropped during ALTERs).
