@@ -1,0 +1,565 @@
+PHASE 6.5
+GLOBAL REPLIT INSTRUCTIONS FOR “ÅRSREDOVISNINGAR”
+
+Before making changes:
+- Inspect the existing project structure.
+- Reuse existing components, routes, types, helpers, schemas and styling.
+- Do not replace the whole app.
+- Do not create duplicate systems for the same concept.
+- Do not create separate “simple” and “expert” product modes.
+- Use one unified annual-report workflow for all users.
+- Handle UX differences through adaptive guidance and progressive disclosure.
+- Keep demo data separated from real customer/project data.
+- Keep annual report output Swedish only at launch.
+- Website/app UI may support Swedish and English.
+- Do not claim legal approval, guaranteed compliance or 100% correctness.
+- Position validation as a compliance assistant, not a guarantee.
+- Use wording such as: “No blocking validation issues were found. Please review before filing.”
+- If Supabase is configured, use Supabase Auth, database, RLS and Storage through secure helpers.
+- If Supabase is not configured, create clean placeholders and document exactly what needs to be configured.
+- Do not expose service-role keys or secrets in browser/frontend code.
+- Do not rely on hidden frontend buttons as the only security layer.
+- Do not implement final Stripe production payment logic unless Stripe is actually configured.
+- If payment, AI, export or storage providers are missing, create clean integration points and document assumptions.
+- After implementation, summarize:
+  - what was changed
+  - what files were touched
+  - what is incomplete
+  - what assumptions were made
+  - what I should test before continuing
+
+Continue working on “Årsredovisningar”.
+
+This phase is:
+
+Phase 6.5 – Smart reclassification and netting between notes
+
+This phase comes after:
+
+- Phase 6.4 – Robust note management, note selection and note-reference integrity
+
+Do not build final PDF export yet.
+Do not build final Word export yet.
+Do not connect final Stripe/export download logic yet.
+Do not replace the current annual-report workflow.
+Do not create a separate advanced mode or simplified compliance mode.
+
+The goal of this phase is to make the annual-report system smarter when handling amounts that may need to be reclassified, grouped, moved, or netted between notes and financial statement lines in order to present a more fair and accurate view of the company’s financial position.
+
+The system should support controlled, traceable, user-approved reclassification and netting between:
+
+- imported accounting data
+- mapped accounts
+- report nodes
+- balance sheet lines
+- income statement lines
+- note rows
+- note totals
+- annual report preview/export data
+
+The original imported accounting data must never be overwritten.
+
+Only presentation mappings, report classifications, note allocations, note rows, report node allocations and annual-report output structures may be adjusted.
+
+All changes must be:
+
+- traceable
+- reversible
+- explainable
+- connected to source accounts/import rows
+- visible in review
+- included in validation
+- applied only after user approval
+
+No reclassification or netting may be applied silently.
+
+---
+
+## 1. Core use case
+
+The system should identify cases where receivable amounts and liability amounts, or debit and credit balances, may economically relate to the same item.
+
+Example:
+
+Original source:
+
+- Account A: Receivable 100,000
+- Account B: Liability -40,000
+
+Approved presentation:
+
+- Note row: Net receivable 60,000
+
+The system must still allow the user to inspect:
+
+- gross receivable amount
+- gross liability amount
+- net effect
+- source accounts
+- source import rows, where available
+- linked report line
+- linked note row
+- user approval
+- reason/comment
+- timestamp
+
+The formal annual report may show the approved net presentation, but the internal review/audit trail must preserve the gross amounts and source traceability.
+
+---
+
+## 2. Supported reclassification scenarios
+
+Implement support for at least the following scenarios:
+
+### A. Netting related receivables and liabilities
+
+Detect and suggest possible netting where opposite balances appear to relate to the same underlying item.
+
+Examples:
+
+- receivable from group company and liability to same group company
+- VAT receivable and VAT payable
+- tax receivable and tax liability
+- employee receivable and employee liability
+- project-related receivable and project-related liability
+- accrued income and accrued expense relating to the same object
+- deposits and advance payments with offsetting balances
+- intercompany receivables/payables
+- other matched debit/credit balances
+
+The system should suggest grouping or netting only when there is a reasonable basis.
+
+The user must approve before anything affects the report.
+
+### B. Moving amounts between note rows
+
+Allow the user to move a full or partial amount from one note row to another when the imported mapping is technically correct but the annual-report presentation should be improved.
+
+Examples:
+
+- move part of a balance from “Övriga fordringar” to a more specific receivable note row
+- move part of a liability from “Övriga skulder” to a more specific liability note row
+- move an amount from a generic row into a manually created note row
+- group several smaller mapped rows into one note row
+- split a mapped account between multiple note rows
+
+### C. Partial reclassification
+
+The user must be able to reclassify:
+
+- full amount
+- partial amount
+- percentage
+- selected source account
+- selected source import rows, if available
+- selected dimensions, if available
+
+The remaining amount must stay in its original classification.
+
+### D. Note-only vs report-line effect
+
+Each reclassification must specify whether it affects:
+
+- note presentation only
+- balance sheet/income statement presentation only
+- both note and report line presentation
+
+The system must prevent inconsistent combinations.
+
+Example:
+
+If a note total changes, the linked balance sheet or income statement line must still reconcile.
+
+---
+
+## 3. Suggestion engine
+
+Create a rule-based suggestion engine for possible reclassifications and netting.
+
+The suggestion engine should detect candidates based on:
+
+- same counterparty name
+- same counterparty identifier
+- same project
+- same cost center
+- same dimension/object
+- same account group
+- same BAS account range
+- opposite signs
+- matching or similar amounts
+- same tax/VAT category
+- same group-company relationship
+- same financial year-end balance
+- manual metadata added by the user
+
+Suggestions should be ranked as:
+
+- High confidence
+- Medium confidence
+- Low confidence
+
+Each suggestion must include a plain-language explanation.
+
+Example Swedish copy:
+
+“Systemet har hittat både en fordran och en skuld som verkar avse samma motpart. Du kan välja att visa dem tillsammans i samma notrad om det ger en mer rättvisande bild.”
+
+“Detta ändrar inte den importerade bokföringen. Det ändrar endast hur beloppet presenteras i årsredovisningen.”
+
+“Notens summa måste fortfarande stämma med raden i balansräkningen.”
+
+The suggestion engine may prepare for future AI support, but deterministic validation and calculations must not rely on AI.
+
+---
+
+## 4. User approval workflow
+
+The user must be able to:
+
+- view all suggestions
+- accept suggestion
+- reject suggestion
+- edit suggestion before applying
+- apply only part of suggestion
+- add manual explanation
+- mark suggestion as not relevant
+- undo an applied reclassification
+- create manual reclassification
+- view all active reclassifications
+- view all rejected suggestions
+- view all undone reclassifications
+
+No suggestion may affect report data until accepted by the user.
+
+Rejected and undone suggestions must not affect preview or export data.
+
+---
+
+## 5. Manual reclassification
+
+Create a manual reclassification flow.
+
+The user should be able to select:
+
+- source account
+- source import row, if available
+- source mapped row
+- source note
+- source note row
+- source report node
+- target note
+- target note row
+- target report node, where relevant
+- amount
+- reason/comment
+- effect type:
+  - note_only
+  - report_node_only
+  - note_and_report_node
+
+The UI must prevent invalid reclassifications that:
+
+- make totals inconsistent
+- cause double-counting
+- remove an amount from the report
+- reference missing notes
+- reference inactive notes
+- break note numbering
+- break note-to-report-line matching
+
+---
+
+## 6. Data model
+
+Create or extend Supabase tables as needed using the existing naming conventions.
+
+Suggested tables:
+
+### annual_report_reclassification_suggestions
+
+Fields:
+
+- id
+- project_id
+- company_id
+- financial_year
+- source_report_node_id
+- target_report_node_id
+- source_note_id
+- target_note_id
+- source_note_row_id
+- target_note_row_id
+- source_account_id
+- target_account_id
+- source_import_row_id
+- source_amount
+- proposed_amount
+- remaining_amount
+- suggestion_type
+- confidence_level
+- explanation
+- detection_rules
+- status:
+  - suggested
+  - accepted
+  - rejected
+  - edited
+  - not_relevant
+- created_at
+- updated_at
+
+### annual_report_reclassifications
+
+Fields:
+
+- id
+- project_id
+- company_id
+- financial_year
+- source_report_node_id
+- target_report_node_id
+- source_note_id
+- target_note_id
+- source_note_row_id
+- target_note_row_id
+- source_account_id
+- source_import_row_id
+- original_amount
+- reclassified_amount
+- remaining_amount
+- effect_type:
+  - note_only
+  - report_node_only
+  - note_and_report_node
+- reason
+- created_by
+- created_at
+- updated_at
+- status:
+  - active
+  - undone
+
+### annual_report_reclassification_audit_log
+
+Fields:
+
+- id
+- project_id
+- reclassification_id
+- action
+- old_value
+- new_value
+- user_id
+- timestamp
+- comment
+
+Use RLS/security policies consistent with the rest of the project.
+
+Only users with project access may view reclassifications.
+
+Only users with edit permission may create, approve, edit, reject or undo reclassifications.
+
+---
+
+## 7. Calculation rules
+
+The reporting engine must calculate final presentation amounts using this principle:
+
+final presentation amount =
+imported mapped amount
++ approved reclassifications into the row/node
+- approved reclassifications out of the row/node
+
+For netted rows:
+
+net amount =
+gross positive balances
++ gross negative balances
+
+The system must preserve:
+
+- original imported amount
+- original mapped amount
+- reclassification adjustment
+- final presentation amount
+- linked source accounts
+- linked note rows
+- linked report nodes
+
+The preview and later export must use the same final presentation amount.
+
+There must not be separate inconsistent calculations for preview and export.
+
+---
+
+## 8. UI requirements
+
+Add a new workflow section:
+
+“Omklassificering & nettning”
+
+Recommended placement:
+
+1. Import accounting data
+2. Review mapping
+3. Generate report structure
+4. Review financial statements
+5. Review notes
+6. Review reclassifications and netting
+7. Validate annual report
+8. Collaborate/review
+9. Preview
+10. Pay/export
+
+The UI should show:
+
+- detected suggestions
+- confidence level
+- affected source account
+- affected note
+- affected report line
+- proposed target note/report line
+- before amount
+- proposed adjustment
+- after amount
+- reason/explanation
+- validation status
+- action buttons:
+  - Godkänn
+  - Redigera
+  - Avvisa
+  - Ej relevant
+  - Skapa manuell omklassificering
+  - Ångra
+
+The default view should be simple and non-technical.
+
+Use progressive disclosure for expert details.
+
+For non-expert users, show:
+
+- plain-language explanation
+- “Varför föreslås detta?”
+- “Påverkar detta årsredovisningens totalsummor?”
+- “Vad händer om jag ignorerar detta?”
+- “Ändras bokföringen?”
+
+For expert users, allow expansion to show:
+
+- account numbers
+- BAS account group
+- dimensions
+- source import rows
+- debit/credit view
+- note node references
+- before/after report node impact
+- audit trail
+
+---
+
+## 9. Validation
+
+Extend validation so the system checks:
+
+- total assets still equal total equity and liabilities
+- note totals match linked balance sheet/income statement lines
+- every note reference remains valid after reclassification
+- no amount disappears
+- no amount is counted twice
+- no rejected suggestion affects the report
+- no undone reclassification affects the report
+- netted rows reconcile to underlying gross amounts
+- every approved reclassification has valid source and target nodes
+- every approved reclassification has a reason/comment or generated explanation
+- preview totals use the same final calculation as validation
+
+If a reclassification causes mismatch between a financial statement line and a note total, the system must show a blocking validation error before export.
+
+This phase does not need to implement final export blocking, but it must return structured validation results that Phase 7 can use.
+
+---
+
+## 10. Audit trail
+
+Every suggestion and reclassification must have audit traceability.
+
+The audit trail must show:
+
+- original source account
+- original source import row, where available
+- original mapped report node
+- original note row
+- target report node, if changed
+- target note row
+- original amount
+- reclassified amount
+- remaining amount
+- reason/comment
+- suggestion confidence, if generated
+- user who approved/created/edited/undid
+- created timestamp
+- updated timestamp
+- status
+- effect type
+
+The audit trail should be visible in the UI and persisted in Supabase.
+
+---
+
+## 11. Demo/free workspace behavior
+
+Free/demo users should be able to see example reclassification suggestions using dummy data only.
+
+They must not be able to apply real reclassifications to real accounting data unless they have paid and unlocked a real annual-report project.
+
+Demo examples should show:
+
+- receivable/liability netting
+- movement between note rows
+- before/after amounts
+- watermark/demo messaging where relevant
+
+Do not hardcode demo logic into real project calculations.
+
+---
+
+## 12. Integration with Phase 6.4
+
+This phase must respect and build on Phase 6.4.
+
+That means:
+
+- note numbering must remain automatic and consistent
+- note references in balance sheet and income statement must remain correct
+- notes selected/unselected by the user must be respected
+- required notes must not be broken by reclassification
+- note totals must remain linked to statement lines
+- inactive/not applicable notes must not be used as targets
+- manual note rows must remain traceable
+
+If a target note or target note row is missing, the user must create or select a valid one.
+
+---
+
+## 13. Acceptance criteria
+
+This phase is complete when:
+
+- The system can detect possible receivable/liability netting cases.
+- The system can suggest moving/grouping amounts between note rows.
+- Users can accept, reject, edit, undo and manually create reclassifications.
+- Reclassifications do not overwrite imported accounting data.
+- Every reclassification is traceable to source accounts/import rows.
+- Approved reclassifications affect final presentation amounts.
+- Rejected and undone suggestions do not affect final presentation amounts.
+- Note totals remain linked to balance sheet/income statement rows.
+- Validation catches mismatches caused by reclassification.
+- Gross and net amounts can be inspected internally.
+- The audit log is persisted.
+- Permissions are respected.
+- Demo users only see dummy examples.
+- The implementation works within the existing annual-report workflow.
+- Phase 6.6 can use the final approved presentation amounts in the export preview model.
+
+Do not implement final PDF or Word export in this phase.
+Do not connect Stripe/export download logic in this phase

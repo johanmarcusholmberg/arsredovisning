@@ -1,0 +1,804 @@
+PHASE 6.4
+GLOBAL REPLIT INSTRUCTIONS FOR “ÅRSREDOVISNINGAR”
+
+Before making changes:
+- Inspect the existing project structure.
+- Reuse existing components, routes, types, helpers, schemas and styling.
+- Do not replace the whole app.
+- Do not create duplicate systems for the same concept.
+- Do not create separate “simple” and “expert” product modes.
+- Use one unified annual-report workflow for all users.
+- Handle UX differences through adaptive guidance and progressive disclosure.
+- Keep demo data separated from real customer/project data.
+- Keep annual report output Swedish only at launch.
+- Website/app UI may support Swedish and English.
+- Do not claim legal approval, guaranteed compliance or 100% correctness.
+- Position validation as a compliance assistant, not a guarantee.
+- Use wording such as: “No blocking validation issues were found. Please review before filing.”
+- If Supabase is configured, use Supabase Auth, database, RLS and Storage through secure helpers.
+- If Supabase is not configured, create clean placeholders and document exactly what needs to be configured.
+- Do not expose service-role keys or secrets in browser/frontend code.
+- Do not rely on hidden frontend buttons as the only security layer.
+- Do not implement final Stripe production payment logic unless Stripe is actually configured.
+- If payment, AI, export or storage providers are missing, create clean integration points and document assumptions.
+- After implementation, summarize:
+  - what was changed
+  - what files were touched
+  - what is incomplete
+  - what assumptions were made
+  - what I should test before continuing
+
+Continue working on “Årsredovisningar”.
+
+This phase is:
+
+Phase 6.4 – Robust note management, note selection and note-reference integrity
+
+This phase comes before:
+
+- Phase 6.5 – Smart reclassification and netting between notes
+- Phase 6.6 – Export template, preview model and PDF/Word readiness
+- Phase 7 – Final PDF/Word export, entitlement and download flow
+
+Do not build final PDF export yet.
+Do not build final Word export yet.
+Do not connect final Stripe/export download logic yet.
+Do not build smart reclassification or netting in this phase.
+
+Your task is to make the note system robust, user-controllable and fully traceable before later phases introduce reclassification, export preview and final PDF/Word export.
+
+The most important goal is:
+
+The connection between:
+- balance sheet lines
+- income statement lines
+- note references
+- note numbers
+- note contents
+- note totals
+- mapped accounting data
+
+must be 100% consistent, traceable and validation-ready.
+
+No balance sheet or income statement line should be able to reference the wrong note.
+
+No note should show a total that does not reconcile to the linked financial statement line.
+
+No selected note should lose its connection to the accounting source.
+
+No hidden or inactive note should accidentally be referenced in the annual report.
+
+The original imported accounting data must never be overwritten.
+
+---
+
+## 1. Core goal
+
+Implement a robust note management layer where users can:
+
+- see which notes are required
+- see which notes are suggested
+- see which notes are optional
+- select or deselect optional notes
+- confirm required notes
+- edit note text where allowed
+- review note tables
+- inspect source accounts behind note rows
+- see exactly which balance sheet or income statement line each note belongs to
+- see exactly which note number is shown in the financial statements
+- validate that note totals match report lines
+- prevent inconsistent note references before preview/export
+
+This phase should make the note system reliable enough for future export.
+
+---
+
+## 2. Note classification
+
+Each note should have a clear status/classification.
+
+Support at least:
+
+- required
+- suggested
+- optional
+- not_applicable
+- hidden
+- manually_added
+
+Definitions:
+
+### required
+
+A note required by the selected reporting framework or triggered by imported/mapped data.
+
+Required notes cannot be removed if they are legally or structurally needed.
+
+The user may confirm or edit allowed parts, but cannot disable the note unless the underlying trigger no longer applies.
+
+### suggested
+
+A note that the system recommends based on mapped data, account types or report structure.
+
+The user may accept, ignore or mark as not applicable, depending on rules.
+
+### optional
+
+A note that the user may include for better explanation, even if not strictly required.
+
+The user may include or exclude optional notes.
+
+### not_applicable
+
+A note that the system considered but the user or validation logic marked as not applicable.
+
+It must not appear in the formal annual report.
+
+It must not be referenced from the balance sheet or income statement.
+
+### hidden
+
+A note used internally or removed from the formal annual report.
+
+Hidden notes must not be included in automatic note numbering.
+
+Hidden notes must not be referenced in financial statement tables.
+
+### manually_added
+
+A note created by the user.
+
+Manual notes must still have:
+- note number if included
+- title
+- body or table
+- linked statement line if relevant
+- validation status
+- source/traceability where relevant
+
+---
+
+## 3. Note selection UX
+
+Create or improve a “Notes review” section in the annual report workflow.
+
+Recommended placement:
+
+Recommended workflow placement:
+
+1. Import accounting data
+2. Review mapping
+3. Generate report structure
+4. Review financial statements
+5. Review notes
+6. Review reclassifications and netting
+7. Validate annual report
+8. Collaborate/review
+9. Preview & export
+10. Final export
+
+Important:
+Payment is required before a real annual-report project can be created or worked on.
+
+Do not imply that the user pays again at the export step.
+
+For real projects, export readiness depends on:
+- paid project entitlement
+- permissions
+- no blocking validation issues
+- complete note numbering
+- consistent note references
+- confirmed required text
+In this phase, implement the “Review notes” step.
+
+The UI should show:
+
+- note title
+- note number
+- status
+- linked balance sheet or income statement line
+- current-year amount
+- previous-year amount
+- note total
+- linked statement line total
+- difference, if any
+- validation status
+- required/suggested/optional badge
+- whether the note is included in the report
+- source account drilldown
+- action buttons
+
+Actions should include:
+
+- include note
+- exclude optional note
+- mark suggested note as not applicable
+- confirm required note
+- edit note text
+- edit allowed manual fields
+- add manual note
+- remove manual note
+- view source accounts
+- view linked statement line
+- refresh note numbering
+- run note consistency check
+
+Use Swedish UI labels.
+
+Examples:
+
+- “Notgranskning”
+- “Obligatorisk”
+- “Föreslagen”
+- “Valfri”
+- “Ej tillämplig”
+- “Manuellt tillagd”
+- “Ingår i årsredovisningen”
+- “Visa källkonton”
+- “Visa kopplad rad”
+- “Bekräfta not”
+- “Markera som ej tillämplig”
+- “Lägg till manuell not”
+- “Kontrollera noter”
+
+---
+
+## 4. Automatic note numbering
+
+Implement automatic note numbering for all included notes.
+
+Rules:
+
+- note numbers must be unique
+- note numbers must be sequential
+- hidden notes must not receive visible note numbers
+- not_applicable notes must not receive visible note numbers
+- excluded optional notes must not receive visible note numbers
+- manually added included notes must receive a valid number
+- numbering should follow the order of appearance in the annual report
+- notes referenced from resultaträkning and balansräkning must use the same number shown in the notes section
+- if note order changes, references must update automatically
+- note numbers must never be manually typed into financial statement lines as disconnected text
+
+The note number source of truth should be one central function or module.
+
+Do not allow separate note numbering logic in:
+- report tables
+- note section
+- preview
+- future export
+
+Later Phase 6.6 and Phase 7 must be able to reuse this same note numbering source.
+
+---
+
+## 5. Note references in financial statements
+
+Resultaträkning and Balansräkning must support a “Not” column.
+
+In this phase, prepare or implement the data structure and UI logic for this column.
+
+For each financial statement line:
+
+- show the linked note number if a note is included
+- show blank if no note applies
+- do not show notes marked hidden, excluded or not_applicable
+- support multiple note references if needed
+- references must point to actual note IDs, not only text labels
+- references must update when note numbering changes
+- references must be consistent across review, preview and later export
+
+Each financial statement line should support:
+
+- statementLineId
+- label
+- amountCurrentYear
+- amountPreviousYear
+- linkedNoteIds
+- visibleNoteNumbers
+- sourceAccountIds
+- validationStatus
+
+The UI should make it clear which note belongs to which row.
+
+Example:
+
+In balance sheet review:
+
+| Rad | Not | 2026 | 2025 |
+|---|---:|---:|---:|
+| Kundfordringar | 12 | 250 000 | 210 000 |
+
+Clicking note number 12 should open the linked note.
+
+In the note view, clicking “Visa kopplad rad” should navigate back to the corresponding statement line.
+
+---
+
+## 6. Note totals and reconciliation
+
+Implement note total reconciliation.
+
+For each note linked to a financial statement line, validate:
+
+note total = linked statement line amount
+
+When previous-year values are available:
+
+previous-year note total = previous-year linked statement line amount
+
+If there is a mismatch, show:
+
+- affected note
+- affected statement line
+- note amount
+- statement line amount
+- difference
+- likely reason
+- recommended action
+
+The system should support structured validation results.
+
+Suggested validation result fields:
+
+- status:
+  - passed
+  - warning
+  - blocking_error
+- code
+- message
+- affectedNoteId
+- affectedStatementLineId
+- currentYearDifference
+- previousYearDifference
+- severity
+- recommendedAction
+
+In this phase, mismatches should be clearly visible and structured for later blocking in Phase 7.
+
+Do not allow a misleading “green” status when totals do not match.
+
+---
+
+## 7. Source account drilldown
+
+Every note row that is generated from accounting data must be traceable to source accounts.
+
+The user should be able to expand a note row and see:
+
+- account number
+- account name
+- mapped report node
+- current-year amount
+- previous-year amount, if available
+- imported file/source
+- import batch, if available
+- dimension/project/object, if available
+- whether the account is included in this note row
+- whether the account is also linked to a financial statement line
+
+The source account drilldown should support both non-expert and expert views.
+
+Non-expert view:
+
+- plain account label
+- amount
+- simple explanation
+
+Expert view:
+
+- account number
+- BAS account group
+- source import row
+- dimensions
+- mapping rule
+- report node ID
+
+Use progressive disclosure.
+
+Do not overwhelm non-expert users by default.
+
+---
+
+## 8. Note content editing
+
+Allow controlled editing of note content.
+
+The user may edit:
+
+- explanatory body text where allowed
+- manually added note text
+- manual note row labels where allowed
+- commentary fields
+- confirmation status
+
+The user should not be able to casually edit calculated totals in a way that breaks reconciliation.
+
+If manual override of an amount is allowed, it must be:
+
+- explicitly marked as manual override
+- traceable
+- explained with a required comment
+- included in validation
+- visible in audit/review
+- reversible
+
+Calculated note rows should remain connected to source accounts.
+
+---
+
+## 9. Required note confirmation
+
+Some notes may contain AI-generated or system-generated text.
+
+For these, add confirmation tracking.
+
+Each note should support:
+
+- textGeneratedBySystem
+- requiresUserConfirmation
+- confirmedByUser
+- confirmedBy
+- confirmedAt
+- confirmationComment optional
+
+The UI should show:
+
+- “Text behöver granskas”
+- “Bekräftad”
+- “Ej bekräftad”
+- “Bekräfta nottext”
+
+Phase 6.6 and Phase 7 should later use this status in export readiness.
+
+---
+
+## 10. Manual notes
+
+Allow the user to add manual notes.
+
+Manual notes should support:
+
+- title
+- body text
+- optional table
+- linked statement line optional
+- included/excluded status
+- note numbering
+- validation status
+- createdBy
+- createdAt
+- updatedAt
+
+Manual notes should not break automatic numbering.
+
+If a manual note is linked to a financial statement line, it must participate in note reference validation.
+
+If a manual note is not linked to a financial statement line, it may appear in the notes section if included and valid.
+
+The UI should distinguish clearly between:
+
+- system-generated notes
+- required notes
+- optional notes
+- manual notes
+
+---
+
+## 11. Note ordering
+
+Implement or prepare note ordering logic.
+
+Default order should follow Swedish annual-report structure and the order in which the related financial statement lines appear.
+
+Typical order:
+
+1. Accounting principles / Redovisningsprinciper
+2. Notes linked to income statement
+3. Notes linked to balance sheet assets
+4. Notes linked to balance sheet equity and liabilities
+5. Other statutory or explanatory notes
+
+The user may be allowed to reorder manual/optional notes only where safe.
+
+Required note order should be protected if needed for consistency.
+
+When order changes:
+
+- note numbers update automatically
+- financial statement note references update automatically
+- validation reruns
+- preview/export data source stays consistent
+
+---
+
+## 12. Data model
+
+Create or extend Supabase tables as needed using existing naming conventions.
+
+Suggested structures:
+
+### annual_report_notes
+
+Fields:
+
+- id
+- project_id
+- company_id
+- financial_year
+- note_key
+- note_number
+- title
+- note_type
+- status:
+  - required
+  - suggested
+  - optional
+  - not_applicable
+  - hidden
+  - manually_added
+- include_in_report
+- display_order
+- linked_statement_line_ids
+- framework
+- is_required
+- is_system_generated
+- text_generated_by_system
+- requires_user_confirmation
+- confirmed_by_user
+- confirmed_by
+- confirmed_at
+- confirmation_comment
+- created_by
+- created_at
+- updated_at
+
+### annual_report_note_rows
+
+Fields:
+
+- id
+- note_id
+- project_id
+- label
+- row_type:
+  - heading
+  - detail
+  - subtotal
+  - total
+  - text
+- display_order
+- current_year_amount
+- previous_year_amount
+- amount_source:
+  - calculated
+  - manual
+  - imported
+  - adjusted
+- source_account_ids
+- source_import_row_ids
+- linked_statement_line_id
+- is_calculated
+- is_manual_override
+- manual_override_reason
+- created_at
+- updated_at
+
+### annual_report_statement_note_links
+
+Fields:
+
+- id
+- project_id
+- statement_line_id
+- note_id
+- link_type:
+  - primary
+  - secondary
+  - explanatory
+- created_by
+- created_at
+- updated_at
+
+### annual_report_note_audit_log
+
+Fields:
+
+- id
+- project_id
+- note_id
+- note_row_id optional
+- action
+- old_value
+- new_value
+- user_id
+- timestamp
+- comment
+
+Use existing project schema and naming conventions if similar tables already exist.
+
+Add RLS/security policies consistent with the rest of the project.
+
+Only authenticated users with project access may view notes.
+
+Only users with edit permission may change note settings, note content, note inclusion or manual notes.
+
+---
+
+## 13. Validation
+
+Create reusable note validation functions.
+
+At minimum, validate:
+
+- included notes have unique note numbers
+- included notes have sequential note numbers
+- financial statement note references point to included notes
+- no hidden note is referenced
+- no not_applicable note is referenced
+- no excluded optional note is referenced
+- required notes are included unless clearly not applicable by rule
+- note totals match linked statement lines
+- previous-year note totals match previous-year statement lines when applicable
+- manual notes have valid title/content
+- manual overrides have required reason/comment
+- system-generated note text requiring confirmation is confirmed before export readiness
+- note rows with calculated amounts have source traceability
+- the same amount is not duplicated in multiple note rows unless explicitly intended and explained
+
+Validation should return structured results.
+
+Suggested result:
+
+- status
+- severity
+- code
+- message
+- affectedNoteId
+- affectedNoteRowId
+- affectedStatementLineId
+- recommendedAction
+
+This phase does not need to implement final export blocking, but the validation result structure must support blocking in Phase 7.
+
+---
+
+## 14. Audit trail
+
+Track important note-related changes.
+
+Audit log should include:
+
+- note included/excluded
+- note marked not applicable
+- note confirmed
+- note text edited
+- manual note created
+- manual note removed
+- note row edited
+- manual override created
+- note link changed
+- note order changed
+- note numbering refreshed
+
+Each audit item should include:
+
+- user
+- timestamp
+- action
+- affected note
+- affected row if relevant
+- old value
+- new value
+- comment/reason if available
+
+The audit trail must be stored and later available for internal review/export-package appendix.
+
+---
+
+## 15. Demo/free workspace behavior
+
+Free/demo users should be able to view a realistic note review experience using dummy data.
+
+Demo should include:
+
+- Resultaträkning with note references
+- Balansräkning with note references
+- required note example
+- optional note example
+- suggested note example
+- manual note example
+- source account drilldown using dummy accounts
+- note total reconciliation
+- demo watermark/label where relevant
+
+Demo users must not be able to create or edit real annual-report notes for real accounting data unless they have paid and unlocked a real project.
+
+The demo must not use clean export.
+
+Do not create separate inconsistent note logic for demo.
+
+Demo should use the same note system with dummy data.
+
+---
+
+## 16. UX principles
+
+The note system must work for both:
+
+- accountants
+- small business owners
+
+Use progressive disclosure.
+
+Default view should be simple:
+
+- what the note is
+- whether it is required
+- what amount it explains
+- whether it matches the annual report line
+- what action the user needs to take
+
+Expert details should be expandable:
+
+- source accounts
+- BAS account ranges
+- mapping node
+- validation codes
+- source import rows
+- technical note IDs
+
+The user should never need to guess whether a note is connected to the correct financial statement line.
+
+---
+
+## 17. Integration requirements
+
+This phase must integrate with:
+
+- import module
+- mapping engine
+- reporting engine
+- annual report workflow
+- validation engine
+- collaboration/permissions model
+- future export preview
+
+Do not create a separate note engine that is disconnected from the existing report lines.
+
+Do not hardcode note numbers inside UI components.
+
+Do not create note references as plain text only.
+
+Use note IDs and statement line IDs as the actual relationship.
+
+The visible note number should be derived from the central numbering logic.
+
+---
+
+## 18. Acceptance criteria
+
+This phase is complete when:
+
+- Users can review all required, suggested, optional and manual notes.
+- Users can include/exclude optional notes.
+- Users can mark suggested notes as not applicable.
+- Required notes are protected from unsafe removal.
+- Notes have automatic unique sequential numbering.
+- Resultaträkning and Balansräkning can show a correct “Not” column.
+- Note references are based on note IDs, not disconnected text.
+- Clicking a note reference opens the correct note.
+- Clicking a note’s linked statement line opens the correct financial statement line.
+- Note totals reconcile to linked statement lines.
+- Mismatches are clearly shown with structured validation results.
+- Source account drilldown exists for calculated note rows.
+- Manual notes can be created without breaking numbering.
+- System-generated note text can require user confirmation.
+- Note changes are audit logged.
+- Demo workspace uses the same note logic with dummy data.
+- The implementation prepares Phase 6.5 for reclassification/netting.
+- The implementation prepares Phase 6.6 and Phase 7 to use the same note numbering and note reference logic.
+
+Do not build smart reclassification/netting in this phase.
+Do not build final PDF/Word export in this phase.
+Do not connect final Stripe/export download logic in this phase.

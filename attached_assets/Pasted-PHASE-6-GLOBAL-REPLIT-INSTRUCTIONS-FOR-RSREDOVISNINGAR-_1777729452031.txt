@@ -1,0 +1,259 @@
+PHASE 6
+GLOBAL REPLIT INSTRUCTIONS FOR “ÅRSREDOVISNINGAR”
+
+Before making changes:
+- Inspect the existing project structure.
+- Reuse existing components, routes, types, helpers, schemas and styling.
+- Do not replace the whole app.
+- Do not create duplicate systems for the same concept.
+- Do not create separate “simple” and “expert” product modes.
+- Use one unified annual-report workflow for all users.
+- Handle UX differences through adaptive guidance and progressive disclosure.
+- Keep demo data separated from real customer/project data.
+- Keep annual report output Swedish only at launch.
+- Website/app UI may support Swedish and English.
+- Do not claim legal approval, guaranteed compliance or 100% correctness.
+- Position validation as a compliance assistant, not a guarantee.
+- Use wording such as: “No blocking validation issues were found. Please review before filing.”
+- If Supabase is configured, use Supabase Auth, database, RLS and Storage through secure helpers.
+- If Supabase is not configured, create clean placeholders and document exactly what needs to be configured.
+- Do not expose service-role keys or secrets in browser/frontend code.
+- Do not rely on hidden frontend buttons as the only security layer.
+- Do not implement final Stripe production payment logic unless Stripe is actually configured.
+- If payment, AI, export or storage providers are missing, create clean integration points and document assumptions.
+- After implementation, summarize:
+  - what was changed
+  - what files were touched
+  - what is incomplete
+  - what assumptions were made
+  - what I should test before continuing
+
+Continue working on “Årsredovisningar”.
+
+Previous phases should already have:
+- Paid project workspace
+- Import/mapping
+- Financial statements
+- Note references in income statement and balance sheet
+- Notes module
+- Automatic note numbering
+- AI confirmation logic
+- Audit log foundation
+- Role foundation
+
+Your task in this phase:
+Build validation, collaboration, review states and stronger audit trail.
+
+Important:
+Validation must be positioned as a compliance assistant, not a guarantee.
+Do not use wording like:
+- Guaranteed compliant
+- Legally approved
+- 100% correct
+- Error-free
+
+Use wording like:
+- “No blocking validation issues were found. Please review before filing.”
+- “Ready for review”
+- “Ready for export — no blocking issues found”
+
+Core validation levels:
+- Blocking
+- Warning
+- Info
+
+Critical new validation requirement:
+Validation must check note numbering and note references. Broken or inconsistent note references should be visible before export.
+
+Build the following:
+
+1. Validation page
+Create the “Validation” workspace section.
+
+Show:
+- Overall validation status
+- Blocking issues
+- Warnings
+- Info messages
+- Section-based checklist
+- Export readiness summary
+- Last validation run
+- Run validation button
+- Dismiss/accept warning actions where allowed
+
+2. Validation rules foundation
+Implement a validation rules engine foundation.
+
+Initial MVP rules should include:
+
+Blocking examples:
+- Balance sheet does not balance
+- Required company information missing
+- Required financial statement line missing
+- Unmapped accounts remain
+- Required note missing
+- Required note has no number
+- Financial statement line references a missing note
+- Financial statement line has broken note reference
+- Note numbering duplicate exists
+- Note numbering sequence is invalid
+- AI-generated note text not confirmed
+- High-risk manual adjustment missing reason
+- Required previous-year data missing where needed
+
+Warning examples:
+- Large year-over-year movement
+- Previous-year comparison mismatch
+- Low-confidence mapping still used
+- Optional note may be relevant
+- Manual adjustment exists
+- Required or likely note exists but has no financial statement reference
+- Financial statement line may need a note reference based on mapping/account group
+- Cash flow may be required
+- Cover sheet missing if user selected custom cover option
+
+Info examples:
+- Note generated because source accounts were detected
+- Mapping based on BAS account range
+- Note reference created from account mapping
+- Note numbering recalculated automatically
+- Cash flow hidden because not required
+- Annual report output is Swedish only at launch
+
+3. Warning dismissal logic
+Implement warning dismissal rules:
+- High-risk warnings require a comment.
+- Low-risk warnings can be accepted without comment.
+- Blocking issues cannot be dismissed.
+- Dismissed warnings remain visible in audit/validation summary.
+
+4. Note reference validation UI
+Add a validation subsection for note references.
+
+Show:
+- Notes without references where expected
+- Financial statement lines with broken references
+- Duplicate note numbers
+- Missing note numbers
+- Notes marked not applicable but still referenced
+- Suggested note references not yet accepted/reviewed
+
+Add quick links from validation issues to:
+- relevant financial statement line
+- relevant note
+- relevant mapping/source account
+
+5. Collaboration page / Review section
+Create the “Review” workspace section.
+
+Implement MVP collaboration:
+- Invite collaborator placeholder or real invite if auth/email is ready
+- Assign role:
+  - Owner
+  - Admin
+  - Accountant
+  - Reviewer
+  - Auditor
+  - Read-only
+- Comments per section
+- Review status per section
+- Request changes
+- Mark as reviewed
+- Approve section
+
+Review states:
+- Not started
+- In progress
+- Ready for review
+- Changes requested
+- Approved
+
+6. Comments
+Implement comments on report sections.
+
+Commentable sections:
+- Import
+- Mapping
+- Financial statements
+- Notes
+- Validation
+- Preview/export
+
+Each comment should store:
+- project_id
+- section
+- optional entity_id
+- comment text
+- created_by
+- created_at
+- resolved status
+- resolved_by
+- resolved_at
+
+7. Role permissions
+Apply practical MVP permissions.
+
+Suggested:
+- Owner/Admin: manage users, settings, all edits
+- Accountant: edit financial data, mappings, notes, run validation
+- Reviewer/Auditor: comment, mark reviewed, request changes
+- Read-only: view only
+
+Do not overcomplicate permissions.
+Use a clean helper function to check permissions.
+
+8. Audit trail page or panel
+Create a visible audit/activity panel.
+
+Show:
+- imports
+- mapping overrides
+- manual adjustments
+- note edits
+- note numbering recalculations
+- note reference changes
+- AI text accepted
+- warnings dismissed
+- comments added/resolved
+- validation runs
+- snapshots
+- export events later
+
+Add filters:
+- All
+- Import
+- Mapping
+- Financial statements
+- Notes
+- Note references
+- Validation
+- Review
+- Export
+
+9. Snapshot/version functionality
+Implement simple snapshots.
+
+Users should be able to:
+- Create snapshot
+- Name snapshot
+- View snapshot list
+- See who created it and when
+
+Do not implement complex branching.
+Snapshots can initially store project state summary/metadata and later be expanded.
+
+10. Acceptance criteria
+The phase is complete when:
+- Validation runs and produces Blocking/Warning/Info results.
+- Blocking issues prevent export readiness.
+- High-risk warning dismissal requires a comment.
+- AI-generated unconfirmed text creates validation issue.
+- Missing/broken note references create validation issues.
+- Duplicate or invalid note numbering creates validation issues.
+- Collaboration comments work.
+- Section review states work.
+- Basic role permissions work.
+- Audit trail is visible and useful.
+- Simple snapshots work.
+- Validation wording avoids legal/compliance guarantee.
+Summarize what was changed, what files were touched, what is incomplete, what assumptions were made, and what I should test before continuing to the next phase
