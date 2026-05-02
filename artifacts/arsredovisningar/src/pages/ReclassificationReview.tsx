@@ -449,10 +449,11 @@ export function ReclassificationReview() {
   };
 
   const handleManualSave = () => {
-    if (!manualTargetRowId || !manualAmount) {
+    if (!manualSourceRowId || !manualTargetRowId || !manualAmount) {
       toast({
         title: "Ofullständig omklassificering",
-        description: "Välj en målrad och ange ett belopp.",
+        description:
+          "Välj både käll- och målrad och ange ett belopp — utan källrad bevaras inte summan.",
         variant: "destructive",
       });
       return;
@@ -946,7 +947,7 @@ export function ReclassificationReview() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>Källnot (valfri)</Label>
+                <Label>Källnot</Label>
                 <Select
                   value={manualSourceNoteId}
                   onValueChange={(v) => {

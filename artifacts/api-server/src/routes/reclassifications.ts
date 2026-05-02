@@ -129,18 +129,20 @@ async function validateReclassification(opts: {
     };
   }
   // Conservation invariant — enforced at WRITE time, not just surfaced as a
-  // warning. A reclass that affects note presentation MUST move value from a
-  // source row to a target row; without a source, value would materialize
-  // out of nowhere on the note. Pure report_node_only reclasses are
-  // exempt — they don't change note totals.
-  const affectsNote =
-    opts.effectType === "note_only" ||
-    opts.effectType === "note_and_report_node";
-  if (affectsNote && !opts.sourceCtx) {
+  // warning. EVERY reclassification must move value from a source row to a
+  // target row, regardless of effect type. Without a source, the target
+  // gets a free inflow and the presented amount on the report row (or the
+  // note row, or both) increases without an offsetting decrease somewhere
+  // else — i.e. value materializes out of nowhere. Earlier rounds carved
+  // out `report_node_only` reclasses without a source on the assumption
+  // that they "don't change note totals", but they still inflate the
+  // statement-line presented amount, which violates conservation just as
+  // badly as a sourceless `note_only` entry. The carve-out is gone.
+  if (!opts.sourceCtx) {
     return {
       ok: false,
       message:
-        "En omklassificering som påverkar noten måste ha både en källrad och en målrad så att summan bevaras. Lägg till källraden eller välj effekttypen 'endast rapportpost' om du bara vill flytta värde mellan rapportrader.",
+        "En omklassificering måste ha både en källrad och en målrad så att summan bevaras — annars skapas värde ur tomma intet på rapporten.",
     };
   }
   if (opts.sourceCtx) {

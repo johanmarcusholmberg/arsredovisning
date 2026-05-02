@@ -519,23 +519,30 @@ export async function runValidation(
       }
     }
 
-    // (c) Net-zero conservation across notes: every "note_only"
-    // reclassification must have BOTH a source and a target inside the
-    // report. A note_only reclass with a missing source effectively creates
-    // value out of thin air; one with a missing target destroys value. The
-    // engine must surface this so unbalanced entries can't silently ship.
+    // (c) Net-zero conservation across notes AND report nodes. EVERY
+    // active reclassification — irrespective of `effectType` — must
+    // have both a source and a target inside the report. Without a
+    // source, the entry inflates the target's presented amount with
+    // no offsetting outflow anywhere else (value created from
+    // nothing); without a target, value disappears. This is a
+    // blocking issue, not a warning, because the unbalanced entry
+    // already affects the presented numbers exposed via
+    // `getPresentedStatementLineAdjustments` — letting the report
+    // ship would publish broken figures. Earlier rounds only checked
+    // `note_only`, which missed the more dangerous
+    // `report_node_only`/`note_and_report_node` cases that surface
+    // straight into the income statement / balance sheet.
     for (const r of activeReclassifications) {
-      if (r.effectType !== "note_only") continue;
       if (!r.sourceNoteRowId || !r.targetNoteRowId) {
         issues.push({
           ruleKey: `reclassification:unbalanced:${r.id}`,
-          level: "warning",
+          level: "blocking",
           section: "notes",
           message: `Omklassificeringen "${
             r.reason ?? r.targetLabel ?? r.id
-          }" är konfigurerad som "endast not" men saknar ${
+          }" saknar ${
             r.sourceNoteRowId ? "målrad" : "källrad"
-          } — den nettar inte mot någon annan post.`,
+          } — den nettar inte mot någon annan post och ändrar presenterade summor utan motpost. Ange båda raderna eller återkalla omklassificeringen.`,
           entityRef: r.id,
           isHighRisk: true,
           quickLinkPath: `/reports/${report.id}/reclassifications`,
