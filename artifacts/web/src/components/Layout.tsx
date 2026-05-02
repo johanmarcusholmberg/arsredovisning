@@ -2,6 +2,7 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
 interface LayoutProps {
@@ -10,11 +11,12 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { t, language, setLanguage } = useLanguage();
+  const { user } = useAuth();
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = [
-    { href: "/dashboard", label: t("nav.dashboard") },
+    ...(user ? [{ href: "/dashboard", label: t("nav.dashboard") }] : []),
     { href: "/demo", label: t("nav.demo") },
     { href: "/pricing", label: t("nav.pricing") },
   ];

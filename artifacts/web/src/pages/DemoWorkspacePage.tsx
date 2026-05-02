@@ -91,14 +91,14 @@ export default function DemoWorkspacePage() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)]">
       {/* Demo banner */}
-      <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between gap-4 sticky top-14 z-40">
-        <div className="flex items-center gap-2.5">
+      <div className="bg-gradient-to-r from-amber-50 to-amber-50/60 border-b border-amber-200/80 px-4 py-2.5 flex items-center justify-between gap-4 sticky top-14 z-40">
+        <div className="flex items-center gap-2.5 min-w-0">
           <DemoDataBadge />
-          <span className="text-sm font-medium text-amber-800">
+          <span className="text-sm font-medium text-amber-900 truncate">
             {t("demo.banner")}
           </span>
         </div>
-        <span className="text-xs text-amber-600 hidden sm:block">
+        <span className="text-xs text-amber-700/80 hidden sm:block shrink-0">
           {t("demo.banner.readonly")}
         </span>
       </div>
@@ -108,16 +108,20 @@ export default function DemoWorkspacePage() {
         items={drawerItems}
         companyName="Nordic Design AB"
         companyMeta={t("demo.company.header")}
+        badge={t("demo.company.tag")}
       />
 
       <div className="flex flex-1">
         {/* Desktop sidebar */}
         <aside className="w-56 shrink-0 border-r border-border bg-sidebar hidden md:flex flex-col">
           <div className="p-3 border-b border-border">
-            <p className="text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wider px-1">
+            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 uppercase tracking-wider">
+              {t("demo.company.tag")}
+            </span>
+            <p className="text-sm font-semibold text-sidebar-foreground mt-1.5 px-0.5">
               Nordic Design AB
             </p>
-            <p className="text-xs text-sidebar-foreground/40 px-1 mt-0.5">{t("demo.company.header")}</p>
+            <p className="text-xs text-sidebar-foreground/50 px-0.5 mt-0.5">{t("demo.company.header")}</p>
           </div>
           <nav className="flex-1 p-2 space-y-0.5">
             {sectionKeys.map((key) => {

@@ -1,7 +1,7 @@
 import { demoData } from "@/data/demoData";
 import { StatusBadge } from "@/components/badges/StatusBadge";
 import { useLanguage } from "@/hooks/useLanguage";
-import { Building2, Calendar, FileCheck, ArrowRight, BookOpen } from "lucide-react";
+import { Building2, Calendar, FileCheck, ArrowRight, BookOpen, Sparkles, FileUp } from "lucide-react";
 import { WorkflowProgress, WorkflowStep } from "@/components/WorkflowProgress";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,14 @@ const sectionStatusKeys: { key: keyof typeof demoData.overviewStatus; labelKey: 
   { key: "notes", labelKey: "demo.sidebar.notes" },
   { key: "validation", labelKey: "demo.sidebar.validation" },
 ];
+
+const statusLabelKey: Record<StatusType, string> = {
+  done: "demo.status.label.done",
+  in_progress: "demo.status.label.in_progress",
+  draft: "demo.status.label.draft",
+  warning: "demo.status.label.warning",
+  error: "demo.status.label.error",
+};
 
 function getValidationStatus(v: { warnings: number; errors: number }): StatusType {
   if (v.errors > 0) return "error";
@@ -48,6 +56,29 @@ export function OverviewSection() {
 
   return (
     <div className="space-y-6">
+      {/* Friendly intro hero */}
+      <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-primary/[0.02] to-transparent p-6">
+        <div className="flex items-start gap-4">
+          <div className="rounded-lg bg-primary/10 p-2.5 shrink-0">
+            <Sparkles className="size-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-semibold text-foreground">
+              {t("demo.intro.title")}
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed mt-1.5 max-w-2xl">
+              {t("demo.intro.body")}
+            </p>
+            <Link href="/demo/import" className="inline-block mt-4">
+              <Button size="sm" variant="outline" className="gap-2">
+                <FileUp className="size-3.5" />
+                {t("demo.intro.cta")}
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-xl border border-border bg-card p-5">
         <h2 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
           <Building2 className="size-4 text-muted-foreground" />
@@ -86,9 +117,14 @@ export function OverviewSection() {
             return (
               <div
                 key={key}
-                className="rounded-lg border border-border bg-card px-4 py-3 flex items-center justify-between"
+                className="rounded-lg border border-border bg-card px-4 py-3 flex items-center justify-between gap-3"
               >
-                <span className="text-sm text-foreground">{t(labelKey as Parameters<typeof t>[0])}</span>
+                <div className="min-w-0">
+                  <p className="text-sm text-foreground truncate">{t(labelKey as Parameters<typeof t>[0])}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t(statusLabelKey[status] as Parameters<typeof t>[0])}
+                  </p>
+                </div>
                 <StatusBadge status={status} />
               </div>
             );
