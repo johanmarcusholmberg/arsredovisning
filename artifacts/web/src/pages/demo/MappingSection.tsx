@@ -1,7 +1,7 @@
 import { demoData } from "@/data/demoData";
 import { ConfidenceBadge } from "@/components/badges/ConfidenceBadge";
 import { ShowSourceAccounts } from "@/components/badges/ShowSourceAccounts";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type Confidence = "high" | "medium" | "low";
 

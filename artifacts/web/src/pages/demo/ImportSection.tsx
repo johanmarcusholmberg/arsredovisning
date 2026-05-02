@@ -1,6 +1,6 @@
 import { demoData } from "@/data/demoData";
 import { LockedFeatureTooltip } from "@/components/badges/LockedFeatureTooltip";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { FileUp, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 

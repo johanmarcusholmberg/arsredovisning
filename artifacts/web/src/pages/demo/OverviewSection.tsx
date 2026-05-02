@@ -1,6 +1,6 @@
 import { demoData } from "@/data/demoData";
 import { StatusBadge } from "@/components/badges/StatusBadge";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Building2, Calendar, FileCheck, ArrowRight, BookOpen } from "lucide-react";
 import { WorkflowProgress, WorkflowStep } from "@/components/WorkflowProgress";
 import { Link } from "wouter";

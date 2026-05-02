@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function SignupPage() {

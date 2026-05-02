@@ -1,6 +1,6 @@
 import { Check, ArrowRight, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 /**
  * initiateCheckout — placeholder for Stripe Checkout integration.

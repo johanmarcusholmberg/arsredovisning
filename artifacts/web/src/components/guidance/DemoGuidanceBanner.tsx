@@ -1,6 +1,6 @@
 import { Info, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export function DemoGuidanceBanner() {
   const { t } = useLanguage();

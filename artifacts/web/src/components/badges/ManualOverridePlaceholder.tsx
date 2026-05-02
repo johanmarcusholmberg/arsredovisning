@@ -1,5 +1,5 @@
 import { Lock } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export function ManualOverridePlaceholder() {
   const { t } = useLanguage();

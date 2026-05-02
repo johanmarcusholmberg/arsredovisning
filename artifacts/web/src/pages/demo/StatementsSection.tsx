@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { demoData } from "@/data/demoData";
 import { NoteReferenceBadge } from "@/components/badges/NoteReferenceBadge";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 function formatAmount(amount: number): string {
   return amount.toLocaleString("sv-SE") + " kr";

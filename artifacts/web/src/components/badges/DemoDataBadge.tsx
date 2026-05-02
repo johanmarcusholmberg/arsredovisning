@@ -1,4 +1,4 @@
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export function DemoDataBadge({ className = "" }: { className?: string }) {
   const { t } = useLanguage();

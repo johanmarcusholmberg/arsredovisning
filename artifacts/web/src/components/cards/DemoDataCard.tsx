@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { DemoDataBadge } from "@/components/badges/DemoDataBadge";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export function DemoDataCard() {
   const { t } = useLanguage();

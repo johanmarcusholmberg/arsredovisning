@@ -1,7 +1,7 @@
 import { demoData } from "@/data/demoData";
 import { AlertTriangle, XCircle } from "lucide-react";
 import { NoteReferenceBadge } from "@/components/badges/NoteReferenceBadge";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export function ValidationSection() {
   const { t } = useLanguage();

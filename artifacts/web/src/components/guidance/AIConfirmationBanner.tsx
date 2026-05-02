@@ -1,6 +1,6 @@
 import { AlertTriangle, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { LockedFeatureTooltip } from "@/components/badges/LockedFeatureTooltip";
 
 interface AIConfirmationBannerProps {

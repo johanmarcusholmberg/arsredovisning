@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { demoData } from "@/data/demoData";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { LinkedNoteIndicator } from "@/components/badges/LinkedNoteIndicator";
 
 const k3WhyRequired: Record<number, { sv: string; en: string }> = {

@@ -1,6 +1,6 @@
 import { useState, ReactNode } from "react";
 import { HelpCircle, X, Info } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/button";
 
 interface GuidancePanelProps {

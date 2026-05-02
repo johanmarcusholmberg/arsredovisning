@@ -1,6 +1,6 @@
 import { LockedFeatureTooltip } from "@/components/badges/LockedFeatureTooltip";
 import { ManualOverridePlaceholder } from "@/components/badges/ManualOverridePlaceholder";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/button";
 import { FileText, FileDown, BookOpen, ArrowRight } from "lucide-react";
 import { Link } from "wouter";

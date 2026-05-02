@@ -1,5 +1,5 @@
 import { useParams, Link } from "wouter";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import {
   LayoutDashboard, FileUp, GitBranch, BarChart2,
   FileText, ShieldCheck, Users, Download, ChevronRight,

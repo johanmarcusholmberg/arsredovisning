@@ -1,4 +1,4 @@
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { CheckCircle2, Clock, AlertTriangle, XCircle, FileEdit } from "lucide-react";
 
 type Status = "draft" | "done" | "warning" | "error" | "in_progress";

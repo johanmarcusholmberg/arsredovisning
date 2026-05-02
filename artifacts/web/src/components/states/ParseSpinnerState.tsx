@@ -1,5 +1,5 @@
 import { FileSearch } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export function ParseSpinnerState() {
   const { t } = useLanguage();

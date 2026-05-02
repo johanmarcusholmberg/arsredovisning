@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, Download } from "lucide-react";
 import { LockedFeatureTooltip } from "@/components/badges/LockedFeatureTooltip";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export interface ReadinessItem {
   label: string;

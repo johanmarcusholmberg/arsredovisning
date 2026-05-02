@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import {
   FileUp, CheckCircle2, AlertTriangle, XCircle, Clock,
   ChevronDown, ChevronRight, Info, Upload, Loader2, ArrowRight,

@@ -1,4 +1,4 @@
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { InlineHelp } from "./InlineHelp";
 
 interface BASLogicExpanderProps {

@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { FileQuestion, AlertCircle, Inbox, Database, LayoutDashboard, History, Users, CheckSquare, BarChart, Table, FileText } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const iconMap = {
   file: FileQuestion,

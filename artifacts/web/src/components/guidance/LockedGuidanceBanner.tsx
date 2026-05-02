@@ -1,6 +1,6 @@
 import { Lock, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export function LockedGuidanceBanner() {
   const { t } = useLanguage();

@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { ArrowRight, Lock, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { DemoDataBadge } from "@/components/badges/DemoDataBadge";
 import { LockedFeatureTooltip } from "@/components/badges/LockedFeatureTooltip";
 

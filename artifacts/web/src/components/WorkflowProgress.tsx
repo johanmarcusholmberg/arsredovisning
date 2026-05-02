@@ -1,6 +1,6 @@
 import React from "react";
 import { Check, AlertCircle, AlertTriangle, Circle } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 export type StepState = "not-started" | "current" | "completed" | "needs-review" | "blocked";
 

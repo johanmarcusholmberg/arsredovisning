@@ -5,7 +5,7 @@ import {
   FileText, ShieldCheck, Users, Download, ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const workflowStepKeys = [
   "landing.steps.1",

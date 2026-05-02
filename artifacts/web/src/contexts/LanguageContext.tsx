@@ -1,15 +1,9 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import { useState, ReactNode } from "react";
 import { strings } from "../i18n/strings";
-
-type Language = "sv" | "en";
-
-interface LanguageContextType {
-  language: Language;
-  setLanguage: (lang: Language) => void;
-  t: (key: keyof typeof strings.sv) => string;
-}
-
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+import {
+  LanguageContext,
+  type Language,
+} from "./languageContextValue";
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
@@ -31,12 +25,4 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       {children}
     </LanguageContext.Provider>
   );
-}
-
-export function useLanguage() {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error("useLanguage must be used within a LanguageProvider");
-  }
-  return context;
 }

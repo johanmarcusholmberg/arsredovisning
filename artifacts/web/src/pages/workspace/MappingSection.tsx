@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import {
   ChevronDown, ChevronRight, AlertTriangle, Search,
   GitBranch, Loader2, CheckCircle2, BookOpen, HelpCircle,

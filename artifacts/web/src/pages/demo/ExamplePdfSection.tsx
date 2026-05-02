@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import { ArrowRight, Lock, FileDown, Info, Printer, ZoomIn, ZoomOut } from "lucide-react";
 import { LockedFeatureTooltip } from "@/components/badges/LockedFeatureTooltip";
 import { useState } from "react";

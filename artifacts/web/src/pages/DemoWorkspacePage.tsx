@@ -1,6 +1,6 @@
 import { useParams } from "wouter";
 import { DemoDataBadge } from "@/components/badges/DemoDataBadge";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "@/hooks/useLanguage";
 import {
   LayoutDashboard, FileUp, GitBranch, BarChart2,
   FileText, ShieldCheck, Users, Download, ChevronRight, BookOpen
