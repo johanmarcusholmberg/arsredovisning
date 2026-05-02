@@ -60,8 +60,25 @@ router.post(
     const framework = (row.report.accountingFramework as "K2" | "K3") ?? "K3";
     const legalForm = row.company.legalForm ?? "AB";
     const isBrf = isBrfForm(legalForm);
-    const cashFlowRequired = isCashFlowRequired(framework);
+    const { forceCashFlow } = req.body as { forceCashFlow?: boolean };
+    const cashFlowRequired = isCashFlowRequired(framework, forceCashFlow);
     const rules = getFrameworkRules(framework);
+
+    // Snapshot previous-year values by lineKey before wiping rows so they can be restored
+    const existingLines = await db
+      .select({
+        lineKey: financialStatementLinesTable.lineKey,
+        previousYearAmount: financialStatementLinesTable.previousYearAmount,
+        previousYearSource: financialStatementLinesTable.previousYearSource,
+      })
+      .from(financialStatementLinesTable)
+      .where(eq(financialStatementLinesTable.reportId, reportId));
+
+    const prevYearSnapshot = new Map(
+      existingLines
+        .filter((l) => l.previousYearAmount !== null)
+        .map((l) => [l.lineKey, { amount: l.previousYearAmount!, source: l.previousYearSource ?? "manual" }]),
+    );
 
     await db
       .delete(financialStatementLinesTable)
@@ -120,11 +137,36 @@ router.post(
       await db.insert(reportNoteReferencesTable).values(noteRefInserts);
     }
 
+    // Restore previous-year values from snapshot
+    const prevYearRestoreUpdates = insertedLines
+      .filter((l) => prevYearSnapshot.has(l.lineKey))
+      .map((l) => {
+        const snap = prevYearSnapshot.get(l.lineKey)!;
+        return db
+          .update(financialStatementLinesTable)
+          .set({
+            previousYearAmount: snap.amount,
+            previousYearSource: snap.source as "imported" | "manual" | "previous_report_placeholder",
+            updatedAt: new Date(),
+          })
+          .where(eq(financialStatementLinesTable.id, l.id));
+      });
+    if (prevYearRestoreUpdates.length > 0) {
+      await Promise.all(prevYearRestoreUpdates);
+    }
+
     await logAuditEvent({
       eventType: "financial_statements_generated",
       actorProfileId: profileId,
       companyId: row.company.id,
-      payload: { framework, legalForm, isBrf, linesGenerated: insertedLines.length, noteReferencesSuggested: noteRefInserts.length },
+      payload: { framework, legalForm, isBrf, linesGenerated: insertedLines.length, noteReferencesSuggested: noteRefInserts.length, prevYearRestored: prevYearRestoreUpdates.length },
+    });
+
+    await logAuditEvent({
+      eventType: "framework_rules_applied",
+      actorProfileId: profileId,
+      companyId: row.company.id,
+      payload: { framework, legalForm, isBrf, cashFlowRequired, forceCashFlow: !!forceCashFlow },
     });
 
     req.log.info({ reportId, framework, lines: insertedLines.length }, "Statements generated");

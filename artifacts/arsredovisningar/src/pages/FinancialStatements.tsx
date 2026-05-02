@@ -127,7 +127,7 @@ function FrameworkSelector({
 }: {
   reportId: string;
   currentFramework: "K2" | "K3";
-  onChanged: () => void;
+  onChanged: (triggerRegenerate: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<"K2" | "K3">(currentFramework);
@@ -136,12 +136,12 @@ function FrameworkSelector({
 
   const handleConfirm = () => {
     updateFramework.mutate(
-      { reportId, data: { accountingFramework: selected } },
+      { reportId, data: { accountingFramework: selected, regenerateStatements: true } },
       {
         onSuccess: () => {
-          toast({ title: "Ramverk uppdaterat", description: `Ändrat till ${selected}.` });
+          toast({ title: "Ramverk uppdaterat", description: `Ändrat till ${selected}. Regenererar rader…` });
           setOpen(false);
-          onChanged();
+          onChanged(true);
         },
         onError: () => toast({ title: "Fel", description: "Kunde inte uppdatera ramverk.", variant: "destructive" }),
       },
@@ -211,7 +211,7 @@ export function FinancialStatements() {
 
   const handleGenerate = () => {
     generate.mutate(
-      { reportId },
+      { reportId, data: {} },
       {
         onSuccess: (res) => {
           toast({ title: "Rapporter genererade", description: res.message });
@@ -223,9 +223,21 @@ export function FinancialStatements() {
     );
   };
 
-  const handleFrameworkChanged = () => {
+  const handleFrameworkChanged = (triggerRegenerate: boolean) => {
     queryClient.invalidateQueries({ queryKey: getGetFinancialStatementsQueryKey(reportId) });
     queryClient.invalidateQueries({ queryKey: getGetReportStructureQueryKey(reportId) });
+    if (triggerRegenerate) {
+      generate.mutate(
+        { reportId, data: {} },
+        {
+          onSuccess: (res) => {
+            toast({ title: "Rader regenererade", description: res.message });
+            queryClient.invalidateQueries({ queryKey: getGetFinancialStatementsQueryKey(reportId) });
+            queryClient.invalidateQueries({ queryKey: getGetReportStructureQueryKey(reportId) });
+          },
+        },
+      );
+    }
   };
 
   const handleLineUpdated = () => {
@@ -335,7 +347,7 @@ export function FinancialStatements() {
           </TabsContent>
 
           <TabsContent value="kassaflode" className="mt-0">
-            {cashFlowRequired ? (
+            {cashFlowRequired || (data?.cashFlow && data.cashFlow.length > 0) ? (
               <StatementTable
                 lines={data?.cashFlow ?? []}
                 reportId={reportId}
@@ -352,9 +364,29 @@ export function FinancialStatements() {
                   <p className="text-sm text-muted-foreground mt-1 max-w-md">
                     Kassaflödesanalys krävs enligt K3 och för större företag.
                     Ramverket <span className="font-medium">{framework}</span> kräver
-                    inte kassaflödesanalys.
+                    normalt inte kassaflödesanalys, men du kan inkludera den manuellt.
                   </p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    generate.mutate(
+                      { reportId, data: { forceCashFlow: true } },
+                      {
+                        onSuccess: (res) => {
+                          toast({ title: "Kassaflödesanalys aktiverad", description: res.message });
+                          queryClient.invalidateQueries({ queryKey: getGetFinancialStatementsQueryKey(reportId) });
+                        },
+                        onError: () => toast({ title: "Fel", description: "Kunde inte aktivera kassaflödesanalys.", variant: "destructive" }),
+                      },
+                    );
+                  }}
+                  disabled={generate.isPending}
+                >
+                  {generate.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <WavesLadder className="mr-2 h-3.5 w-3.5" />}
+                  Inkludera kassaflödesanalys ändå
+                </Button>
               </div>
             )}
           </TabsContent>

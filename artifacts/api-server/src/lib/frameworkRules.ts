@@ -1101,7 +1101,7 @@ function buildFramework(framework: "K2" | "K3"): FrameworkRules {
             "forvaltningsberattelse",
             "resultatrakning",
             "balansrakning",
-            "kassaflodeskanalys",
+            "kassaflodesanalys",
             "noter",
             "underskrifter",
           ]
@@ -1195,7 +1195,7 @@ export function buildReportStructure(
       sortOrder: 4,
     },
     {
-      key: "kassaflodeskanalys",
+      key: "kassaflodesanalys",
       sweLabel: "Kassaflödesanalys",
       included: cashFlowRequired,
       conditional: !cashFlowRequired,

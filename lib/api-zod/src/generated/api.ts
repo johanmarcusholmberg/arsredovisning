@@ -349,6 +349,15 @@ export const GenerateFinancialStatementsParams = zod.object({
   reportId: zod.coerce.string().uuid(),
 });
 
+export const GenerateFinancialStatementsBody = zod.object({
+  forceCashFlow: zod
+    .boolean()
+    .optional()
+    .describe(
+      "Include cash flow lines even when not required by the framework",
+    ),
+});
+
 export const GenerateFinancialStatementsResponse = zod.object({
   generated: zod.number().describe("Number of lines generated"),
   framework: zod.enum(["K2", "K3"]),
@@ -564,7 +573,12 @@ export const GetStatementLineDrilldownResponse = zod.object({
     zod.object({
       accountNumber: zod.string(),
       accountName: zod.string().nullish(),
-      balance: zod.string().describe("Numeric balance as string"),
+      balance: zod
+        .string()
+        .nullable()
+        .describe(
+          "Numeric balance as string; null when SIE import not yet performed",
+        ),
     }),
   ),
   noteReferenceReason: zod.string().nullish(),

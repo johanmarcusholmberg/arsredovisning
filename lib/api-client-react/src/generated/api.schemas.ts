@@ -338,6 +338,11 @@ export interface FinancialStatementsResponse {
   hasAnyLines: boolean;
 }
 
+export interface GenerateStatementsBody {
+  /** Include cash flow lines even when not required by the framework */
+  forceCashFlow?: boolean;
+}
+
 export type GenerateStatementsResponseFramework =
   (typeof GenerateStatementsResponseFramework)[keyof typeof GenerateStatementsResponseFramework];
 
@@ -364,8 +369,8 @@ export interface UpdateStatementLineBody {
 export interface SourceAccount {
   accountNumber: string;
   accountName?: string | null;
-  /** Numeric balance as string */
-  balance: string;
+  /** Numeric balance as string; null when SIE import not yet performed */
+  balance: string | null;
 }
 
 export interface StatementLineDrilldown {

@@ -28,6 +28,7 @@ import type {
   ErrorResponse,
   FinancialStatementLine,
   FinancialStatementsResponse,
+  GenerateStatementsBody,
   GenerateStatementsResponse,
   GetFinancialStatementsParams,
   HealthStatus,
@@ -1476,6 +1477,7 @@ export const getGenerateFinancialStatementsUrl = (reportId: string) => {
 
 export const generateFinancialStatements = async (
   reportId: string,
+  generateStatementsBody?: GenerateStatementsBody,
   options?: RequestInit,
 ): Promise<GenerateStatementsResponse> => {
   return customFetch<GenerateStatementsResponse>(
@@ -1483,6 +1485,8 @@ export const generateFinancialStatements = async (
     {
       ...options,
       method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(generateStatementsBody),
     },
   );
 };
@@ -1494,14 +1498,14 @@ export const getGenerateFinancialStatementsMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof generateFinancialStatements>>,
     TError,
-    { reportId: string },
+    { reportId: string; data: BodyType<GenerateStatementsBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof generateFinancialStatements>>,
   TError,
-  { reportId: string },
+  { reportId: string; data: BodyType<GenerateStatementsBody> },
   TContext
 > => {
   const mutationKey = ["generateFinancialStatements"];
@@ -1515,11 +1519,11 @@ export const getGenerateFinancialStatementsMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof generateFinancialStatements>>,
-    { reportId: string }
+    { reportId: string; data: BodyType<GenerateStatementsBody> }
   > = (props) => {
-    const { reportId } = props ?? {};
+    const { reportId, data } = props ?? {};
 
-    return generateFinancialStatements(reportId, requestOptions);
+    return generateFinancialStatements(reportId, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -1528,7 +1532,8 @@ export const getGenerateFinancialStatementsMutationOptions = <
 export type GenerateFinancialStatementsMutationResult = NonNullable<
   Awaited<ReturnType<typeof generateFinancialStatements>>
 >;
-
+export type GenerateFinancialStatementsMutationBody =
+  BodyType<GenerateStatementsBody>;
 export type GenerateFinancialStatementsMutationError = ErrorType<ErrorResponse>;
 
 /**
@@ -1541,14 +1546,14 @@ export const useGenerateFinancialStatements = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof generateFinancialStatements>>,
     TError,
-    { reportId: string },
+    { reportId: string; data: BodyType<GenerateStatementsBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof generateFinancialStatements>>,
   TError,
-  { reportId: string },
+  { reportId: string; data: BodyType<GenerateStatementsBody> },
   TContext
 > => {
   return useMutation(getGenerateFinancialStatementsMutationOptions(options));
