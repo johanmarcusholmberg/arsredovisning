@@ -145,18 +145,27 @@ All tables live in Replit's built-in PostgreSQL, managed via Drizzle ORM (`lib/d
 | POST | `/api/projects/:id/files/upload` | required | Upload file (permission + entitlement gated) |
 | GET | `/api/projects/:id/files/:fid/download` | required | Get signed download URL |
 | GET | `/api/projects/:id/exports/:eid/download` | required | Get signed export URL (watermark enforced) |
+| POST | `/api/reports/:id/financial-statements/generate` | required | Generate income statement + balance sheet + cash flow (K2/K3) |
+| GET | `/api/reports/:id/financial-statements` | required | Get all statement lines grouped by type |
+| PATCH | `/api/reports/:id/financial-statements/lines/:lineId` | required | Update note reference or manual adjustment |
+| GET | `/api/reports/:id/financial-statements/lines/:lineId/drilldown` | required | Get source account detail for a line |
+| POST | `/api/reports/:id/financial-statements/previous-year` | required | Bulk-save previous-year comparison values |
+| GET | `/api/reports/:id/report-structure` | required | Get Swedish report structure (sections + included/conditional) |
+| PATCH | `/api/reports/:id/framework` | required | Change accounting framework (K2 or K3) |
 
 ## Frontend Routes (arsredovisningar)
 
 | Route | Component | Notes |
 |-------|-----------|-------|
-| `/` | `LandingPage` | Hero, 8-step workflow, trust section |
-| `/login` | `LoginPage` | Auth pages (Supabase stub) |
-| `/signup` | `SignupPage` | Auth pages (Supabase stub) |
-| `/dashboard` | `DashboardPage` | Demo card + locked real project card |
-| `/demo/:section?` | `DemoWorkspacePage` | 8 sections, read-only, Nordic Design AB demo data |
-| `/workspace/:section?` | `PaidWorkspacePage` | Paid workspace shell |
-| `/pricing` | `PricingPage` | 999 kr per report |
+| `/` | `Dashboard` | Overview cards |
+| `/login` | `Login` | Supabase auth |
+| `/register` | `Register` | Supabase auth |
+| `/companies/new` | `CompanyNew` | Create a company |
+| `/companies/:companyId` | `CompanyDetail` | Company detail + reports list |
+| `/reports/:reportId` | `ReportWorkspace` | Report workspace with section cards |
+| `/reports/:reportId/statements` | `FinancialStatements` | Financial statements (4 sub-tabs) |
+| `/reports/:reportId/summary` | `ReportSummary` | Completion summary |
+| `/settings` | `Settings` | User settings |
 
 ## Frontend Key Files (arsredovisningar)
 
@@ -193,9 +202,9 @@ All project documentation lives in `docs/`:
 - **Phase 1** ✅ Complete — frontend shell, backend API, real seeded data
 - **Phase 1.5** ✅ Complete — Supabase Auth wired end-to-end
 - **Phase 2.5** ✅ Complete — Backend & Security Foundation (schema, RLS, permissions, audit log, file routes)
+- **Phase 4 (Task #7)** ✅ Complete — Financial Statements & Report Structure (income statement, balance sheet, cash flow, K2/K3 framework selector, BRF terminology, note reference column, drilldown, report structure generator)
 - **Phase 2** ⏳ Not started — paid workspace foundation
 - **Phase 3** ⏳ Not started — SIE file import and account mapping
-- **Phase 4** ⏳ Not started — Stripe payment integration
 - **Phase 5** ⏳ Not started — Notes module and auto-numbering
 - **Phase 6** ⏳ Not started — Validation, collaboration, audit trail
 - **Phase 7** ⏳ Not started — PDF/Word export and download flow

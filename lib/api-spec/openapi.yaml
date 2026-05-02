@@ -346,6 +346,225 @@ paths:
               schema:
                 $ref: "#/components/schemas/DashboardSummary"
 
+  # ─── Financial Statements ─────────────────────────────────────────────────
+
+  /reports/{reportId}/financial-statements/generate:
+    post:
+      operationId: generateFinancialStatements
+      tags: [projects]
+      summary: Generate income statement and balance sheet from confirmed import data
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Statements generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateStatementsResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reports/{reportId}/financial-statements:
+    get:
+      operationId: getFinancialStatements
+      tags: [projects]
+      summary: Get all financial statement lines for a project
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: statementType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [income_statement, balance_sheet, cash_flow]
+      responses:
+        "200":
+          description: Financial statement lines
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialStatementsResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reports/{reportId}/financial-statements/lines/{lineId}:
+    patch:
+      operationId: updateStatementLine
+      tags: [projects]
+      summary: Update a statement line note reference or manual adjustment
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: lineId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatementLineBody"
+      responses:
+        "200":
+          description: Line updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialStatementLine"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reports/{reportId}/financial-statements/lines/{lineId}/drilldown:
+    get:
+      operationId: getStatementLineDrilldown
+      tags: [projects]
+      summary: Get source account detail for a statement line
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: lineId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Drilldown detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatementLineDrilldown"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reports/{reportId}/financial-statements/previous-year:
+    post:
+      operationId: savePreviousYearValues
+      tags: [projects]
+      summary: Save or update previous-year amounts for statement lines
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavePreviousYearBody"
+      responses:
+        "200":
+          description: Previous-year values saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: integer
+                required:
+                  - updated
+
+  /reports/{reportId}/report-structure:
+    get:
+      operationId: getReportStructure
+      tags: [projects]
+      summary: Get the Swedish annual report structure for a project
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Report structure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportStructureResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reports/{reportId}/framework:
+    patch:
+      operationId: updateProjectFramework
+      tags: [projects]
+      summary: Update the accounting framework for a project (K2 or K3)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFrameworkBody"
+      responses:
+        "200":
+          description: Framework updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnualReportProject"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -698,3 +917,285 @@ components:
         - reportsInProgress
         - reportsComplete
         - recentReports
+
+    FinancialStatementLine:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        statementType:
+          type: string
+          enum: [income_statement, balance_sheet, cash_flow]
+        lineKey:
+          type: string
+        swedishLabel:
+          type: string
+        sortOrder:
+          type: integer
+        isSubtotal:
+          type: boolean
+        isTotal:
+          type: boolean
+        isHeading:
+          type: boolean
+        currentYearAmount:
+          type: string
+          nullable: true
+          description: Numeric amount as string (SEK)
+        previousYearAmount:
+          type: string
+          nullable: true
+        previousYearSource:
+          type: string
+          nullable: true
+          enum: [imported, manual, previous_report_placeholder]
+        linkedAccountIds:
+          type: string
+          nullable: true
+        calculationMethod:
+          type: string
+        mappingSource:
+          type: string
+          nullable: true
+        isManuallyAdjusted:
+          type: boolean
+        manualAdjustmentOriginal:
+          type: string
+          nullable: true
+        manualAdjustmentReason:
+          type: string
+          nullable: true
+        manualAdjustmentUserId:
+          type: string
+          nullable: true
+        manualAdjustmentAt:
+          type: string
+          format: date-time
+          nullable: true
+        framework:
+          type: string
+          enum: [K2, K3]
+        noteReferenceText:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - projectId
+        - statementType
+        - lineKey
+        - swedishLabel
+        - sortOrder
+        - isSubtotal
+        - isTotal
+        - isHeading
+        - isManuallyAdjusted
+        - framework
+        - calculationMethod
+        - createdAt
+        - updatedAt
+
+    FinancialStatementsResponse:
+      type: object
+      properties:
+        incomeStatement:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinancialStatementLine"
+        balanceSheet:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinancialStatementLine"
+        cashFlow:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinancialStatementLine"
+        cashFlowRequired:
+          type: boolean
+        framework:
+          type: string
+          enum: [K2, K3]
+        hasAnyLines:
+          type: boolean
+      required:
+        - incomeStatement
+        - balanceSheet
+        - cashFlow
+        - cashFlowRequired
+        - framework
+        - hasAnyLines
+
+    GenerateStatementsResponse:
+      type: object
+      properties:
+        generated:
+          type: integer
+          description: Number of lines generated
+        framework:
+          type: string
+          enum: [K2, K3]
+        noteReferencesSuggested:
+          type: integer
+        message:
+          type: string
+      required:
+        - generated
+        - framework
+        - noteReferencesSuggested
+        - message
+
+    UpdateStatementLineBody:
+      type: object
+      properties:
+        noteReferenceText:
+          type: string
+          nullable: true
+        manualAdjustmentAmount:
+          type: string
+          nullable: true
+          description: New adjusted amount (overrides system-calculated)
+        manualAdjustmentReason:
+          type: string
+          nullable: true
+
+    StatementLineDrilldown:
+      type: object
+      properties:
+        lineId:
+          type: string
+          format: uuid
+        lineKey:
+          type: string
+        swedishLabel:
+          type: string
+        calculationMethod:
+          type: string
+        mappingSource:
+          type: string
+          nullable: true
+        suggestedNoteType:
+          type: string
+          nullable: true
+        sourceAccounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SourceAccount"
+        noteReferenceReason:
+          type: string
+          nullable: true
+      required:
+        - lineId
+        - lineKey
+        - swedishLabel
+        - calculationMethod
+        - sourceAccounts
+
+    SourceAccount:
+      type: object
+      properties:
+        accountNumber:
+          type: string
+        accountName:
+          type: string
+          nullable: true
+        balance:
+          type: string
+          description: Numeric balance as string
+      required:
+        - accountNumber
+        - balance
+
+    SavePreviousYearBody:
+      type: object
+      properties:
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/PreviousYearValue"
+      required:
+        - values
+
+    PreviousYearValue:
+      type: object
+      properties:
+        lineId:
+          type: string
+          format: uuid
+        amount:
+          type: string
+          description: Amount as numeric string
+        source:
+          type: string
+          enum: [imported, manual, previous_report_placeholder]
+      required:
+        - lineId
+        - amount
+        - source
+
+    ReportStructureSection:
+      type: object
+      properties:
+        key:
+          type: string
+        sweLabel:
+          type: string
+        included:
+          type: boolean
+        conditional:
+          type: boolean
+        conditionNote:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+      required:
+        - key
+        - sweLabel
+        - included
+        - conditional
+        - sortOrder
+
+    ReportStructureResponse:
+      type: object
+      properties:
+        projectId:
+          type: string
+          format: uuid
+        framework:
+          type: string
+          enum: [K2, K3]
+        cashFlowRequired:
+          type: boolean
+        isBrf:
+          type: boolean
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportStructureSection"
+      required:
+        - projectId
+        - framework
+        - cashFlowRequired
+        - isBrf
+        - sections
+
+    UpdateFrameworkBody:
+      type: object
+      properties:
+        accountingFramework:
+          type: string
+          enum: [K2, K3]
+        regenerateStatements:
+          type: boolean
+          description: If true, existing statement lines will be regenerated for the new framework
+      required:
+        - accountingFramework

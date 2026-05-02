@@ -50,3 +50,23 @@ export const exportStatusEnum = pgEnum("export_status", [
   "completed",
   "failed",
 ]);
+
+export const statementTypeEnum = pgEnum("statement_type", [
+  "income_statement",
+  "balance_sheet",
+  "cash_flow",
+]);
+
+export const noteReferenceStatusEnum = pgEnum("note_reference_status", [
+  "suggested",
+  "active",
+  "missing",
+  "broken",
+  "not_applicable",
+]);
+
+export const previousYearSourceEnum = pgEnum("previous_year_source", [
+  "imported",
+  "manual",
+  "previous_report_placeholder",
+]);

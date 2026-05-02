@@ -341,3 +341,297 @@ export const GetDashboardSummaryResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Generate income statement and balance sheet from confirmed import data
+ */
+export const GenerateFinancialStatementsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const GenerateFinancialStatementsResponse = zod.object({
+  generated: zod.number().describe("Number of lines generated"),
+  framework: zod.enum(["K2", "K3"]),
+  noteReferencesSuggested: zod.number(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Get all financial statement lines for a project
+ */
+export const GetFinancialStatementsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const GetFinancialStatementsQueryParams = zod.object({
+  statementType: zod
+    .enum(["income_statement", "balance_sheet", "cash_flow"])
+    .optional(),
+});
+
+export const GetFinancialStatementsResponse = zod.object({
+  incomeStatement: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      projectId: zod.string().uuid(),
+      statementType: zod.enum([
+        "income_statement",
+        "balance_sheet",
+        "cash_flow",
+      ]),
+      lineKey: zod.string(),
+      swedishLabel: zod.string(),
+      sortOrder: zod.number(),
+      isSubtotal: zod.boolean(),
+      isTotal: zod.boolean(),
+      isHeading: zod.boolean(),
+      currentYearAmount: zod
+        .string()
+        .nullish()
+        .describe("Numeric amount as string (SEK)"),
+      previousYearAmount: zod.string().nullish(),
+      previousYearSource: zod
+        .enum(["imported", "manual", "previous_report_placeholder"])
+        .nullish(),
+      linkedAccountIds: zod.string().nullish(),
+      calculationMethod: zod.string(),
+      mappingSource: zod.string().nullish(),
+      isManuallyAdjusted: zod.boolean(),
+      manualAdjustmentOriginal: zod.string().nullish(),
+      manualAdjustmentReason: zod.string().nullish(),
+      manualAdjustmentUserId: zod.string().nullish(),
+      manualAdjustmentAt: zod.coerce.date().nullish(),
+      framework: zod.enum(["K2", "K3"]),
+      noteReferenceText: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  balanceSheet: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      projectId: zod.string().uuid(),
+      statementType: zod.enum([
+        "income_statement",
+        "balance_sheet",
+        "cash_flow",
+      ]),
+      lineKey: zod.string(),
+      swedishLabel: zod.string(),
+      sortOrder: zod.number(),
+      isSubtotal: zod.boolean(),
+      isTotal: zod.boolean(),
+      isHeading: zod.boolean(),
+      currentYearAmount: zod
+        .string()
+        .nullish()
+        .describe("Numeric amount as string (SEK)"),
+      previousYearAmount: zod.string().nullish(),
+      previousYearSource: zod
+        .enum(["imported", "manual", "previous_report_placeholder"])
+        .nullish(),
+      linkedAccountIds: zod.string().nullish(),
+      calculationMethod: zod.string(),
+      mappingSource: zod.string().nullish(),
+      isManuallyAdjusted: zod.boolean(),
+      manualAdjustmentOriginal: zod.string().nullish(),
+      manualAdjustmentReason: zod.string().nullish(),
+      manualAdjustmentUserId: zod.string().nullish(),
+      manualAdjustmentAt: zod.coerce.date().nullish(),
+      framework: zod.enum(["K2", "K3"]),
+      noteReferenceText: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  cashFlow: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      projectId: zod.string().uuid(),
+      statementType: zod.enum([
+        "income_statement",
+        "balance_sheet",
+        "cash_flow",
+      ]),
+      lineKey: zod.string(),
+      swedishLabel: zod.string(),
+      sortOrder: zod.number(),
+      isSubtotal: zod.boolean(),
+      isTotal: zod.boolean(),
+      isHeading: zod.boolean(),
+      currentYearAmount: zod
+        .string()
+        .nullish()
+        .describe("Numeric amount as string (SEK)"),
+      previousYearAmount: zod.string().nullish(),
+      previousYearSource: zod
+        .enum(["imported", "manual", "previous_report_placeholder"])
+        .nullish(),
+      linkedAccountIds: zod.string().nullish(),
+      calculationMethod: zod.string(),
+      mappingSource: zod.string().nullish(),
+      isManuallyAdjusted: zod.boolean(),
+      manualAdjustmentOriginal: zod.string().nullish(),
+      manualAdjustmentReason: zod.string().nullish(),
+      manualAdjustmentUserId: zod.string().nullish(),
+      manualAdjustmentAt: zod.coerce.date().nullish(),
+      framework: zod.enum(["K2", "K3"]),
+      noteReferenceText: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  cashFlowRequired: zod.boolean(),
+  framework: zod.enum(["K2", "K3"]),
+  hasAnyLines: zod.boolean(),
+});
+
+/**
+ * @summary Update a statement line note reference or manual adjustment
+ */
+export const UpdateStatementLineParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  lineId: zod.coerce.string().uuid(),
+});
+
+export const UpdateStatementLineBody = zod.object({
+  noteReferenceText: zod.string().nullish(),
+  manualAdjustmentAmount: zod
+    .string()
+    .nullish()
+    .describe("New adjusted amount (overrides system-calculated)"),
+  manualAdjustmentReason: zod.string().nullish(),
+});
+
+export const UpdateStatementLineResponse = zod.object({
+  id: zod.string().uuid(),
+  projectId: zod.string().uuid(),
+  statementType: zod.enum(["income_statement", "balance_sheet", "cash_flow"]),
+  lineKey: zod.string(),
+  swedishLabel: zod.string(),
+  sortOrder: zod.number(),
+  isSubtotal: zod.boolean(),
+  isTotal: zod.boolean(),
+  isHeading: zod.boolean(),
+  currentYearAmount: zod
+    .string()
+    .nullish()
+    .describe("Numeric amount as string (SEK)"),
+  previousYearAmount: zod.string().nullish(),
+  previousYearSource: zod
+    .enum(["imported", "manual", "previous_report_placeholder"])
+    .nullish(),
+  linkedAccountIds: zod.string().nullish(),
+  calculationMethod: zod.string(),
+  mappingSource: zod.string().nullish(),
+  isManuallyAdjusted: zod.boolean(),
+  manualAdjustmentOriginal: zod.string().nullish(),
+  manualAdjustmentReason: zod.string().nullish(),
+  manualAdjustmentUserId: zod.string().nullish(),
+  manualAdjustmentAt: zod.coerce.date().nullish(),
+  framework: zod.enum(["K2", "K3"]),
+  noteReferenceText: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get source account detail for a statement line
+ */
+export const GetStatementLineDrilldownParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  lineId: zod.coerce.string().uuid(),
+});
+
+export const GetStatementLineDrilldownResponse = zod.object({
+  lineId: zod.string().uuid(),
+  lineKey: zod.string(),
+  swedishLabel: zod.string(),
+  calculationMethod: zod.string(),
+  mappingSource: zod.string().nullish(),
+  suggestedNoteType: zod.string().nullish(),
+  sourceAccounts: zod.array(
+    zod.object({
+      accountNumber: zod.string(),
+      accountName: zod.string().nullish(),
+      balance: zod.string().describe("Numeric balance as string"),
+    }),
+  ),
+  noteReferenceReason: zod.string().nullish(),
+});
+
+/**
+ * @summary Save or update previous-year amounts for statement lines
+ */
+export const SavePreviousYearValuesParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const SavePreviousYearValuesBody = zod.object({
+  values: zod.array(
+    zod.object({
+      lineId: zod.string().uuid(),
+      amount: zod.string().describe("Amount as numeric string"),
+      source: zod.enum(["imported", "manual", "previous_report_placeholder"]),
+    }),
+  ),
+});
+
+export const SavePreviousYearValuesResponse = zod.object({
+  updated: zod.number(),
+});
+
+/**
+ * @summary Get the Swedish annual report structure for a project
+ */
+export const GetReportStructureParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const GetReportStructureResponse = zod.object({
+  projectId: zod.string().uuid(),
+  framework: zod.enum(["K2", "K3"]),
+  cashFlowRequired: zod.boolean(),
+  isBrf: zod.boolean(),
+  sections: zod.array(
+    zod.object({
+      key: zod.string(),
+      sweLabel: zod.string(),
+      included: zod.boolean(),
+      conditional: zod.boolean(),
+      conditionNote: zod.string().nullish(),
+      sortOrder: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update the accounting framework for a project (K2 or K3)
+ */
+export const UpdateProjectFrameworkParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const UpdateProjectFrameworkBody = zod.object({
+  accountingFramework: zod.enum(["K2", "K3"]),
+  regenerateStatements: zod
+    .boolean()
+    .optional()
+    .describe(
+      "If true, existing statement lines will be regenerated for the new framework",
+    ),
+});
+
+export const UpdateProjectFrameworkResponse = zod.object({
+  id: zod.string().uuid(),
+  companyId: zod.string().uuid(),
+  companyName: zod.string(),
+  fiscalYearStart: zod.string(),
+  fiscalYearEnd: zod.string(),
+  accountingFramework: zod.enum(["K2", "K3"]),
+  status: zod.enum(["draft", "in_review", "approved", "exported"]),
+  noteNumberingScheme: zod.string(),
+  importedSieFileName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});

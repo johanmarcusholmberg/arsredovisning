@@ -26,10 +26,20 @@ import type {
   DashboardSummary,
   EntitlementInfo,
   ErrorResponse,
+  FinancialStatementLine,
+  FinancialStatementsResponse,
+  GenerateStatementsResponse,
+  GetFinancialStatementsParams,
   HealthStatus,
+  ReportStructureResponse,
   ReportSummary,
+  SavePreviousYearBody,
+  SavePreviousYearValues200,
+  StatementLineDrilldown,
   UpdateCompanyBody,
+  UpdateFrameworkBody,
   UpdateReportBody,
+  UpdateStatementLineBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1456,3 +1466,694 @@ export function useGetDashboardSummary<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Generate income statement and balance sheet from confirmed import data
+ */
+export const getGenerateFinancialStatementsUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/financial-statements/generate`;
+};
+
+export const generateFinancialStatements = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<GenerateStatementsResponse> => {
+  return customFetch<GenerateStatementsResponse>(
+    getGenerateFinancialStatementsUrl(reportId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getGenerateFinancialStatementsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateFinancialStatements>>,
+    TError,
+    { reportId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateFinancialStatements>>,
+  TError,
+  { reportId: string },
+  TContext
+> => {
+  const mutationKey = ["generateFinancialStatements"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateFinancialStatements>>,
+    { reportId: string }
+  > = (props) => {
+    const { reportId } = props ?? {};
+
+    return generateFinancialStatements(reportId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateFinancialStatementsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateFinancialStatements>>
+>;
+
+export type GenerateFinancialStatementsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate income statement and balance sheet from confirmed import data
+ */
+export const useGenerateFinancialStatements = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateFinancialStatements>>,
+    TError,
+    { reportId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateFinancialStatements>>,
+  TError,
+  { reportId: string },
+  TContext
+> => {
+  return useMutation(getGenerateFinancialStatementsMutationOptions(options));
+};
+
+/**
+ * @summary Get all financial statement lines for a project
+ */
+export const getGetFinancialStatementsUrl = (
+  reportId: string,
+  params?: GetFinancialStatementsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/${reportId}/financial-statements?${stringifiedParams}`
+    : `/api/reports/${reportId}/financial-statements`;
+};
+
+export const getFinancialStatements = async (
+  reportId: string,
+  params?: GetFinancialStatementsParams,
+  options?: RequestInit,
+): Promise<FinancialStatementsResponse> => {
+  return customFetch<FinancialStatementsResponse>(
+    getGetFinancialStatementsUrl(reportId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetFinancialStatementsQueryKey = (
+  reportId: string,
+  params?: GetFinancialStatementsParams,
+) => {
+  return [
+    `/api/reports/${reportId}/financial-statements`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetFinancialStatementsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFinancialStatements>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  params?: GetFinancialStatementsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFinancialStatements>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetFinancialStatementsQueryKey(reportId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getFinancialStatements>>
+  > = ({ signal }) =>
+    getFinancialStatements(reportId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFinancialStatements>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFinancialStatementsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFinancialStatements>>
+>;
+export type GetFinancialStatementsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get all financial statement lines for a project
+ */
+
+export function useGetFinancialStatements<
+  TData = Awaited<ReturnType<typeof getFinancialStatements>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  params?: GetFinancialStatementsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getFinancialStatements>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFinancialStatementsQueryOptions(
+    reportId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a statement line note reference or manual adjustment
+ */
+export const getUpdateStatementLineUrl = (reportId: string, lineId: string) => {
+  return `/api/reports/${reportId}/financial-statements/lines/${lineId}`;
+};
+
+export const updateStatementLine = async (
+  reportId: string,
+  lineId: string,
+  updateStatementLineBody: UpdateStatementLineBody,
+  options?: RequestInit,
+): Promise<FinancialStatementLine> => {
+  return customFetch<FinancialStatementLine>(
+    getUpdateStatementLineUrl(reportId, lineId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateStatementLineBody),
+    },
+  );
+};
+
+export const getUpdateStatementLineMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateStatementLine>>,
+    TError,
+    {
+      reportId: string;
+      lineId: string;
+      data: BodyType<UpdateStatementLineBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateStatementLine>>,
+  TError,
+  { reportId: string; lineId: string; data: BodyType<UpdateStatementLineBody> },
+  TContext
+> => {
+  const mutationKey = ["updateStatementLine"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateStatementLine>>,
+    {
+      reportId: string;
+      lineId: string;
+      data: BodyType<UpdateStatementLineBody>;
+    }
+  > = (props) => {
+    const { reportId, lineId, data } = props ?? {};
+
+    return updateStatementLine(reportId, lineId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateStatementLineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateStatementLine>>
+>;
+export type UpdateStatementLineMutationBody = BodyType<UpdateStatementLineBody>;
+export type UpdateStatementLineMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update a statement line note reference or manual adjustment
+ */
+export const useUpdateStatementLine = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateStatementLine>>,
+    TError,
+    {
+      reportId: string;
+      lineId: string;
+      data: BodyType<UpdateStatementLineBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateStatementLine>>,
+  TError,
+  { reportId: string; lineId: string; data: BodyType<UpdateStatementLineBody> },
+  TContext
+> => {
+  return useMutation(getUpdateStatementLineMutationOptions(options));
+};
+
+/**
+ * @summary Get source account detail for a statement line
+ */
+export const getGetStatementLineDrilldownUrl = (
+  reportId: string,
+  lineId: string,
+) => {
+  return `/api/reports/${reportId}/financial-statements/lines/${lineId}/drilldown`;
+};
+
+export const getStatementLineDrilldown = async (
+  reportId: string,
+  lineId: string,
+  options?: RequestInit,
+): Promise<StatementLineDrilldown> => {
+  return customFetch<StatementLineDrilldown>(
+    getGetStatementLineDrilldownUrl(reportId, lineId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetStatementLineDrilldownQueryKey = (
+  reportId: string,
+  lineId: string,
+) => {
+  return [
+    `/api/reports/${reportId}/financial-statements/lines/${lineId}/drilldown`,
+  ] as const;
+};
+
+export const getGetStatementLineDrilldownQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStatementLineDrilldown>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  lineId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStatementLineDrilldown>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetStatementLineDrilldownQueryKey(reportId, lineId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStatementLineDrilldown>>
+  > = ({ signal }) =>
+    getStatementLineDrilldown(reportId, lineId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(reportId && lineId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStatementLineDrilldown>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStatementLineDrilldownQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStatementLineDrilldown>>
+>;
+export type GetStatementLineDrilldownQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get source account detail for a statement line
+ */
+
+export function useGetStatementLineDrilldown<
+  TData = Awaited<ReturnType<typeof getStatementLineDrilldown>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  lineId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStatementLineDrilldown>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStatementLineDrilldownQueryOptions(
+    reportId,
+    lineId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save or update previous-year amounts for statement lines
+ */
+export const getSavePreviousYearValuesUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/financial-statements/previous-year`;
+};
+
+export const savePreviousYearValues = async (
+  reportId: string,
+  savePreviousYearBody: SavePreviousYearBody,
+  options?: RequestInit,
+): Promise<SavePreviousYearValues200> => {
+  return customFetch<SavePreviousYearValues200>(
+    getSavePreviousYearValuesUrl(reportId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(savePreviousYearBody),
+    },
+  );
+};
+
+export const getSavePreviousYearValuesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof savePreviousYearValues>>,
+    TError,
+    { reportId: string; data: BodyType<SavePreviousYearBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof savePreviousYearValues>>,
+  TError,
+  { reportId: string; data: BodyType<SavePreviousYearBody> },
+  TContext
+> => {
+  const mutationKey = ["savePreviousYearValues"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof savePreviousYearValues>>,
+    { reportId: string; data: BodyType<SavePreviousYearBody> }
+  > = (props) => {
+    const { reportId, data } = props ?? {};
+
+    return savePreviousYearValues(reportId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SavePreviousYearValuesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof savePreviousYearValues>>
+>;
+export type SavePreviousYearValuesMutationBody = BodyType<SavePreviousYearBody>;
+export type SavePreviousYearValuesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save or update previous-year amounts for statement lines
+ */
+export const useSavePreviousYearValues = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof savePreviousYearValues>>,
+    TError,
+    { reportId: string; data: BodyType<SavePreviousYearBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof savePreviousYearValues>>,
+  TError,
+  { reportId: string; data: BodyType<SavePreviousYearBody> },
+  TContext
+> => {
+  return useMutation(getSavePreviousYearValuesMutationOptions(options));
+};
+
+/**
+ * @summary Get the Swedish annual report structure for a project
+ */
+export const getGetReportStructureUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/report-structure`;
+};
+
+export const getReportStructure = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<ReportStructureResponse> => {
+  return customFetch<ReportStructureResponse>(
+    getGetReportStructureUrl(reportId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetReportStructureQueryKey = (reportId: string) => {
+  return [`/api/reports/${reportId}/report-structure`] as const;
+};
+
+export const getGetReportStructureQueryOptions = <
+  TData = Awaited<ReturnType<typeof getReportStructure>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReportStructure>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetReportStructureQueryKey(reportId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getReportStructure>>
+  > = ({ signal }) =>
+    getReportStructure(reportId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getReportStructure>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetReportStructureQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getReportStructure>>
+>;
+export type GetReportStructureQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get the Swedish annual report structure for a project
+ */
+
+export function useGetReportStructure<
+  TData = Awaited<ReturnType<typeof getReportStructure>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReportStructure>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetReportStructureQueryOptions(reportId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update the accounting framework for a project (K2 or K3)
+ */
+export const getUpdateProjectFrameworkUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/framework`;
+};
+
+export const updateProjectFramework = async (
+  reportId: string,
+  updateFrameworkBody: UpdateFrameworkBody,
+  options?: RequestInit,
+): Promise<AnnualReportProject> => {
+  return customFetch<AnnualReportProject>(
+    getUpdateProjectFrameworkUrl(reportId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateFrameworkBody),
+    },
+  );
+};
+
+export const getUpdateProjectFrameworkMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProjectFramework>>,
+    TError,
+    { reportId: string; data: BodyType<UpdateFrameworkBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateProjectFramework>>,
+  TError,
+  { reportId: string; data: BodyType<UpdateFrameworkBody> },
+  TContext
+> => {
+  const mutationKey = ["updateProjectFramework"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateProjectFramework>>,
+    { reportId: string; data: BodyType<UpdateFrameworkBody> }
+  > = (props) => {
+    const { reportId, data } = props ?? {};
+
+    return updateProjectFramework(reportId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateProjectFrameworkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateProjectFramework>>
+>;
+export type UpdateProjectFrameworkMutationBody = BodyType<UpdateFrameworkBody>;
+export type UpdateProjectFrameworkMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update the accounting framework for a project (K2 or K3)
+ */
+export const useUpdateProjectFramework = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProjectFramework>>,
+    TError,
+    { reportId: string; data: BodyType<UpdateFrameworkBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateProjectFramework>>,
+  TError,
+  { reportId: string; data: BodyType<UpdateFrameworkBody> },
+  TContext
+> => {
+  return useMutation(getUpdateProjectFrameworkMutationOptions(options));
+};

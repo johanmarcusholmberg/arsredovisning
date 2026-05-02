@@ -265,3 +265,192 @@ export interface DashboardSummary {
   reportsComplete: number;
   recentReports: AnnualReport[];
 }
+
+export type FinancialStatementLineStatementType =
+  (typeof FinancialStatementLineStatementType)[keyof typeof FinancialStatementLineStatementType];
+
+export const FinancialStatementLineStatementType = {
+  income_statement: "income_statement",
+  balance_sheet: "balance_sheet",
+  cash_flow: "cash_flow",
+} as const;
+
+export type FinancialStatementLinePreviousYearSource =
+  | (typeof FinancialStatementLinePreviousYearSource)[keyof typeof FinancialStatementLinePreviousYearSource]
+  | null;
+
+export const FinancialStatementLinePreviousYearSource = {
+  imported: "imported",
+  manual: "manual",
+  previous_report_placeholder: "previous_report_placeholder",
+} as const;
+
+export type FinancialStatementLineFramework =
+  (typeof FinancialStatementLineFramework)[keyof typeof FinancialStatementLineFramework];
+
+export const FinancialStatementLineFramework = {
+  K2: "K2",
+  K3: "K3",
+} as const;
+
+export interface FinancialStatementLine {
+  id: string;
+  projectId: string;
+  statementType: FinancialStatementLineStatementType;
+  lineKey: string;
+  swedishLabel: string;
+  sortOrder: number;
+  isSubtotal: boolean;
+  isTotal: boolean;
+  isHeading: boolean;
+  /** Numeric amount as string (SEK) */
+  currentYearAmount?: string | null;
+  previousYearAmount?: string | null;
+  previousYearSource?: FinancialStatementLinePreviousYearSource;
+  linkedAccountIds?: string | null;
+  calculationMethod: string;
+  mappingSource?: string | null;
+  isManuallyAdjusted: boolean;
+  manualAdjustmentOriginal?: string | null;
+  manualAdjustmentReason?: string | null;
+  manualAdjustmentUserId?: string | null;
+  manualAdjustmentAt?: string | null;
+  framework: FinancialStatementLineFramework;
+  noteReferenceText?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FinancialStatementsResponseFramework =
+  (typeof FinancialStatementsResponseFramework)[keyof typeof FinancialStatementsResponseFramework];
+
+export const FinancialStatementsResponseFramework = {
+  K2: "K2",
+  K3: "K3",
+} as const;
+
+export interface FinancialStatementsResponse {
+  incomeStatement: FinancialStatementLine[];
+  balanceSheet: FinancialStatementLine[];
+  cashFlow: FinancialStatementLine[];
+  cashFlowRequired: boolean;
+  framework: FinancialStatementsResponseFramework;
+  hasAnyLines: boolean;
+}
+
+export type GenerateStatementsResponseFramework =
+  (typeof GenerateStatementsResponseFramework)[keyof typeof GenerateStatementsResponseFramework];
+
+export const GenerateStatementsResponseFramework = {
+  K2: "K2",
+  K3: "K3",
+} as const;
+
+export interface GenerateStatementsResponse {
+  /** Number of lines generated */
+  generated: number;
+  framework: GenerateStatementsResponseFramework;
+  noteReferencesSuggested: number;
+  message: string;
+}
+
+export interface UpdateStatementLineBody {
+  noteReferenceText?: string | null;
+  /** New adjusted amount (overrides system-calculated) */
+  manualAdjustmentAmount?: string | null;
+  manualAdjustmentReason?: string | null;
+}
+
+export interface SourceAccount {
+  accountNumber: string;
+  accountName?: string | null;
+  /** Numeric balance as string */
+  balance: string;
+}
+
+export interface StatementLineDrilldown {
+  lineId: string;
+  lineKey: string;
+  swedishLabel: string;
+  calculationMethod: string;
+  mappingSource?: string | null;
+  suggestedNoteType?: string | null;
+  sourceAccounts: SourceAccount[];
+  noteReferenceReason?: string | null;
+}
+
+export type PreviousYearValueSource =
+  (typeof PreviousYearValueSource)[keyof typeof PreviousYearValueSource];
+
+export const PreviousYearValueSource = {
+  imported: "imported",
+  manual: "manual",
+  previous_report_placeholder: "previous_report_placeholder",
+} as const;
+
+export interface PreviousYearValue {
+  lineId: string;
+  /** Amount as numeric string */
+  amount: string;
+  source: PreviousYearValueSource;
+}
+
+export interface SavePreviousYearBody {
+  values: PreviousYearValue[];
+}
+
+export interface ReportStructureSection {
+  key: string;
+  sweLabel: string;
+  included: boolean;
+  conditional: boolean;
+  conditionNote?: string | null;
+  sortOrder: number;
+}
+
+export type ReportStructureResponseFramework =
+  (typeof ReportStructureResponseFramework)[keyof typeof ReportStructureResponseFramework];
+
+export const ReportStructureResponseFramework = {
+  K2: "K2",
+  K3: "K3",
+} as const;
+
+export interface ReportStructureResponse {
+  projectId: string;
+  framework: ReportStructureResponseFramework;
+  cashFlowRequired: boolean;
+  isBrf: boolean;
+  sections: ReportStructureSection[];
+}
+
+export type UpdateFrameworkBodyAccountingFramework =
+  (typeof UpdateFrameworkBodyAccountingFramework)[keyof typeof UpdateFrameworkBodyAccountingFramework];
+
+export const UpdateFrameworkBodyAccountingFramework = {
+  K2: "K2",
+  K3: "K3",
+} as const;
+
+export interface UpdateFrameworkBody {
+  accountingFramework: UpdateFrameworkBodyAccountingFramework;
+  /** If true, existing statement lines will be regenerated for the new framework */
+  regenerateStatements?: boolean;
+}
+
+export type GetFinancialStatementsParams = {
+  statementType?: GetFinancialStatementsStatementType;
+};
+
+export type GetFinancialStatementsStatementType =
+  (typeof GetFinancialStatementsStatementType)[keyof typeof GetFinancialStatementsStatementType];
+
+export const GetFinancialStatementsStatementType = {
+  income_statement: "income_statement",
+  balance_sheet: "balance_sheet",
+  cash_flow: "cash_flow",
+} as const;
+
+export type SavePreviousYearValues200 = {
+  updated: number;
+};

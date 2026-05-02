@@ -10,3 +10,6 @@ export * from "./projectSnapshots";
 export * from "./projectFiles";
 export * from "./exportFiles";
 export * from "./reports";
+export * from "./financialStatementLines";
+export * from "./reportNoteReferences";
+export * from "./reportNotes";
