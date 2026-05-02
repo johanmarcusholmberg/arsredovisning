@@ -57,6 +57,10 @@ export const AUDIT_EVENTS = {
   // Export
   EXPORT_GENERATED: "export.generated",
   EXPORT_DOWNLOADED: "export.downloaded",
+  EXPORT_FAILED: "export.failed",
+  EXPORT_PREVIEW_VIEWED: "export.preview_viewed",
+  EXPORT_COVER_UPDATED: "export.cover_updated",
+  EXPORT_READINESS_CHECKED: "export.readiness_checked",
 
   // Payment
   PAYMENT_INITIATED: "payment.initiated",

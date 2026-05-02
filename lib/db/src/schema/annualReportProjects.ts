@@ -38,6 +38,15 @@ export const annualReportProjectsTable = pgTable("annual_report_projects", {
   importedSieFileName: text("imported_sie_file_name"),
   exportedPdfUrl: text("exported_pdf_url"),
   exportedWordUrl: text("exported_word_url"),
+  // ── Cover sheet (Phase 6.6) ─────────────────────────────────────────────
+  // mode: "auto"     → generated cover with title + subtitle (+ optional logo)
+  //       "uploaded" → user-uploaded cover PDF (replaces the generated cover)
+  //       "logo"     → generated cover, prominent logo
+  coverMode: text("cover_mode").notNull().default("auto"),
+  coverTitle: text("cover_title"),
+  coverSubtitle: text("cover_subtitle"),
+  coverLogoUrl: text("cover_logo_url"),
+  coverUploadedFileId: uuid("cover_uploaded_file_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

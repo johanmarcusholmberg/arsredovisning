@@ -5,6 +5,7 @@ import {
   uuid,
   integer,
   boolean,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -40,6 +41,16 @@ export const exportFilesTable = pgTable("export_files", {
   format: exportFormatEnum("format").notNull(),
   exportStatus: exportStatusEnum("export_status").notNull().default("pending"),
   watermark: boolean("watermark").notNull().default(true),
+  // ── Phase 7: snapshot summary captured at generation time ───────────────
+  // Mirrors export-contract `ExportSnapshotSummary` (counts, fiscal-year
+  // label, watermark, framework). Lets the history view describe the
+  // contents of an old export without re-loading the underlying tables.
+  snapshotSummary: jsonb("snapshot_summary"),
+  // Optional grouping when several files belong to the same export package
+  // (PDF + Word + appendices generated together).
+  packageId: uuid("package_id"),
+  // Human-readable label (e.g. "Slutgiltig årsredovisning – PDF").
+  label: text("label"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

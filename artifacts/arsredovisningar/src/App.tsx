@@ -11,6 +11,7 @@ import { CompanyNew } from "./pages/CompanyNew";
 import { CompanyDetail } from "./pages/CompanyDetail";
 import { ReportWorkspace } from "./pages/ReportWorkspace";
 import { ReportSummary } from "./pages/ReportSummary";
+import PreviewExport from "./pages/PreviewExport";
 import { FinancialStatements } from "./pages/FinancialStatements";
 import { NotesPage } from "./pages/NotesPage";
 import { ReclassificationReview } from "./pages/ReclassificationReview";
@@ -50,6 +51,7 @@ function AppRoutes() {
           <Route path="/reports/:reportId/review" component={ReviewView} />
           <Route path="/reports/:reportId/audit" component={AuditView} />
           <Route path="/reports/:reportId/summary" component={ReportSummary} />
+          <Route path="/reports/:reportId/preview" component={PreviewExport} />
           <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>

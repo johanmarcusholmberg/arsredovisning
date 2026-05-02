@@ -29,6 +29,8 @@ import {
   buildStoragePath,
   mustWatermark,
 } from "../helpers/demo";
+import { getSupabaseAdmin } from "../lib/supabase";
+import { readCachedExportBytes } from "./annualReportExport";
 
 const router: IRouter = Router();
 
@@ -296,13 +298,50 @@ router.get(
       eventData: { exportId, format: exportFile.format, watermark, filename: exportFile.originalFilename },
     });
 
-    // TODO (Phase 7): Real Supabase Storage signed URL:
-    //   const { data } = await supabaseAdmin.storage.from(exportFile.storageBucket).createSignedUrl(exportFile.storagePath, 3600);
-    res.json({
-      downloadUrl: `TODO:supabase-signed-url/${exportFile.storageBucket}/${exportFile.storagePath}`,
-      filename: exportFile.originalFilename,
-      mimeType: exportFile.mimeType,
-      watermark,
+    // Real Supabase signed URL — short-lived (1h). When Supabase is not
+    // configured (dev/preview) we fall back to streaming the bytes directly
+    // from the in-memory export cache populated at generation time.
+    const supabase = getSupabaseAdmin();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.storage
+          .from(exportFile.storageBucket)
+          .createSignedUrl(exportFile.storagePath, 3600);
+        if (!error && data?.signedUrl) {
+          res.json({
+            downloadUrl: data.signedUrl,
+            filename: exportFile.originalFilename,
+            mimeType: exportFile.mimeType,
+            watermark,
+          });
+          return;
+        }
+        req.log.warn(
+          { err: error?.message, storagePath: exportFile.storagePath },
+          "Supabase signed URL failed — falling back to inline stream",
+        );
+      } catch (err) {
+        req.log.warn({ err }, "Supabase signed URL threw — falling back to inline stream");
+      }
+    }
+
+    const cached = readCachedExportBytes(exportId);
+    if (cached) {
+      res.setHeader("Content-Type", cached.mimeType);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${exportFile.originalFilename}"`,
+      );
+      res.send(cached.bytes);
+      return;
+    }
+
+    // No Supabase, no cached bytes — likely an old export. Surface a
+    // diagnosable error rather than a silent fallback.
+    res.status(410).json({
+      error: "export_unavailable",
+      message:
+        "Den genererade filen kan inte hämtas — försök generera exporten på nytt.",
     });
   },
 );

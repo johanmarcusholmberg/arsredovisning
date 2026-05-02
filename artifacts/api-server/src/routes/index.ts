@@ -17,6 +17,7 @@ import collaboratorsRouter from "./collaborators";
 import importsRouter from "./imports";
 import mappingsRouter from "./mappings";
 import reclassificationsRouter from "./reclassifications";
+import annualReportExportRouter from "./annualReportExport";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(collaboratorsRouter);
 router.use(importsRouter);
 router.use(mappingsRouter);
 router.use(reclassificationsRouter);
+router.use(annualReportExportRouter);
 
 export default router;
