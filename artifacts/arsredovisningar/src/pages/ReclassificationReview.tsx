@@ -471,6 +471,83 @@ export function ReclassificationReview() {
       });
       return;
     }
+    // Block submissions that would route through an inactive note. The
+    // server enforces this too, but failing fast in the UI keeps the
+    // dialog open with the user's input intact instead of round-
+    // tripping a 400.
+    const sourceNote = manualSourceNoteId
+      ? noteOptions.find((n) => n.id === manualSourceNoteId)
+      : null;
+    const targetNote = noteOptions.find((n) => n.id === manualTargetNoteId);
+    if (sourceNote && sourceNote.status === "not_applicable") {
+      toast({
+        title: "Källnoten är markerad ej tillämplig",
+        description:
+          "Välj en aktiv källnot, eller aktivera noten innan du omklassificerar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (targetNote && targetNote.status === "not_applicable") {
+      toast({
+        title: "Målnoten är markerad ej tillämplig",
+        description:
+          "Välj en aktiv målnot, eller aktivera noten innan du omklassificerar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Subtotals are calculated rows — writing into them would silently
+    // be re-derived on the next recompute, so the reclassification
+    // would appear to vanish. Block at the UI layer.
+    const targetRow = targetRows.find((r) => r.id === manualTargetRowId);
+    if (targetRow?.isSubtotal) {
+      toast({
+        title: "Målrad kan inte vara en delsumma",
+        description:
+          "Välj en detaljrad. Delsummor räknas om automatiskt och kan inte ta emot manuella omklassificeringar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const sourceRow = manualSourceRowId
+      ? sourceRows.find((r) => r.id === manualSourceRowId)
+      : null;
+    if (sourceRow?.isSubtotal) {
+      toast({
+        title: "Källrad kan inte vara en delsumma",
+        description:
+          "Välj en detaljrad som källa. Delsummor räknas om automatiskt.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (manualSourceRowId && manualSourceRowId === manualTargetRowId) {
+      toast({
+        title: "Käll- och målrad är samma",
+        description: "Välj en annan målrad — en rad kan inte omklassificeras till sig själv.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // For source-driven reclassifications, the moved amount must not
+    // exceed the source row's current value (ignoring sign). Without
+    // this the user can break the source-note total with a single
+    // click. We allow source-less moves (target-only top-ups) without
+    // this check — those reflect re-categorisation of an unmapped
+    // amount and are bounded server-side instead.
+    if (sourceRow && sourceRow.currentYearAmount !== null && sourceRow.currentYearAmount !== undefined) {
+      const available = Math.abs(Number(sourceRow.currentYearAmount));
+      const requested = Number(manualAmount);
+      if (Number.isFinite(available) && Number.isFinite(requested) && requested > available + 0.005) {
+        toast({
+          title: "Beloppet överstiger källraden",
+          description: `Källraden har ${available.toLocaleString("sv-SE")} att flytta — minska beloppet eller dela upp omklassificeringen.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     createReclass.mutate(
       {
         reportId,
