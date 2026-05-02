@@ -11,6 +11,7 @@ This project is a pnpm monorepo web application using TypeScript, designed for p
 - All primary keys in the database should use UUIDs.
 - Critical environment variables (`SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `OPENAI_API_KEY`) must be server-only and never exposed to the browser.
 - When pushing DB schema, prefer raw SQL migrations via `executeSql` in CI over `drizzle-kit push --force` due to interactive prompts.
+- All schema drift between `lib/db/src/schema/*.ts` and the live Postgres database must be zero. The root `pnpm typecheck` command runs `pnpm run check-schema-drift` (script: `scripts/src/checkSchemaDrift.ts`) at the end of the pipeline and fails on any drift.
 - Avoid using `format: date` in OpenAPI specifications for fiscal year fields to prevent type mismatches with generated Zod schemas.
 
 ## System Architecture
@@ -67,6 +68,18 @@ The application is built as a pnpm monorepo using Node.js 24 and TypeScript 5.9.
 - **Demo Handling**: Dedicated `helpers/demo.ts` ensures demo projects use `demo-assets` storage buckets and apply watermarks, strictly separating them from production assets.
 - **API Routes**: Comprehensive set of RESTful API endpoints covering companies, reports, projects, financial statements, notes, validation, reviews, comments, and audit events, all requiring authentication unless explicitly public.
 - **Frontend Routes**: Structured routing for dashboard, login/register, company management, report workspaces, financial statements, and user settings.
+
+## Database migrations
+
+The Drizzle schema files in `lib/db/src/schema/*.ts` are the single source of truth for the Postgres schema. To make a schema change:
+
+1. Edit the table file under `lib/db/src/schema/`. Re-export new tables from `lib/db/src/schema/index.ts`.
+2. Apply to the dev database: `pnpm --filter @workspace/db run push --force`.
+   - `--force` skips the interactive truncation prompt; only run when you've checked the affected tables yourself. For tables that already contain rows and need a new `UNIQUE` constraint, pre-add the constraint via `executeSql` so push won't prompt.
+3. Optionally capture the change as a historical SQL snapshot: `pnpm --filter @workspace/db run generate -- --name=<short_change_summary>`. The files in `lib/db/drizzle/*.sql` are **archival only** — `drizzle-kit migrate` is not run in CI or at runtime. The `push` step in (2) is what actually changes the database; `--force` should only ever be used in dev, never in production.
+4. Verify zero drift: `pnpm typecheck` (which runs `pnpm run check-schema-drift` at the end of the chain). The drift check compares every column / type / nullability between the schema files and the live `information_schema.columns` (base tables only, excluding `__drizzle_migrations`). It fails the build if `DATABASE_URL` is not set unless `SKIP_SCHEMA_DRIFT_CHECK=1` is also set (intended for sandboxed local builds without a DB).
+
+The drift audit performed on 2026-05-02 (under Task #46) is preserved at `lib/db/drizzle/_drift-audit-2026-05-02.md` for posterity.
 
 ## External Dependencies
 

@@ -7,13 +7,17 @@
     "hello": "tsx ./src/hello.ts",
     "setup-storage-buckets": "tsx ./src/setup-storage-buckets.ts",
     "seed-mapping-rules": "tsx ./src/seed-mapping-rules.ts",
+    "check-schema-drift": "tsx ./src/checkSchemaDrift.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@workspace/db": "workspace:*"
+    "@workspace/db": "workspace:*",
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pg": "^8.18.0",
+    "pg": "^8.20.0",
     "tsx": "catalog:"
   }
 }
