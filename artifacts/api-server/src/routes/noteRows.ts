@@ -74,17 +74,37 @@ async function getNote(noteId: string, reportId: string) {
  * underlying non-subtotal rows so the canonical note totals stay in sync
  * with the row-level breakdown the user is editing.
  *
- * When the note has no rows at all we leave the existing values alone — a
- * note with a single hand-entered total (no row breakdown) should keep its
- * value. As soon as rows exist they become the source of truth.
+ * When called after a row mutation, this is the single source of truth for
+ * the note totals. The "rowsExisted" flag (passed by the DELETE path)
+ * tells us whether the note used to have rows, so that deleting the last
+ * row clears the totals instead of silently leaving the previous (now
+ * stale) row-derived totals in place.
  */
-async function syncNoteTotalsFromRows(noteId: string): Promise<void> {
+async function syncNoteTotalsFromRows(
+  noteId: string,
+  opts: { rowsExisted?: boolean } = {},
+): Promise<void> {
   const rows = await db
     .select()
     .from(reportNoteRowsTable)
     .where(eq(reportNoteRowsTable.noteId, noteId));
 
-  if (rows.length === 0) return;
+  if (rows.length === 0) {
+    // No rows now. If rows used to exist, the cached totals on the note
+    // were derived from them and are now stale — clear them. Otherwise
+    // leave the hand-entered note value alone.
+    if (opts.rowsExisted) {
+      await db
+        .update(reportNotesTable)
+        .set({
+          currentYearValue: null,
+          previousYearValue: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(reportNotesTable.id, noteId));
+    }
+    return;
+  }
 
   let cur: number | null = null;
   let prev: number | null = null;
@@ -430,7 +450,7 @@ router.delete(
       return;
     }
 
-    await syncNoteTotalsFromRows(noteId);
+    await syncNoteTotalsFromRows(noteId, { rowsExisted: true });
 
     await logAuditEvent({
       eventType: "note_row_deleted",
