@@ -1,0 +1,127 @@
+Continue working on the “Årsredovisningar” application.
+
+Goal:
+Update the free/demo experience so that a demo user can clearly see what a finished PDF annual report from the product looks like, without allowing them to create, edit, validate, export, or download a real annual report.
+
+Important context:
+- Free/demo users should only access a demo-first workspace with dummy/sample values.
+- Real company data, real imports, real editing, validation, collaboration, clean export, and production PDF/Word download must remain locked behind payment.
+- The exported annual report must be Swedish only at launch.
+- The sample PDF should represent the final product quality and structure as closely as possible.
+
+Implement the following:
+
+1. Demo PDF example access
+Add a clear section in the demo workspace called something like:
+- “Se exempel på färdig årsredovisning”
+- “Förhandsvisa exempel-PDF”
+- “Exempelrapport”
+
+The user should be able to open a PDF preview/example from the demo area.
+
+2. Use a realistic Swedish annual report example
+The PDF example should show a realistic Swedish annual report structure, using dummy data only.
+
+It should include, at minimum:
+- Cover page / title page
+- Förvaltningsberättelse
+- Resultaträkning
+- Balansräkning
+- Kassaflödesanalys where applicable as an example section
+- Noter
+- Underskrifter
+- Fastställelseintyg / export-related final page if this is part of the planned template
+
+The report should use Swedish annual-report terminology and a clean Swedish annual-report layout.
+
+3. Make it clearly non-production
+The PDF example must clearly be marked as demo/sample.
+
+Add:
+- A visible watermark such as “EXEMPEL” or “DEMO”
+- Dummy company name, e.g. “Exempelbolaget AB”
+- Dummy organisation number
+- Dummy financial year
+- Dummy financial values
+- A short note somewhere in the preview UI saying:
+  “Detta är endast ett exempel med fiktiva värden. En riktig årsredovisning kan skapas efter betalning.”
+
+4. Preview-only behavior
+The demo user should be able to view the PDF example in the browser, but not create or download a clean production PDF.
+
+Allowed:
+- Open preview
+- View pages
+- Zoom if existing PDF viewer supports it
+
+Not allowed for demo users:
+- Generate a real report
+- Import real accounting data
+- Edit the annual report
+- Remove watermark
+- Download clean PDF
+- Export Word
+- Start validation for a real report
+
+If a download button is shown, it must either:
+- Be disabled with upgrade/paywall messaging, or
+- Download only the watermarked sample PDF
+
+5. Add paywall CTA from the PDF example
+Near the example PDF preview, add a clear call-to-action:
+- “Skapa riktig årsredovisning”
+- “Lås upp och skapa din årsredovisning”
+- “Betala för att starta ett riktigt projekt”
+
+Clicking the CTA should lead to the existing payment/unlock flow or project creation paywall, depending on what already exists in the app.
+
+Do not implement final Stripe logic if it does not already exist. Use the existing paywall/upgrade pattern in the project.
+
+6. Technical implementation
+Build this on top of the existing app structure.
+
+Prefer one of these approaches:
+A) If the project already has a PDF preview/export component:
+   - Reuse it with demo data and a demo/watermark mode.
+
+B) If the project does not yet have PDF generation:
+   - Add a static sample PDF asset or a generated HTML/PDF-style preview that represents the final PDF layout.
+   - Store it clearly as a demo/sample asset.
+   - Make sure the code is prepared to later replace this with the real Phase 7 PDF export engine.
+
+Do not build the full production PDF export engine in this task unless it already exists.
+Do not connect final Stripe/download logic unless it already exists.
+
+7. UX requirements
+The demo PDF example should be easy to find from:
+- Demo dashboard
+- Demo annual report workspace
+- Any “Export” or “Preview” area that demo users can access
+
+Use plain-language Swedish copy.
+
+Suggested UI copy:
+Title:
+“Se hur en färdig årsredovisning kan se ut”
+
+Description:
+“Förhandsvisa ett exempel på en färdig årsredovisning skapad i Årsredovisningar. Exemplet använder fiktiva värden och är vattenmärkt.”
+
+Button:
+“Öppna exempel-PDF”
+
+Watermark/label:
+“EXEMPEL – FIKTIVA VÄRDEN”
+
+Paywall CTA:
+“Vill du skapa en riktig årsredovisning? Lås upp ett projekt för ett bolag och ett räkenskapsår.”
+
+8. Acceptance criteria
+When the task is complete:
+- A demo user can clearly access a sample annual report PDF/preview.
+- The sample uses dummy Swedish annual-report data.
+- The sample is visibly watermarked as demo/example.
+- The demo user cannot export a clean production PDF.
+- The preview connects naturally to the payment/unlock CTA.
+- The implementation does not weaken existing paywall restrictions.
+- The implementation is prepared for the later real PDF/Word export phase.
