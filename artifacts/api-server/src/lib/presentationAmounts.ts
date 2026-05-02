@@ -198,22 +198,40 @@ export async function getPresentedNoteRowAmounts(
 /**
  * Compute the presented amount for a single note row.
  * Returns null if the row has no mapped amount and no reclassifications.
+ *
+ * `reportId` is required so the active-reclass query is scoped to the
+ * row's report — without it the helper would aggregate adjustments
+ * from every report in the database. We also re-verify that the row
+ * actually belongs to the supplied report (via its note) before
+ * returning, so a caller passing a mismatched reportId can't poison
+ * a different report's presentation.
  */
 export async function getPresentedAmountForRow(
   rowId: string,
+  reportId: string,
 ): Promise<PresentedNoteRowAmount | null> {
   const [row] = await db
-    .select()
+    .select({
+      id: reportNoteRowsTable.id,
+      noteId: reportNoteRowsTable.noteId,
+      currentYearAmount: reportNoteRowsTable.currentYearAmount,
+      noteReportId: reportNotesTable.reportId,
+    })
     .from(reportNoteRowsTable)
+    .innerJoin(
+      reportNotesTable,
+      eq(reportNotesTable.id, reportNoteRowsTable.noteId),
+    )
     .where(eq(reportNoteRowsTable.id, rowId))
     .limit(1);
-  if (!row) return null;
+  if (!row || row.noteReportId !== reportId) return null;
 
   const reclasses = await db
     .select()
     .from(annualReportReclassificationsTable)
     .where(
       and(
+        eq(annualReportReclassificationsTable.reportId, reportId),
         eq(annualReportReclassificationsTable.status, "active"),
         inArray(
           annualReportReclassificationsTable.effectType,
