@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, annualReportProjectsTable, companiesTable } from "@workspace/db";
 import { logAuditEvent } from "../lib/auditLog.js";
+import { canViewProject } from "../helpers/permissions.js";
 
 const router: IRouter = Router();
 
@@ -113,6 +114,13 @@ router.get("/projects/:projectId", async (req, res): Promise<void> => {
 
   const { projectId } = req.params;
 
+  // Authoritative access check via project_access (covers owners + collaborators).
+  // Returns 404 (not 403) on unauthorized to avoid leaking project existence.
+  if (!(await canViewProject(profileId, projectId))) {
+    res.status(404).json({ error: "not_found", message: "Project not found" });
+    return;
+  }
+
   const [row] = await db
     .select({
       id: annualReportProjectsTable.id,
@@ -129,12 +137,7 @@ router.get("/projects/:projectId", async (req, res): Promise<void> => {
     })
     .from(annualReportProjectsTable)
     .innerJoin(companiesTable, eq(annualReportProjectsTable.companyId, companiesTable.id))
-    .where(
-      and(
-        eq(annualReportProjectsTable.id, projectId),
-        eq(companiesTable.createdByProfileId, profileId),
-      ),
-    );
+    .where(eq(annualReportProjectsTable.id, projectId));
 
   if (!row) {
     res.status(404).json({ error: "not_found", message: "Project not found" });

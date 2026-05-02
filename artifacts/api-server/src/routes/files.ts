@@ -30,6 +30,11 @@ import {
   mustWatermark,
 } from "../helpers/demo";
 import { getSupabaseAdmin } from "../lib/supabase";
+import {
+  createSignedUploadUrl,
+  createSignedDownloadUrl,
+  STORAGE_NOT_CONFIGURED_MESSAGE,
+} from "../lib/storageSignedUrls";
 import { readCachedExportBytes } from "./annualReportExport";
 
 const router: IRouter = Router();
@@ -183,15 +188,22 @@ router.post("/projects/:projectId/files/upload", async (req, res): Promise<void>
     eventData: { fileId, originalFilename, mimeType, fileSize, storageBucket: bucket, storagePath, isDemo },
   });
 
-  // 8. Return storage path and a signed upload URL stub
-  // TODO (Phase 3+): Replace with a real Supabase Storage signed upload URL:
-  //   const { data, error } = await supabaseAdmin.storage
-  //     .from(bucket).createSignedUploadUrl(storagePath);
+  // 8. Issue a real Supabase Storage signed upload URL
+  const signed = await createSignedUploadUrl(bucket, storagePath);
+  if (!signed) {
+    res.status(503).json({
+      error: "storage_not_configured",
+      message: STORAGE_NOT_CONFIGURED_MESSAGE,
+    });
+    return;
+  }
+
   res.status(201).json({
     fileId: fileRow.id,
     storageBucket: bucket,
     storagePath,
-    uploadUrl: `TODO:supabase-signed-upload-url/${bucket}/${storagePath}`,
+    uploadUrl: signed.uploadUrl,
+    uploadToken: signed.token,
     isDemo,
   });
 });
@@ -239,10 +251,17 @@ router.get(
       eventData: { fileId, filename: file.originalFilename },
     });
 
-    // TODO (Phase 3+): Real Supabase Storage signed URL:
-    //   const { data } = await supabaseAdmin.storage.from(file.storageBucket).createSignedUrl(file.storagePath, 3600);
+    const signed = await createSignedDownloadUrl(file.storageBucket, file.storagePath, 3600);
+    if (!signed) {
+      res.status(503).json({
+        error: "storage_not_configured",
+        message: STORAGE_NOT_CONFIGURED_MESSAGE,
+      });
+      return;
+    }
+
     res.json({
-      downloadUrl: `TODO:supabase-signed-url/${file.storageBucket}/${file.storagePath}`,
+      downloadUrl: signed.downloadUrl,
       filename: file.originalFilename,
       mimeType: file.mimeType,
     });

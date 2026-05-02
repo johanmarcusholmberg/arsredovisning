@@ -854,6 +854,10 @@ importers:
   lib/export-contract: {}
 
   scripts:
+    dependencies:
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../lib/db
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

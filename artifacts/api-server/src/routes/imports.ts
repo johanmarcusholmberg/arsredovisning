@@ -42,6 +42,10 @@ import { parseSIEContent } from "../helpers/sieParser.js";
 import { parseWithColumnMapping } from "../helpers/csvExcelParser.js";
 import { autoMapAccounts } from "../helpers/autoMapper.js";
 import { logger } from "../lib/logger.js";
+import {
+  createSignedUploadUrl,
+  STORAGE_NOT_CONFIGURED_MESSAGE,
+} from "../lib/storageSignedUrls.js";
 
 const router: IRouter = Router();
 
@@ -92,12 +96,12 @@ router.post("/projects/:projectId/imports/upload", async (req, res): Promise<voi
     return;
   }
 
-  const { originalFilename, fileType: explicitFileType, fileSizeBytes, storageBucket, storagePath: requestedStoragePath } = req.body as {
+  // Storage path & bucket are server-derived. Client-supplied values are
+  // ignored to prevent cross-project path manipulation via signed URLs.
+  const { originalFilename, fileType: explicitFileType, fileSizeBytes } = req.body as {
     originalFilename?: string;
     fileType?: string;
     fileSizeBytes?: number;
-    storageBucket?: string;
-    storagePath?: string;
   };
 
   if (!originalFilename) {
@@ -125,8 +129,8 @@ router.post("/projects/:projectId/imports/upload", async (req, res): Promise<voi
   }
 
   const batchId = randomUUID();
-  const bucket = resolveUploadBucket(false, storageBucket ?? "import-files");
-  const finalStoragePath = requestedStoragePath ?? buildStoragePath(projectId, batchId, originalFilename);
+  const bucket = resolveUploadBucket(isDemo, "import-files");
+  const finalStoragePath = buildStoragePath(projectId, batchId, originalFilename);
 
   const [batch] = await db
     .insert(importBatchesTable)
@@ -151,12 +155,20 @@ router.post("/projects/:projectId/imports/upload", async (req, res): Promise<voi
     eventData: { batchId, originalFilename, fileType, fileSizeBytes },
   });
 
-  // TODO (Supabase Storage): Replace with a real signed upload URL:
-  //   const { data } = await supabaseAdmin.storage.from(bucket).createSignedUploadUrl(finalStoragePath);
-  //   const uploadUrl = data.signedUrl;
-  const uploadUrl = `TODO:supabase-signed-upload-url/${bucket}/${finalStoragePath}`;
+  const signed = await createSignedUploadUrl(bucket, finalStoragePath);
+  if (!signed) {
+    res.status(503).json({
+      error: "storage_not_configured",
+      message: STORAGE_NOT_CONFIGURED_MESSAGE,
+    });
+    return;
+  }
 
-  res.status(201).json({ ...formatBatch(batch), uploadUrl });
+  res.status(201).json({
+    ...formatBatch(batch),
+    uploadUrl: signed.uploadUrl,
+    uploadToken: signed.token,
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -658,7 +670,7 @@ async function runAutoMapping(
 
   if (stagingAccounts.length === 0) return;
 
-  const mappings = autoMapAccounts(
+  const mappings = await autoMapAccounts(
     stagingAccounts.map((a) => ({ accountNumber: a.accountNumber, accountName: a.accountName })),
   );
 

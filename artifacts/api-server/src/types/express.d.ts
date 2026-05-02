@@ -8,6 +8,7 @@ declare global {
         profileId: string;
       };
       profile?: Profile;
+      projectRole?: "owner" | "accountant" | "viewer";
     }
   }
 }

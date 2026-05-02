@@ -6,7 +6,11 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "setup-storage-buckets": "tsx ./src/setup-storage-buckets.ts",
+    "seed-mapping-rules": "tsx ./src/seed-mapping-rules.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

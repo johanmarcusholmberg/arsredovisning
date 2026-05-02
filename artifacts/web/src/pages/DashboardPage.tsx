@@ -101,7 +101,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="mt-5">
-              <Link href="/workspace">
+              <Link href="/pricing">
                 <Button className="w-full gap-2 pointer-events-auto">
                   {t("dashboard.real_card.cta")}
                   <ArrowRight className="size-4" />

@@ -16,6 +16,7 @@ import reviewsRouter from "./reviews";
 import collaboratorsRouter from "./collaborators";
 import importsRouter from "./imports";
 import mappingsRouter from "./mappings";
+import mappingRulesRouter from "./mappingRules";
 import reclassificationsRouter from "./reclassifications";
 import annualReportExportRouter from "./annualReportExport";
 
@@ -40,6 +41,7 @@ router.use(reviewsRouter);
 router.use(collaboratorsRouter);
 router.use(importsRouter);
 router.use(mappingsRouter);
+router.use(mappingRulesRouter);
 router.use(reclassificationsRouter);
 router.use(annualReportExportRouter);
 
