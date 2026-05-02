@@ -116,10 +116,12 @@ export async function recalculateNoteNumbers(
 
   if (updates.length > 0) await Promise.all(updates);
 
-  // Sync display labels in note_statement_references
-  // Build a map: noteId -> "Not <N>" or null
+  // Build labels using the actual final note numbers (which honor overrides).
   const labelMap = new Map<string, string | null>();
-  active.forEach((n, idx) => labelMap.set(n.id, `Not ${idx + 1}`));
+  for (const n of active) {
+    const num = finalNumber.get(n.id);
+    labelMap.set(n.id, num ? `Not ${num}` : null);
+  }
   inactive.forEach((n) => labelMap.set(n.id, null));
 
   if (allNotes.length > 0) {
@@ -144,20 +146,23 @@ export async function recalculateNoteNumbers(
 
     if (refUpdates.length > 0) await Promise.all(refUpdates);
 
-    // Sync the badge text on financial_statement_lines so the statements table
-    // shows the new note numbers. We group refs by (statementType, lineKey) and
-    // collect the active note numbers for each line.
-    const noteNumberById = new Map<string, number>();
-    active.forEach((n, idx) => noteNumberById.set(n.id, idx + 1));
+    // Sync badge text on financial_statement_lines.
+    // For every (statementType, lineKey) referenced by ANY note (active or
+    // inactive), recompute the badge:
+    //   - If any active notes reference the line → comma-joined sorted numbers
+    //   - Otherwise → clear the badge to null (so stale "Not X" disappears)
+    const activeNumberById = new Map<string, number>();
+    for (const n of active) {
+      const num = finalNumber.get(n.id);
+      if (num) activeNumberById.set(n.id, num);
+    }
 
     const linesByKey = new Map<string, number[]>();
     for (const r of refs) {
-      const num = noteNumberById.get(r.noteId);
-      if (!num) continue; // skip refs to inactive notes
       const key = `${r.statementType}::${r.lineKey}`;
-      const arr = linesByKey.get(key) ?? [];
-      arr.push(num);
-      linesByKey.set(key, arr);
+      if (!linesByKey.has(key)) linesByKey.set(key, []);
+      const num = activeNumberById.get(r.noteId);
+      if (num) linesByKey.get(key)!.push(num);
     }
 
     const reportId = allNotes[0].reportId;
@@ -165,7 +170,7 @@ export async function recalculateNoteNumbers(
     for (const [key, nums] of linesByKey.entries()) {
       const [statementType, lineKey] = key.split("::");
       const sortedNums = [...new Set(nums)].sort((a, b) => a - b);
-      const badgeText = sortedNums.join(", ");
+      const badgeText = sortedNums.length > 0 ? sortedNums.join(", ") : null;
       lineUpdates.push(
         db
           .update(financialStatementLinesTable)

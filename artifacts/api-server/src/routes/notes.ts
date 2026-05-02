@@ -334,12 +334,20 @@ router.post(
       return;
     }
 
+    // If the user accepted text that differs from the AI-suggested draft, the
+    // text is no longer purely AI-generated.
+    const aiFlag =
+      existing.textIsAiGenerated && finalText === existing.suggestedText
+        ? true
+        : false;
+
     const [updated] = await db
       .update(reportNotesTable)
       .set({
         acceptedText: finalText,
         acceptedByProfileId: profileId,
         acceptedAt: new Date(),
+        textIsAiGenerated: aiFlag,
         status: existing.status === "not_started" || existing.status === "suggested"
           ? "reviewed"
           : existing.status,

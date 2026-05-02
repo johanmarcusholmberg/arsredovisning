@@ -7,6 +7,7 @@ import {
   numeric,
   boolean,
   jsonb,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -54,7 +55,12 @@ export const reportNotesTable = pgTable("report_notes", {
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  // Idempotency: one note per (report, type). Enforced at DB level so that
+  // suggestNotesForReport cannot create duplicates under concurrency.
+  reportNoteTypeUnique: uniqueIndex("report_notes_report_id_note_type_unique")
+    .on(table.reportId, table.noteType),
+}));
 
 export const insertReportNoteSchema = createInsertSchema(reportNotesTable).omit({
   id: true,

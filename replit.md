@@ -205,7 +205,15 @@ All project documentation lives in `docs/`:
 - **Phase 4 (Task #7)** ✅ Complete — Financial Statements & Report Structure (income statement, balance sheet, cash flow, K2/K3 framework selector, BRF terminology, note reference column, drilldown, report structure generator)
 - **Phase 2** ⏳ Not started — paid workspace foundation
 - **Phase 3** ⏳ Not started — SIE file import and account mapping
-- **Phase 5** ⏳ Not started — Notes module and auto-numbering
+- **Phase 5 (Task #8)** ✅ Complete — Notes Module, Auto-Numbering & AI Drafting
+  - `report_notes` (full schema) + `note_statement_references` join table; unique `(report_id, note_type)` constraint
+  - `noteNumberingService.recalculateNoteNumbers(reportId)` — two-pass: claims `manualNumberOverride` numbers, then sequentially fills the rest; skips `not_applicable`; syncs both `note_statement_references.display_label` and `financial_statement_lines.noteReferenceText` (clears stale badges)
+  - `noteRequirementEngine.suggestNotesForReport(reportId, framework)` — idempotent upsert by `noteType`, refreshes only `not_started`/`suggested` notes
+  - 7 endpoints under `/reports/{reportId}/notes`: list, create, patch, delete, suggest, recalculate-numbers, accept-text, ai-draft
+  - Audit events: `note_suggested`, `note_status_changed`, `note_marked_not_applicable`, `note_text_edited`, `note_text_accepted`, `note_text_ai_generated`, `note_numbering_recalculated`, `note_reference_removed`
+  - AI drafting: returns `provider: "not_configured"` with Swedish instructions when `OPENAI_API_KEY` is missing; placeholder draft when key present
+  - Frontend: `/reports/:reportId/notes` page with NoteCard list, requirement/status badges, "ej tillämplig" toggle, "Generera förslag" + "Omnumrera" buttons; NoteDetailDrawer with linked lines, current/prev-year values + diff, AI-draft + Save + Godkänn flow, "Why required?"/"Show calc"/Comments accordions; ReportWorkspace "Noter" section now navigates to the page
+  - Compliance banner on Notes page; missing-required-text alert
 - **Phase 6** ⏳ Not started — Validation, collaboration, audit trail
 - **Phase 7** ⏳ Not started — PDF/Word export and download flow
 
