@@ -55,3 +55,6 @@ channel = "stable-25_05"
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 120000
+
+[agent]
+expertMode = true
