@@ -12,7 +12,10 @@ import {
   annualReportReclassificationsTable,
 } from "@workspace/db";
 import { reconcileNotes } from "./noteReconciliation.js";
-import { getPresentedNoteRowAmounts } from "./presentationAmounts.js";
+import {
+  getPresentedNoteRowAmounts,
+  getPresentedStatementLineAdjustments,
+} from "./presentationAmounts.js";
 
 /**
  * ValidationIssue — one finding from the engine.
@@ -119,18 +122,46 @@ export async function runValidation(
       quickLinkPath: `/reports/${report.id}/statements`,
     });
   } else {
-    // Balance sheet must balance (assets = equity + liabilities)
+    // Balance sheet must balance (assets = equity + liabilities) AFTER
+    // applying active reclassifications. Phase 6.5 reclassifications can
+    // touch report-node lines (`report_node_only`,
+    // `note_and_report_node`) so a balance check against raw mapped
+    // currentYearAmount would diverge from what the user sees in
+    // preview/export. We therefore add the per-lineKey netDelta from
+    // `getPresentedStatementLineAdjustments` to each summed line — the
+    // same canonical helper used by the statements API and note
+    // reconciliation, so all three views agree.
+    const stmtAdjustments = await getPresentedStatementLineAdjustments(
+      reportId,
+    );
+    const presentedCurrent = (lineKey: string, baseSum: number): number => {
+      const adj = stmtAdjustments.get(lineKey);
+      return adj ? baseSum + adj.netDelta : baseSum;
+    };
+
     const bsLines = lines.filter((l) => l.statementType === "balance_sheet");
-    const totalAssets = bsLines
-      .filter((l) => l.lineKey === "total_assets")
-      .reduce((s, l) => s + Number(l.currentYearAmount ?? 0), 0);
-    const totalEquityLiab = bsLines
-      .filter(
-        (l) =>
-          l.lineKey === "total_equity_and_liabilities" ||
-          l.lineKey === "total_liabilities_and_equity",
-      )
-      .reduce((s, l) => s + Number(l.currentYearAmount ?? 0), 0);
+    const totalAssets = presentedCurrent(
+      "total_assets",
+      bsLines
+        .filter((l) => l.lineKey === "total_assets")
+        .reduce((s, l) => s + Number(l.currentYearAmount ?? 0), 0),
+    );
+    const totalEquityLiab = (() => {
+      // Two synonymous canonical line keys may coexist in older reports;
+      // sum both raw amounts and add whichever adjustments key actually
+      // matched at write time (typically only one will be present).
+      const raw = bsLines
+        .filter(
+          (l) =>
+            l.lineKey === "total_equity_and_liabilities" ||
+            l.lineKey === "total_liabilities_and_equity",
+        )
+        .reduce((s, l) => s + Number(l.currentYearAmount ?? 0), 0);
+      const a =
+        (stmtAdjustments.get("total_equity_and_liabilities")?.netDelta ?? 0) +
+        (stmtAdjustments.get("total_liabilities_and_equity")?.netDelta ?? 0);
+      return raw + a;
+    })();
 
     // Flag any non-trivial imbalance — including the case where one side is
     // zero and the other is not (e.g. missing equity rows). Only skip the
@@ -150,9 +181,13 @@ export async function runValidation(
       }
     }
 
-    // Warning: large YoY movements on income statement
+    // Warning: large YoY movements on income statement. Current-year
+    // amounts are taken post-reclassification (presented) for the same
+    // reason as above; previous-year amounts are unchanged because
+    // reclassifications never touch the comparative period.
     for (const l of lines.filter((x) => x.statementType === "income_statement")) {
-      const c = Number(l.currentYearAmount ?? 0);
+      const baseC = Number(l.currentYearAmount ?? 0);
+      const c = presentedCurrent(l.lineKey, baseC);
       const p = Number(l.previousYearAmount ?? 0);
       if (Math.abs(c - p) >= LARGE_YOY_MIN_ABS && pct(c, p) >= LARGE_YOY_PCT) {
         issues.push({
