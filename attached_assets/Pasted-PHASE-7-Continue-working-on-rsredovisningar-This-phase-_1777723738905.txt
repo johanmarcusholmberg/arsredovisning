@@ -1,0 +1,680 @@
+PHASE 7
+ Continue working on “Årsredovisningar”.
+
+This phase is:
+
+Phase 7 – Final PDF/Word export, entitlement and download flow
+
+Use the private exports storage bucket, export_files table, signed URL download flow and permission helpers created in Phase 2.5.
+
+Do not make exported annual reports publicly accessible.
+
+Important:
+Before implementing PDF/Word export, use the export template data contract, document preview components, layout constants, note reference consistency check, reclassification/netting consistency check and cover sheet structure created in Phase 6.6.
+
+Do not use Phase 6.5 as the export-template source of truth.
+
+Phase 6.5 handles smart reclassification and netting.
+
+Phase 6.6 handles export template, preview model and PDF/Word readiness.
+
+Do not create a separate PDF layout that differs from the app preview.
+
+The document preview from Phase 6.6 is the source of truth for PDF and Word export.
+
+PDF export, Word export and browser preview must use the same annual-report data contract.
+
+Critical:
+The PDF/Word export must use the same:
+
+- note numbering
+- note references
+- approved note selection
+- approved reclassifications
+- approved netting
+- final presentation amounts
+- annual-report structure
+- Swedish labels
+- table layout logic
+
+as the Phase 6.6 document preview.
+
+Do not create separate export calculations.
+
+Do not create separate note-numbering logic.
+
+Do not create note references as disconnected text.
+
+The income statement and balance sheet must include a “Not” column.
+
+The notes section must use matching automatic note numbering.
+
+Export must be blocked if note references are missing, broken or inconsistent.
+
+Export must be blocked if approved reclassifications/netting cause note totals or statement totals to mismatch.
+
+Annual report output is Swedish only at launch.
+
+Website/app UI supports Swedish and English.
+
+Export should use one clean Swedish annual-report template from day one.
+
+The user should be able to upload/add a cover sheet as the first page of the annual report.
+
+Free users can only view a watermarked sample/demo export.
+
+Paid users can export real PDF/Word only when no blocking validation issues remain.
+
+---
+
+## Previous phases should already have
+
+- Demo workspace
+- Paid project workspace
+- Import/mapping
+- Financial statements
+- Note references in income statement and balance sheet
+- Automatic note numbering
+- Notes
+- Validation
+- Collaboration/review
+- Audit trail
+- Snapshot foundation
+- Payment/project entitlement logic
+- Robust note management from Phase 6.4
+- Approved reclassification/netting logic from Phase 6.5
+- Export template/data contract/preview model from Phase 6.6
+
+Your task in this phase:
+
+Build final preview and export functionality.
+
+---
+
+## 1. Preview & export page
+
+Create or complete the “Preview & export” workspace section.
+
+Show:
+
+- Export readiness summary
+- Validation status
+- Blocking issues if any
+- Warnings requiring review
+- Report preview from Phase 6.6
+- Cover sheet settings
+- Export options
+- Export package options
+- Export history
+
+The preview shown here must use the Phase 6.6 document-style annual report preview.
+
+Do not create a new separate preview.
+
+The page should clearly show whether the project is:
+
+- demo
+- paid/unlocked
+- blocked
+- ready for export
+- already exported
+
+Use safe wording.
+
+Do not claim legal approval or guaranteed compliance.
+
+---
+
+## 2. Final export readiness check
+
+Before export, run final validation.
+
+Export must be blocked if:
+
+- Blocking validation issues exist
+- Required notes are incomplete
+- Required notes are not confirmed
+- Note numbering is missing, duplicated or invalid
+- Financial statement line references a missing/broken note
+- Notes marked not applicable are still referenced
+- Hidden or excluded notes are still referenced
+- Note totals do not reconcile to linked income statement or balance sheet lines
+- Approved reclassifications/netting create inconsistent statement or note totals
+- Rejected reclassification suggestions affect the export data
+- Undone reclassifications affect the export data
+- AI-generated text is unconfirmed
+- Required company data is missing
+- Required report sections are incomplete
+- User does not have paid entitlement
+- User lacks permission
+- Export storage is unavailable
+- Export data contract cannot be built safely
+
+Use wording:
+
+“Export is blocked because required issues remain.”
+
+When ready:
+
+“No blocking validation issues were found. Please review before filing.”
+
+The readiness check must call or reuse:
+
+- validation engine
+- note reference consistency check from Phase 6.6
+- reclassification/netting consistency check from Phase 6.6
+- permission helpers
+- entitlement helpers
+- export data builder from Phase 6.6
+
+Do not duplicate this logic inside PDF/Word generation.
+
+---
+
+## 3. Swedish annual-report template
+
+Create one clean Swedish annual-report export template.
+
+The export must use the Phase 6.6 annual-report data contract and formal document components.
+
+Template should include:
+
+- Optional uploaded/custom cover sheet or generated cover page
+- Company name
+- Organization number
+- Financial year
+- Förvaltningsberättelse
+- Resultaträkning with “Not” column
+- Balansräkning with “Not” column
+- Kassaflödesanalys if required, with note references where applicable
+- Noter using the same note numbers as the financial statements
+- Underskrifter
+- Validation summary optional appendix if included
+- Audit/change summary optional appendix if included
+
+Design:
+
+- Swedish minimalism
+- Professional financial report style
+- Clean typography
+- Good spacing
+- Print-friendly
+- No overly decorative UI styling inside the report
+- No generic SaaS dashboard styling inside the exported report
+
+The exported annual report should not inherit decorative app theme colors.
+
+The app UI may use Nordic Calm.
+
+The formal exported annual report should remain mostly black, grey and white.
+
+---
+
+## 4. Note numbering and references in export
+
+Implement export logic so that:
+
+- Note numbers are generated or refreshed before export using the central note-numbering logic.
+- Note references in income statement match the notes section.
+- Note references in balance sheet match the notes section.
+- Cash flow references match where applicable.
+- If numbering changes in the Notes module, export reflects the latest numbering.
+- If a financial statement line has no relevant note, the “Not” column should be blank.
+- If multiple note references exist, format them cleanly, for example “3, 4”.
+- Exported notes appear in the correct order.
+- Hidden notes are not exported.
+- Excluded optional notes are not exported.
+- Notes marked not_applicable are not exported.
+- Hidden/excluded/not_applicable notes are not referenced.
+- Manual notes are included only if valid and included_in_report is true.
+- Manual notes receive valid automatic note numbers if included.
+
+Critical:
+Do not store note numbers as manually typed disconnected text in export.
+
+Use note IDs and central numbering logic.
+
+---
+
+## 5. Approved reclassification/netting in export
+
+The export must use final approved presentation amounts.
+
+Export calculations must follow:
+
+final presentation amount =
+imported mapped amount
++ approved reclassifications into the row/node
+- approved reclassifications out of the row/node
+
+For approved netted rows:
+
+net amount =
+gross positive balances
++ gross negative balances
+
+The export must:
+
+- include approved reclassifications in final presentation amounts
+- include approved netting in final presentation amounts
+- exclude rejected suggestions
+- exclude not_relevant suggestions
+- exclude undone reclassifications
+- preserve internal traceability in export metadata/audit history
+- ensure note totals match linked statement lines
+- ensure balance sheet still balances
+
+The formal annual report should show the approved final presentation.
+
+It should not show technical source-account/audit details by default.
+
+Validation/audit/change summaries may be included as optional export-package appendices, not as part of the formal annual report unless explicitly selected.
+
+---
+
+## 6. Cover sheet upload/addition
+
+Allow user to add a cover sheet as first page.
+
+Support:
+
+- Generated cover sheet from form fields
+- Placeholder or actual upload support for PDF/image cover sheet depending on stack feasibility
+- Preview cover sheet before export
+- Remove/replace cover sheet
+- Store cover settings and uploaded cover file reference if available
+
+Generated cover sheet should support:
+
+- title: “Årsredovisning”
+- company name
+- organization number
+- financial year
+- optional subtitle
+- optional logo/image
+
+If file-based cover sheet merging is complex:
+- implement generated cover sheet first
+- keep uploaded cover support as a prepared structure
+- document what remains for true PDF/image cover merging
+
+The generated cover should be clean, formal and Swedish.
+
+---
+
+## 7. PDF export
+
+Implement PDF export for paid projects.
+
+Requirements:
+
+- Uses the Phase 6.6 annual-report data contract
+- Uses the same layout as the document preview
+- Includes confirmed report data only
+- Includes confirmed AI text only
+- Includes cover sheet if selected
+- Includes Resultaträkning with “Not” column
+- Includes Balansräkning with “Not” column
+- Includes Kassaflödesanalys if included
+- Includes financial statement note references
+- Includes numbered notes
+- Uses final approved presentation amounts
+- Reflects approved reclassifications/netting
+- Excludes rejected or undone reclassifications
+- Logs export event
+- Stores export metadata
+- Stores file in private exports storage
+- Provides secure signed download link
+
+The PDF should be print-friendly and A4 portrait.
+
+Do not create a public URL for the exported PDF.
+
+---
+
+## 8. Word export
+
+Implement Word export if feasible in the current stack.
+
+Goal:
+Generate a .docx export using the same annual-report data contract.
+
+Word export must include:
+
+- Cover sheet/generated cover if selected
+- Förvaltningsberättelse
+- Resultaträkning with “Not” column
+- Balansräkning with “Not” column
+- Kassaflödesanalys if included
+- Noter with matching note numbers
+- Underskrifter
+- Final approved presentation amounts
+- Approved reclassifications/netting
+- Clean Swedish annual-report structure
+
+If full .docx generation is too complex:
+- create a structured .docx generation foundation
+- or generate HTML/RTF-compatible export as an interim step
+- clearly document limitations
+- keep the UI aligned with eventual Word export
+- do not pretend full Word export is complete if it is not
+
+But the goal is PDF + Word export for MVP.
+
+Word export must also include:
+
+- “Not” column in income statement
+- “Not” column in balance sheet
+- matching numbered notes section
+
+---
+
+## 9. Free demo export
+
+Free/demo users should only see:
+
+- Watermarked sample PDF preview
+- Dummy values only
+- Example note references
+- Example numbered notes
+- Example reclassification/netting if demo data exists
+- No clean export
+- No real company data
+- Clear label: “Demo export — sample data”
+- Watermark text: “DEMO – EJ FÖR INLÄMNING”
+
+Demo users must not be able to download a clean annual report.
+
+Demo export preview must use the same export data contract as paid projects.
+
+Do not create a separate inconsistent demo export model.
+
+---
+
+## 10. Export package
+
+For paid users, allow export package concept:
+
+- PDF annual report
+- Word annual report
+- Validation summary
+- Audit/change summary
+
+The validation/audit summaries can be simple at first.
+
+The formal annual report should not include validation/audit appendices unless the user explicitly selects them.
+
+If export package generation is implemented:
+
+- store package metadata
+- log export package creation
+- make clear which files are included
+- use private storage
+- use signed URLs
+
+---
+
+## 11. Export history
+
+Track:
+
+- export type
+- exported by
+- exported at
+- project version/snapshot
+- validation status at export
+- note numbering version/state at export
+- note reference consistency state at export
+- reclassification/netting consistency state at export
+- final presentation version ID if available
+- file reference if stored
+- whether export was demo/watermarked
+- whether validation summary was included
+- whether audit/change summary was included
+
+Export history should be visible in the Preview & export page.
+
+Users should be able to see previous exports if they have permission.
+
+Do not expose exports to unauthorized users.
+
+---
+
+## 12. Storage and signed download URLs
+
+Use the private exports storage bucket from Phase 2.5.
+
+Store generated exports under a secure path such as:
+
+exports/{project_id}/{export_id}/{filename}
+
+Rules:
+
+- Exports must be private.
+- Do not create public permanent URLs.
+- Generate signed URLs with expiration.
+- Check project access before generating signed URLs.
+- Check user permission before allowing export download.
+- Store export metadata in export_files.
+- Log download/export-related events where appropriate.
+
+If Supabase Storage is not fully configured:
+- create clear integration points
+- do not fake public downloads as production behavior
+- document exactly what must be configured
+
+---
+
+## 13. Payment completion and entitlement
+
+If Stripe is configured, connect the project entitlement to successful checkout.
+
+If Stripe is not configured:
+
+- Keep clean integration points
+- Do not fake production payment logic
+- Keep dev/test entitlement clearly marked
+- Document what is required to connect Stripe later
+
+Payment logic:
+
+- One payment unlocks one real annual-report project for one company and one financial year.
+- Future subscriptions can unlock multiple projects/workspaces.
+- Export should check entitlement, but should not imply the user normally pays again at export if the project was already paid/unlocked.
+- Payment is required before a real annual-report project can be created or worked on.
+
+Do not create confusing “pay again to export” behavior unless explicitly required later.
+
+---
+
+## 14. Permissions
+
+Apply permission checks before:
+
+- viewing export page for real projects
+- running final export validation
+- creating PDF export
+- creating Word export
+- creating export package
+- downloading export files
+- viewing export history
+
+Suggested permissions:
+
+- Owner/Admin: export, download, manage settings
+- Accountant: export/download if allowed by project role
+- Reviewer/Auditor: view/comment; export only if explicitly allowed
+- Read-only: view only, no export creation
+
+Use existing permission helpers.
+
+Do not rely only on hidden frontend buttons.
+
+---
+
+## 15. Audit logging
+
+Log:
+
+- cover_sheet_added
+- cover_sheet_removed
+- cover_sheet_updated
+- final_validation_run
+- export_blocked
+- export_pdf_created
+- export_word_created
+- export_package_created
+- export_download_link_created
+- note_numbering_checked_before_export
+- note_references_checked_before_export
+- note_totals_checked_before_export
+- reclassification_netting_checked_before_export
+- project_marked_exported
+
+Audit events should include:
+
+- project_id
+- user_id
+- event_type
+- event_data JSON
+- timestamp
+
+For export events, event_data should include:
+
+- export type
+- validation state
+- note numbering state
+- note reference state
+- reclassification/netting consistency state
+- export file ID
+- whether the export was blocked or completed
+
+---
+
+## 16. Snapshot/version at export
+
+When a final export is created, store or link to a snapshot/version state if the snapshot foundation exists.
+
+The export metadata should make it possible to understand:
+
+- which project state was exported
+- which note numbering state was used
+- which validation state existed at export
+- which approved reclassifications/netting were included
+- which user exported the file
+- when export happened
+
+If full snapshot serialization is not available, store a summary and document limitations.
+
+---
+
+## 17. Export/compliance wording rule
+
+The application may help users prepare, review and export a Swedish annual report.
+
+The application must not claim:
+
+- legally approved
+- guaranteed compliant
+- 100% correct
+- error-free
+- approved by Bolagsverket
+
+Use safe wording:
+
+- “No blocking validation issues were found. Please review before filing.”
+- “Ready for review”
+- “Ready for export — no blocking issues found”
+- “Export is blocked because required issues remain.”
+
+The exported document should follow Swedish annual-report structure and common layout conventions, but the product remains an assistant and review tool.
+
+---
+
+## 18. Error handling
+
+Create user-friendly errors for:
+
+- export blocked
+- missing paid entitlement
+- permission denied
+- export data contract build failed
+- broken note reference
+- missing note number
+- duplicate note number
+- note total mismatch
+- reclassification/netting mismatch
+- unconfirmed AI text
+- missing company data
+- PDF generation failed
+- Word generation failed
+- storage upload failed
+- signed URL generation failed
+- cover sheet upload failed
+
+Errors should explain what the user can do next.
+
+Avoid technical stack traces in the UI.
+
+---
+
+## 19. Developer documentation
+
+Update or create documentation explaining:
+
+- Phase 7 uses the Phase 6.6 export data contract.
+- PDF, Word and preview use the same source model.
+- Export does not use separate note-numbering logic.
+- Export does not use separate reclassification/netting calculations.
+- Exports are stored in private storage.
+- Downloads use signed URLs.
+- Export is blocked by validation, entitlement and permission checks.
+- The formal report does not include audit/validation appendices unless selected.
+- Known Word export limitations if any.
+- Known cover sheet upload/merge limitations if any.
+
+Suggested documentation file:
+
+- docs/export-implementation.md
+
+---
+
+## 20. Acceptance criteria
+
+This phase is complete when:
+
+- Paid users can preview a real Swedish annual report.
+- Free users only see watermarked demo/sample export.
+- Phase 7 uses the Phase 6.6 export data contract.
+- PDF export, Word export and browser preview use the same data model.
+- Export does not use separate note-numbering logic.
+- Export does not use separate reclassification/netting calculations.
+- Export uses final approved presentation amounts.
+- Approved reclassifications/netting are reflected in exported totals.
+- Rejected or undone reclassifications do not affect export.
+- Export is blocked if blocking validation issues remain.
+- Export is blocked if note numbering or note references are inconsistent.
+- Export is blocked if note totals do not reconcile to linked financial statement lines.
+- Export is blocked if reclassification/netting creates inconsistent statement or note totals.
+- Export readiness uses approved safe wording.
+- A clean Swedish annual-report template exists.
+- Income statement export includes “Not” column.
+- Balance sheet export includes “Not” column.
+- Exported notes use matching note numbers.
+- Cover sheet support exists.
+- PDF export works.
+- Word export works or has a clear working foundation with documented limitations.
+- Export files are stored privately.
+- Export downloads use signed URLs.
+- Export history is stored.
+- Export actions are logged.
+- Payment/project entitlement is checked before real export.
+- Permissions are checked before export and download.
+- The formal annual report follows Swedish annual-report conventions but does not claim legal approval or guaranteed compliance.
+
+After implementation, summarize:
+- what was changed
+- what files were touched
+- what is incomplete
+- what assumptions were made
+- what I should test before continuing to Phase 8

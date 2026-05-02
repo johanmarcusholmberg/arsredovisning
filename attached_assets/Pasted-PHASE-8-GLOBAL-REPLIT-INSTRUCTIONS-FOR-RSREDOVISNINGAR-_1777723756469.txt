@@ -1,0 +1,271 @@
+PHASE 8
+GLOBAL REPLIT INSTRUCTIONS FOR “ÅRSREDOVISNINGAR”
+
+Before making changes:
+- Inspect the existing project structure.
+- Reuse existing components, routes, types, helpers, schemas and styling.
+- Do not replace the whole app.
+- Do not create duplicate systems for the same concept.
+- Do not create separate “simple” and “expert” product modes.
+- Use one unified annual-report workflow for all users.
+- Handle UX differences through adaptive guidance and progressive disclosure.
+- Keep demo data separated from real customer/project data.
+- Keep annual report output Swedish only at launch.
+- Website/app UI may support Swedish and English.
+- Do not claim legal approval, guaranteed compliance or 100% correctness.
+- Position validation as a compliance assistant, not a guarantee.
+- Use wording such as: “No blocking validation issues were found. Please review before filing.”
+- If Supabase is configured, use Supabase Auth, database, RLS and Storage through secure helpers.
+- If Supabase is not configured, create clean placeholders and document exactly what needs to be configured.
+- Do not expose service-role keys or secrets in browser/frontend code.
+- Do not rely on hidden frontend buttons as the only security layer.
+- Do not implement final Stripe production payment logic unless Stripe is actually configured.
+- If payment, AI, export or storage providers are missing, create clean integration points and document assumptions.
+- After implementation, summarize:
+  - what was changed
+  - what files were touched
+  - what is incomplete
+  - what assumptions were made
+  - what I should test before continuing
+
+Continue working on “Årsredovisningar”.
+
+Design-system QA
+
+Review the application against the Functionality Specification.
+
+Check that:
+- The product follows “Financial Stripe + Swedish minimalism”.
+- Nordic Calm is used as the MVP default palette.
+- Palette tokens are structured so Midnight Ledger, Sand & Ink, Arctic Minimal and Nordic Night can become future options.
+- UI colors are calm, professional and financial.
+- Status colors are restrained and accessible.
+- The annual report export does not use decorative app colors.
+- Demo workspace, paid workspace and locked states are visually distinct.
+- Tables, tabs, cards, badges and forms are consistent.
+- The product does not feel like a generic admin dashboard.
+- The product does not feel like a heavy ERP system.
+
+Previous phases should already have the complete MVP flow:
+- Landing page
+- Demo workspace
+- Payment gate
+- Paid project workspace
+- Company/project creation
+- Import/mapping
+- Financial statements
+- Note references in income statement and balance sheet
+- Automatic note numbering
+- Notes
+- Validation
+- Collaboration/review
+- Preview/export
+- Audit trail
+- Snapshots
+
+Your task in this phase:
+Polish the MVP, improve UX consistency, test the main flows and prepare for launch readiness.
+
+Do not add large new product features.
+Do not introduce new frameworks or major architecture changes unless necessary.
+Focus on making the existing MVP feel coherent, trustworthy and usable.
+
+Critical QA requirement:
+Test that note numbering and note references remain consistent across:
+- financial statement preview
+- notes module
+- validation
+- PDF export
+- Word export
+- demo workspace
+
+Build/improve the following:
+
+1. End-to-end flow QA
+Test and fix the full flow:
+
+Free user:
+- Visit landing page
+- Switch Swedish/English UI
+- Explore demo
+- View dummy annual report
+- View example “Not” column in financial statements
+- View example numbered notes
+- View watermarked demo export
+- Try locked action
+- See payment gate
+
+Paid user:
+- Create company
+- Create annual-report project
+- Import data
+- Review mapping
+- Generate financial statements
+- Review note references
+- Review notes
+- Confirm AI text
+- Run validation
+- Add comments/review states
+- Preview report
+- Confirm note references in preview
+- Add cover sheet
+- Export PDF/Word
+
+2. Note numbering QA
+Test:
+- Notes get automatic numbers.
+- Note order is correct.
+- Note numbers update after adding a note.
+- Note numbers update after marking a note not applicable.
+- Note numbers update after reordering.
+- Financial statement references update when note numbers change.
+- Duplicate note numbers are not allowed.
+- Broken note references are detected.
+- Export uses the same note numbers as preview.
+
+3. UX consistency
+Review and standardize:
+- Buttons
+- Status badges
+- Confidence badges
+- Note reference badges
+- Locked feature states
+- Empty states
+- Error states
+- Loading states
+- Tooltips
+- Section headers
+- Workflow progress
+
+Use the design direction:
+“Financial Stripe + Swedish minimalism.”
+
+4. Language quality
+Improve Swedish and English UI text.
+
+Rules:
+- Website/app UI supports Swedish and English.
+- Annual report output is Swedish only.
+- Use plain-language guidance by default.
+- Put technical/accounting details behind expandable sections.
+- Avoid legal guarantee language.
+
+Approved validation wording:
+“No blocking validation issues were found. Please review before filing.”
+
+5. Adaptive guidance polish
+Ensure key areas include:
+- “Why is this required?”
+- “Show source accounts”
+- “Show calculation”
+- “Manual override”
+- “Reviewed and accepted”
+- “AI-suggested — confirmation required”
+- “Demo data”
+- “Locked until payment”
+- “Linked note”
+- “Note reference”
+
+6. Responsive design
+Make the app responsive for:
+- Desktop
+- Tablet
+- Mobile browser
+
+The product does not need to be a native mobile app now, but it should not break on smaller screens.
+
+Guidelines:
+- Dashboard cards stack cleanly
+- Workspace navigation works on mobile
+- Tables become readable or scrollable
+- Long financial statement rows are usable
+- Note reference columns remain readable
+- Buttons remain accessible
+- Modals fit screen
+
+7. Data integrity and permissions review
+Check:
+- Free users cannot access real project pages
+- Paid entitlement limits are enforced
+- Users cannot access projects they are not invited to
+- Read-only users cannot edit
+- Reviewer/auditor users cannot change accounting data if not allowed
+- Audit events are created for important actions
+- Note numbering recalculations are logged
+- Note reference changes are logged
+
+8. Error handling
+Improve errors for:
+- Failed upload
+- Unsupported file format
+- Parse failure
+- Missing required fields
+- Failed validation
+- Broken note reference
+- Missing note number
+- Duplicate note number
+- Export blocked
+- Payment missing
+- Permission denied
+
+Errors should be helpful and non-technical.
+
+9. Performance basics
+Review:
+- Large table rendering
+- Import preview performance
+- Mapping page performance
+- Financial statement table performance
+- Notes page performance
+- Validation run performance
+- Avoid unnecessary re-renders
+- Use pagination/filtering where helpful
+
+10. Security basics
+Review:
+- Supabase Row Level Security policies
+- File upload restrictions
+- User/project access checks
+- No accidental exposure of demo/real data mix
+- Audit log integrity
+- Sensitive data handling
+
+11. Launch checklist page
+Create an internal/admin-style launch checklist or developer checklist documenting:
+- Required environment variables
+- Supabase tables
+- Stripe setup
+- Auth setup
+- Export dependencies
+- AI provider setup
+- Note numbering rules
+- Note reference rules
+- Known limitations
+- Test users
+- Manual QA checklist
+
+12. Known limitations section
+Add clear internal documentation for limitations:
+- Swedish annual report output only
+- RFR 2/IFRS not included in MVP
+- Fortnox/Visma integrations not included
+- Automatic external annual report fetching not included
+- Advanced approval workflows not included
+- Complex version branching not included
+- Full template management not included
+
+13. Acceptance criteria
+The phase is complete when:
+- The MVP flow is coherent end-to-end.
+- Free vs paid access is clear and enforced.
+- UI language is polished.
+- Mobile browser layout is usable.
+- Validation wording is safe.
+- Permissions are enforced.
+- Export flow is understandable.
+- Main errors are user-friendly.
+- Note numbering works across preview, notes, validation and export.
+- Note references work across financial statements, notes, validation and export.
+- Launch checklist exists.
+- No major unfinished placeholder appears in the primary user journey unless clearly marked as future functionality.
+Summarize what was changed, what files were touched, what is incomplete, what assumptions were made, and what I should test before continuing to the next phase.

@@ -1,0 +1,248 @@
+PHASE 4
+GLOBAL REPLIT INSTRUCTIONS FOR “ÅRSREDOVISNINGAR”
+
+Before making changes:
+- Inspect the existing project structure.
+- Reuse existing components, routes, types, helpers, schemas and styling.
+- Do not replace the whole app.
+- Do not create duplicate systems for the same concept.
+- Do not create separate “simple” and “expert” product modes.
+- Use one unified annual-report workflow for all users.
+- Handle UX differences through adaptive guidance and progressive disclosure.
+- Keep demo data separated from real customer/project data.
+- Keep annual report output Swedish only at launch.
+- Website/app UI may support Swedish and English.
+- Do not claim legal approval, guaranteed compliance or 100% correctness.
+- Position validation as a compliance assistant, not a guarantee.
+- Use wording such as: “No blocking validation issues were found. Please review before filing.”
+- If Supabase is configured, use Supabase Auth, database, RLS and Storage through secure helpers.
+- If Supabase is not configured, create clean placeholders and document exactly what needs to be configured.
+- Do not expose service-role keys or secrets in browser/frontend code.
+- Do not rely on hidden frontend buttons as the only security layer.
+- Do not implement final Stripe production payment logic unless Stripe is actually configured.
+- If payment, AI, export or storage providers are missing, create clean integration points and document assumptions.
+- After implementation, summarize:
+  - what was changed
+  - what files were touched
+  - what is incomplete
+  - what assumptions were made
+  - what I should test before continuing
+
+Continue working on “Årsredovisningar”.
+
+Previous phases should already have:
+- Paid project workspace
+- Import staging and confirmed import
+- Account mapping engine
+- Mapping overrides
+- Audit events
+- Future-ready note numbering model
+
+Your task in this phase:
+Build the financial statements, note reference foundation and annual-report structure foundation.
+
+Important:
+K3 is the primary MVP framework.
+K2 is included as a simpler framework option.
+Annual report output is Swedish only at launch.
+Do not create separate user modes.
+Do not create separate workflows for small business owners/accountants.
+Do not create a separate condominium association product flow.
+Condominium associations should be handled through terminology/guidance variants inside the same workflow.
+
+Critical new requirement:
+Financial statement lines must support note references. Income statement and balance sheet must include a “Not” column. Cash flow should also support note references where applicable. Note numbering must later remain consistent between:
+- financial statement preview
+- notes module
+- PDF export
+- Word export
+
+Build the following:
+
+1. Financial statements section
+Create the “Financial statements” workspace section with sub-tabs or internal sections:
+- Income statement
+- Balance sheet
+- Cash flow
+- Report structure
+
+Do not make income statement, balance sheet and cash flow separate top-level navigation items.
+
+2. Financial statement generation
+Using confirmed imported data and account mappings, generate:
+- Income statement
+- Balance sheet
+
+Each financial statement line should include:
+- Swedish label
+- Note reference field/column
+- Current-year amount
+- Previous-year amount if available
+- Linked source accounts
+- Calculation breakdown
+- Mapping source
+- Manual adjustment indicator if applicable
+
+3. Note reference column
+Add a visible note reference column named “Not” in:
+- Resultaträkning
+- Balansräkning
+- Kassaflödesanalys when applicable
+
+The note reference field should support:
+- no note reference
+- one note reference
+- multiple note references if necessary, but keep the UI simple
+- linked note preview if the note already exists
+- placeholder reference if the note will be generated in Phase 5
+
+Examples:
+Resultaträkning:
+- Nettoomsättning | Not 3 | current year | previous year
+- Personalkostnader | Not 4 | current year | previous year
+- Avskrivningar | Not 5 | current year | previous year
+
+Balansräkning:
+- Materiella anläggningstillgångar | Not 6 | current year | previous year
+- Eget kapital | Not 7 | current year | previous year
+- Långfristiga skulder | Not 8 | current year | previous year
+
+4. Note reference data structure
+Create or complete tables/structures for:
+- financial_statement_lines
+- report_notes placeholder records if needed
+- report_note_references
+
+Each note reference should store:
+- project_id
+- statement_type
+- financial_statement_line_id
+- note_id if created
+- suggested_note_type
+- reference_status: suggested, active, missing, broken, not_applicable
+- created_at
+- updated_at
+
+5. Automatic suggested note references
+Based on mapped account groups and framework rules, suggest note references for financial statement lines.
+
+Examples:
+- Revenue line may link to revenue note where relevant.
+- Personnel cost line may link to personnel/employees note.
+- Depreciation/amortization line may link to depreciation/fixed asset note.
+- Fixed assets line may link to fixed asset note.
+- Equity line may link to equity note.
+- Long-term liabilities may link to liability note.
+
+At this phase, references may be suggested placeholders until the notes module creates actual numbered notes in Phase 5.
+
+6. Previous-year data handling
+Support previous-year values from these sources, in priority order:
+1. Previous SIE/import
+2. Previous annual report upload later
+3. Manual input
+
+In this phase:
+- Support previous-year imported data if available.
+- Add manual previous-year value input fallback.
+- Prepare UI placeholders for previous annual report upload integration.
+
+Clearly show source:
+- Imported
+- Manual
+- Previous report extraction — future/placeholder
+
+7. Manual adjustments
+Allow manual adjustments to financial statement lines only with tracking.
+
+Each manual adjustment must store:
+- original calculated value
+- adjusted value
+- reason/comment
+- user
+- timestamp
+
+Show clear warning:
+“Manual adjustments are tracked and should be reviewed before export.”
+
+8. Source account drilldown
+For each financial statement line, allow user to open:
+- source accounts
+- imported values
+- mapped categories
+- calculation method
+- note reference source/reason if a note is suggested
+
+This is central to adaptive guidance.
+
+9. K3/K2 framework logic foundation
+Create a framework rules foundation that can later power notes and validation.
+
+For now, include:
+- selected framework on project
+- report line structure per framework
+- required/optional section metadata
+- cash-flow visibility logic placeholder
+- note requirement placeholders
+- note reference trigger metadata
+
+K3 should be default.
+K2 should be available.
+
+10. Cash flow visibility logic
+Cash flow should only be shown as active when required by framework/company size or explicitly enabled.
+
+For now:
+- Show cash flow tab/section as “Available when required”
+- If project settings indicate cash flow required, allow user to view a placeholder/calculation foundation
+- Cash flow should support note references when applicable
+- Do not overbuild full cash-flow automation yet unless feasible
+
+11. Annual report structure generator
+Generate a Swedish annual-report structure with sections such as:
+- Cover page placeholder
+- Förvaltningsberättelse
+- Resultaträkning with “Not” column
+- Balansräkning with “Not” column
+- Kassaflödesanalys if required
+- Noter with future automatic numbering
+- Underskrifter
+
+The structure should be editable later, but at this phase focus on generating and displaying the structure.
+
+12. Condominium association terminology
+If company type is condominium association, adapt labels/guidance where appropriate, without changing the overall workflow.
+
+Examples:
+- Use terminology relevant to bostadsrättsförening where suitable.
+- Keep the same import → mapping → financial statements → notes → validation → review → export workflow.
+
+13. Audit logging
+Log:
+- financial_statements_generated
+- report_structure_generated
+- note_reference_suggested
+- note_reference_updated
+- manual_adjustment_created
+- manual_adjustment_updated
+- previous_year_value_added
+- framework_rules_applied
+
+14. Acceptance criteria
+The phase is complete when:
+- Confirmed imported data can generate income statement and balance sheet.
+- Financial statement lines show current-year values.
+- Previous-year values are supported via previous import or manual input.
+- Income statement has a visible “Not” column.
+- Balance sheet has a visible “Not” column.
+- Cash flow supports note references when applicable.
+- Note references can be suggested based on mapped account groups.
+- Each financial statement line can show source accounts and calculation breakdown.
+- Manual adjustments are possible and tracked.
+- K3/K2 framework structure exists.
+- Cash-flow visibility logic exists.
+- Swedish annual-report structure is generated.
+- The report structure prepares for numbered notes.
+- Condominium association terminology can adapt without separate workflow.
+- No final notes engine/export is required yet.
+Summarize what was changed, what files were touched, what is incomplete, what assumptions were made, and what I should test before continuing to the next phase.
