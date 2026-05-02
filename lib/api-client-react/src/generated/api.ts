@@ -32,6 +32,7 @@ import type {
   CreateNoteRowBody,
   CreateProjectBody,
   CreateProjectSnapshotBody,
+  CreateReclassificationBody,
   CreateReportBody,
   CreateSectionCommentBody,
   DashboardSummary,
@@ -54,6 +55,9 @@ import type {
   ListAuditEventsParams,
   ListCollaborators200,
   ListProjectSnapshots200,
+  ListReclassificationAuditLogParams,
+  ListReclassificationSuggestionsParams,
+  ListReclassificationsParams,
   ListSectionComments200,
   ListSectionCommentsParams,
   ListSectionReviews200,
@@ -66,6 +70,12 @@ import type {
   NoteRowsResponse,
   ProjectSnapshot,
   RecalculateNumbersResponse,
+  Reclassification,
+  ReclassificationAuditLogResponse,
+  ReclassificationDetectionResponse,
+  ReclassificationListResponse,
+  ReclassificationSuggestion,
+  ReclassificationSuggestionListResponse,
   ReportSection,
   ReportStructureResponse,
   ReportSummary,
@@ -82,6 +92,7 @@ import type {
   UpdateFrameworkBody,
   UpdateNoteBody,
   UpdateNoteRowBody,
+  UpdateReclassificationSuggestionBody,
   UpdateReportBody,
   UpdateSectionCommentBody,
   UpdateSectionReviewBody,
@@ -5997,3 +6008,763 @@ export const useApplyMappingTemplate = <
 > => {
   return useMutation(getApplyMappingTemplateMutationOptions(options));
 };
+
+/**
+ * @summary List reclassification suggestions for a report
+ */
+export const getListReclassificationSuggestionsUrl = (
+  reportId: string,
+  params?: ListReclassificationSuggestionsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/${reportId}/reclassifications/suggestions?${stringifiedParams}`
+    : `/api/reports/${reportId}/reclassifications/suggestions`;
+};
+
+export const listReclassificationSuggestions = async (
+  reportId: string,
+  params?: ListReclassificationSuggestionsParams,
+  options?: RequestInit,
+): Promise<ReclassificationSuggestionListResponse> => {
+  return customFetch<ReclassificationSuggestionListResponse>(
+    getListReclassificationSuggestionsUrl(reportId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListReclassificationSuggestionsQueryKey = (
+  reportId: string,
+  params?: ListReclassificationSuggestionsParams,
+) => {
+  return [
+    `/api/reports/${reportId}/reclassifications/suggestions`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListReclassificationSuggestionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listReclassificationSuggestions>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  params?: ListReclassificationSuggestionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReclassificationSuggestions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListReclassificationSuggestionsQueryKey(reportId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listReclassificationSuggestions>>
+  > = ({ signal }) =>
+    listReclassificationSuggestions(reportId, params, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listReclassificationSuggestions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListReclassificationSuggestionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listReclassificationSuggestions>>
+>;
+export type ListReclassificationSuggestionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List reclassification suggestions for a report
+ */
+
+export function useListReclassificationSuggestions<
+  TData = Awaited<ReturnType<typeof listReclassificationSuggestions>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  params?: ListReclassificationSuggestionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReclassificationSuggestions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReclassificationSuggestionsQueryOptions(
+    reportId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Run the rule-based engine to (re)detect reclassification suggestions
+ */
+export const getDetectReclassificationSuggestionsUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/reclassifications/suggestions/detect`;
+};
+
+export const detectReclassificationSuggestions = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<ReclassificationDetectionResponse> => {
+  return customFetch<ReclassificationDetectionResponse>(
+    getDetectReclassificationSuggestionsUrl(reportId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getDetectReclassificationSuggestionsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof detectReclassificationSuggestions>>,
+    TError,
+    { reportId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof detectReclassificationSuggestions>>,
+  TError,
+  { reportId: string },
+  TContext
+> => {
+  const mutationKey = ["detectReclassificationSuggestions"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof detectReclassificationSuggestions>>,
+    { reportId: string }
+  > = (props) => {
+    const { reportId } = props ?? {};
+
+    return detectReclassificationSuggestions(reportId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DetectReclassificationSuggestionsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof detectReclassificationSuggestions>>
+>;
+
+export type DetectReclassificationSuggestionsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Run the rule-based engine to (re)detect reclassification suggestions
+ */
+export const useDetectReclassificationSuggestions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof detectReclassificationSuggestions>>,
+    TError,
+    { reportId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof detectReclassificationSuggestions>>,
+  TError,
+  { reportId: string },
+  TContext
+> => {
+  return useMutation(
+    getDetectReclassificationSuggestionsMutationOptions(options),
+  );
+};
+
+/**
+ * @summary Accept, reject, edit, or mark a suggestion not relevant
+ */
+export const getUpdateReclassificationSuggestionStatusUrl = (
+  reportId: string,
+  suggestionId: string,
+) => {
+  return `/api/reports/${reportId}/reclassifications/suggestions/${suggestionId}`;
+};
+
+export const updateReclassificationSuggestionStatus = async (
+  reportId: string,
+  suggestionId: string,
+  updateReclassificationSuggestionBody: UpdateReclassificationSuggestionBody,
+  options?: RequestInit,
+): Promise<ReclassificationSuggestion> => {
+  return customFetch<ReclassificationSuggestion>(
+    getUpdateReclassificationSuggestionStatusUrl(reportId, suggestionId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateReclassificationSuggestionBody),
+    },
+  );
+};
+
+export const getUpdateReclassificationSuggestionStatusMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReclassificationSuggestionStatus>>,
+    TError,
+    {
+      reportId: string;
+      suggestionId: string;
+      data: BodyType<UpdateReclassificationSuggestionBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateReclassificationSuggestionStatus>>,
+  TError,
+  {
+    reportId: string;
+    suggestionId: string;
+    data: BodyType<UpdateReclassificationSuggestionBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateReclassificationSuggestionStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateReclassificationSuggestionStatus>>,
+    {
+      reportId: string;
+      suggestionId: string;
+      data: BodyType<UpdateReclassificationSuggestionBody>;
+    }
+  > = (props) => {
+    const { reportId, suggestionId, data } = props ?? {};
+
+    return updateReclassificationSuggestionStatus(
+      reportId,
+      suggestionId,
+      data,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateReclassificationSuggestionStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateReclassificationSuggestionStatus>>
+>;
+export type UpdateReclassificationSuggestionStatusMutationBody =
+  BodyType<UpdateReclassificationSuggestionBody>;
+export type UpdateReclassificationSuggestionStatusMutationError =
+  ErrorType<unknown>;
+
+/**
+ * @summary Accept, reject, edit, or mark a suggestion not relevant
+ */
+export const useUpdateReclassificationSuggestionStatus = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReclassificationSuggestionStatus>>,
+    TError,
+    {
+      reportId: string;
+      suggestionId: string;
+      data: BodyType<UpdateReclassificationSuggestionBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateReclassificationSuggestionStatus>>,
+  TError,
+  {
+    reportId: string;
+    suggestionId: string;
+    data: BodyType<UpdateReclassificationSuggestionBody>;
+  },
+  TContext
+> => {
+  return useMutation(
+    getUpdateReclassificationSuggestionStatusMutationOptions(options),
+  );
+};
+
+/**
+ * @summary List applied reclassifications for a report (filter by status)
+ */
+export const getListReclassificationsUrl = (
+  reportId: string,
+  params?: ListReclassificationsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/${reportId}/reclassifications?${stringifiedParams}`
+    : `/api/reports/${reportId}/reclassifications`;
+};
+
+export const listReclassifications = async (
+  reportId: string,
+  params?: ListReclassificationsParams,
+  options?: RequestInit,
+): Promise<ReclassificationListResponse> => {
+  return customFetch<ReclassificationListResponse>(
+    getListReclassificationsUrl(reportId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListReclassificationsQueryKey = (
+  reportId: string,
+  params?: ListReclassificationsParams,
+) => {
+  return [
+    `/api/reports/${reportId}/reclassifications`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListReclassificationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listReclassifications>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  params?: ListReclassificationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReclassifications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListReclassificationsQueryKey(reportId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listReclassifications>>
+  > = ({ signal }) =>
+    listReclassifications(reportId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listReclassifications>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListReclassificationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listReclassifications>>
+>;
+export type ListReclassificationsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List applied reclassifications for a report (filter by status)
+ */
+
+export function useListReclassifications<
+  TData = Awaited<ReturnType<typeof listReclassifications>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  params?: ListReclassificationsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReclassifications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReclassificationsQueryOptions(
+    reportId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Apply a reclassification (accepted suggestion or manual entry)
+ */
+export const getCreateReclassificationUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/reclassifications`;
+};
+
+export const createReclassification = async (
+  reportId: string,
+  createReclassificationBody: CreateReclassificationBody,
+  options?: RequestInit,
+): Promise<Reclassification> => {
+  return customFetch<Reclassification>(getCreateReclassificationUrl(reportId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createReclassificationBody),
+  });
+};
+
+export const getCreateReclassificationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReclassification>>,
+    TError,
+    { reportId: string; data: BodyType<CreateReclassificationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createReclassification>>,
+  TError,
+  { reportId: string; data: BodyType<CreateReclassificationBody> },
+  TContext
+> => {
+  const mutationKey = ["createReclassification"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createReclassification>>,
+    { reportId: string; data: BodyType<CreateReclassificationBody> }
+  > = (props) => {
+    const { reportId, data } = props ?? {};
+
+    return createReclassification(reportId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateReclassificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createReclassification>>
+>;
+export type CreateReclassificationMutationBody =
+  BodyType<CreateReclassificationBody>;
+export type CreateReclassificationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Apply a reclassification (accepted suggestion or manual entry)
+ */
+export const useCreateReclassification = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReclassification>>,
+    TError,
+    { reportId: string; data: BodyType<CreateReclassificationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createReclassification>>,
+  TError,
+  { reportId: string; data: BodyType<CreateReclassificationBody> },
+  TContext
+> => {
+  return useMutation(getCreateReclassificationMutationOptions(options));
+};
+
+/**
+ * @summary Reverse a previously applied reclassification
+ */
+export const getUndoReclassificationUrl = (
+  reportId: string,
+  reclassId: string,
+) => {
+  return `/api/reports/${reportId}/reclassifications/${reclassId}/undo`;
+};
+
+export const undoReclassification = async (
+  reportId: string,
+  reclassId: string,
+  options?: RequestInit,
+): Promise<Reclassification> => {
+  return customFetch<Reclassification>(
+    getUndoReclassificationUrl(reportId, reclassId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getUndoReclassificationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof undoReclassification>>,
+    TError,
+    { reportId: string; reclassId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof undoReclassification>>,
+  TError,
+  { reportId: string; reclassId: string },
+  TContext
+> => {
+  const mutationKey = ["undoReclassification"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof undoReclassification>>,
+    { reportId: string; reclassId: string }
+  > = (props) => {
+    const { reportId, reclassId } = props ?? {};
+
+    return undoReclassification(reportId, reclassId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UndoReclassificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof undoReclassification>>
+>;
+
+export type UndoReclassificationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Reverse a previously applied reclassification
+ */
+export const useUndoReclassification = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof undoReclassification>>,
+    TError,
+    { reportId: string; reclassId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof undoReclassification>>,
+  TError,
+  { reportId: string; reclassId: string },
+  TContext
+> => {
+  return useMutation(getUndoReclassificationMutationOptions(options));
+};
+
+/**
+ * @summary List the full audit trail of reclassification activity for a report
+ */
+export const getListReclassificationAuditLogUrl = (
+  reportId: string,
+  params?: ListReclassificationAuditLogParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/${reportId}/reclassifications/audit-log?${stringifiedParams}`
+    : `/api/reports/${reportId}/reclassifications/audit-log`;
+};
+
+export const listReclassificationAuditLog = async (
+  reportId: string,
+  params?: ListReclassificationAuditLogParams,
+  options?: RequestInit,
+): Promise<ReclassificationAuditLogResponse> => {
+  return customFetch<ReclassificationAuditLogResponse>(
+    getListReclassificationAuditLogUrl(reportId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListReclassificationAuditLogQueryKey = (
+  reportId: string,
+  params?: ListReclassificationAuditLogParams,
+) => {
+  return [
+    `/api/reports/${reportId}/reclassifications/audit-log`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListReclassificationAuditLogQueryOptions = <
+  TData = Awaited<ReturnType<typeof listReclassificationAuditLog>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  params?: ListReclassificationAuditLogParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReclassificationAuditLog>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListReclassificationAuditLogQueryKey(reportId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listReclassificationAuditLog>>
+  > = ({ signal }) =>
+    listReclassificationAuditLog(reportId, params, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listReclassificationAuditLog>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListReclassificationAuditLogQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listReclassificationAuditLog>>
+>;
+export type ListReclassificationAuditLogQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List the full audit trail of reclassification activity for a report
+ */
+
+export function useListReclassificationAuditLog<
+  TData = Awaited<ReturnType<typeof listReclassificationAuditLog>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  params?: ListReclassificationAuditLogParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReclassificationAuditLog>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReclassificationAuditLogQueryOptions(
+    reportId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

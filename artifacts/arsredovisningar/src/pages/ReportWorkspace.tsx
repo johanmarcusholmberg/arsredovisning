@@ -18,6 +18,7 @@ import {
   ShieldAlert,
   ClipboardCheck,
   History,
+  Shuffle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -44,6 +45,13 @@ const SECTIONS = [
     icon: FileText,
     desc: "Redovisningsprinciper och tilläggsupplysningar",
     href: "notes",
+  },
+  {
+    id: "omklassificeringar",
+    title: "Omklassificeringar mellan noter",
+    icon: Shuffle,
+    desc: "Förslag och kvittningar mellan noter — granska och tillämpa",
+    href: "reclassifications",
   },
   {
     id: "validering",

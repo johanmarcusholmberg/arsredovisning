@@ -1081,6 +1081,173 @@ export interface SaveMappingTemplateBody {
   mappings: MappingTemplateEntry[];
 }
 
+export type ReclassificationSuggestionStatus =
+  (typeof ReclassificationSuggestionStatus)[keyof typeof ReclassificationSuggestionStatus];
+
+export const ReclassificationSuggestionStatus = {
+  suggested: "suggested",
+  accepted: "accepted",
+  rejected: "rejected",
+  edited: "edited",
+  not_relevant: "not_relevant",
+} as const;
+
+export type ReclassificationConfidenceLevel =
+  (typeof ReclassificationConfidenceLevel)[keyof typeof ReclassificationConfidenceLevel];
+
+export const ReclassificationConfidenceLevel = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export type ReclassificationEffectType =
+  (typeof ReclassificationEffectType)[keyof typeof ReclassificationEffectType];
+
+export const ReclassificationEffectType = {
+  note_only: "note_only",
+  report_node_only: "report_node_only",
+  note_and_report_node: "note_and_report_node",
+} as const;
+
+export type ReclassificationStatus =
+  (typeof ReclassificationStatus)[keyof typeof ReclassificationStatus];
+
+export const ReclassificationStatus = {
+  active: "active",
+  undone: "undone",
+} as const;
+
+export type ReclassificationSuggestionDetailJson = {
+  [key: string]: unknown;
+} | null;
+
+export interface ReclassificationSuggestion {
+  id: string;
+  reportId: string;
+  sourceNoteRowId?: string | null;
+  targetNoteRowId?: string | null;
+  sourceLabel?: string | null;
+  targetLabel?: string | null;
+  sourceAccountNumber?: string | null;
+  targetAccountNumber?: string | null;
+  suggestedAmount: string;
+  confidenceLevel: ReclassificationConfidenceLevel;
+  ruleKey: string;
+  explanation: string;
+  detailJson?: ReclassificationSuggestionDetailJson;
+  effectType: ReclassificationEffectType;
+  status: ReclassificationSuggestionStatus;
+  reviewedByProfileId?: string | null;
+  reviewedAt?: string | null;
+  reviewerComment?: string | null;
+  detectedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReclassificationSuggestionSummary {
+  suggested: number;
+  accepted: number;
+  rejected: number;
+  edited: number;
+  notRelevant: number;
+}
+
+export interface ReclassificationSuggestionListResponse {
+  suggestions: ReclassificationSuggestion[];
+  summary: ReclassificationSuggestionSummary;
+}
+
+export interface ReclassificationDetectionResponse {
+  /** Number of candidates produced by the rule engine */
+  detected: number;
+  /** Number of new suggestions persisted (duplicates skipped) */
+  inserted: number;
+  /** Number of candidates that already existed */
+  skippedAsDuplicates: number;
+}
+
+export type UpdateReclassificationSuggestionBodyStatus =
+  (typeof UpdateReclassificationSuggestionBodyStatus)[keyof typeof UpdateReclassificationSuggestionBodyStatus];
+
+export const UpdateReclassificationSuggestionBodyStatus = {
+  accepted: "accepted",
+  rejected: "rejected",
+  edited: "edited",
+  not_relevant: "not_relevant",
+} as const;
+
+export interface UpdateReclassificationSuggestionBody {
+  status: UpdateReclassificationSuggestionBodyStatus;
+  reviewerComment?: string | null;
+  /** When status="edited", overwrites suggestedAmount */
+  editedAmount?: string | null;
+}
+
+export interface Reclassification {
+  id: string;
+  reportId: string;
+  sourceSuggestionId?: string | null;
+  sourceNoteRowId?: string | null;
+  targetNoteRowId: string;
+  sourceLabel?: string | null;
+  targetLabel?: string | null;
+  amount: string;
+  effectType: ReclassificationEffectType;
+  status: ReclassificationStatus;
+  reason?: string | null;
+  createdByProfileId?: string | null;
+  undoneAt?: string | null;
+  undoneByProfileId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReclassificationListResponse {
+  reclassifications: Reclassification[];
+}
+
+export type CreateReclassificationBodyEffectType =
+  (typeof CreateReclassificationBodyEffectType)[keyof typeof CreateReclassificationBodyEffectType];
+
+export const CreateReclassificationBodyEffectType = {
+  note_only: "note_only",
+  report_node_only: "report_node_only",
+  note_and_report_node: "note_and_report_node",
+} as const;
+
+export interface CreateReclassificationBody {
+  sourceSuggestionId?: string | null;
+  sourceNoteRowId?: string | null;
+  targetNoteRowId: string;
+  sourceLabel?: string | null;
+  targetLabel?: string | null;
+  amount: string;
+  effectType?: CreateReclassificationBodyEffectType;
+  reason?: string | null;
+}
+
+export type ReclassificationAuditEntryPayloadJson = {
+  [key: string]: unknown;
+} | null;
+
+export interface ReclassificationAuditEntry {
+  id: string;
+  reportId: string;
+  suggestionId?: string | null;
+  reclassificationId?: string | null;
+  actorProfileId?: string | null;
+  /** e.g. suggestion_detected, suggestion_accepted, suggestion_rejected, suggestion_edited, suggestion_marked_not_relevant, reclassification_created, reclassification_undone */
+  eventType: string;
+  payloadJson?: ReclassificationAuditEntryPayloadJson;
+  createdAt: string;
+}
+
+export interface ReclassificationAuditLogResponse {
+  entries: ReclassificationAuditEntry[];
+}
+
 export type GetFinancialStatementsParams = {
   statementType?: GetFinancialStatementsStatementType;
 };
@@ -1171,4 +1338,41 @@ export const ListAccountMappingsFilter = {
 
 export type ApplyMappingTemplate200 = {
   appliedCount: number;
+};
+
+export type ListReclassificationSuggestionsParams = {
+  status?: ListReclassificationSuggestionsStatus;
+};
+
+export type ListReclassificationSuggestionsStatus =
+  (typeof ListReclassificationSuggestionsStatus)[keyof typeof ListReclassificationSuggestionsStatus];
+
+export const ListReclassificationSuggestionsStatus = {
+  suggested: "suggested",
+  accepted: "accepted",
+  rejected: "rejected",
+  edited: "edited",
+  not_relevant: "not_relevant",
+} as const;
+
+export type ListReclassificationsParams = {
+  /**
+   * Defaults to "active". Pass "undone" to list reversed entries.
+   */
+  status?: ListReclassificationsStatus;
+};
+
+export type ListReclassificationsStatus =
+  (typeof ListReclassificationsStatus)[keyof typeof ListReclassificationsStatus];
+
+export const ListReclassificationsStatus = {
+  active: "active",
+  undone: "undone",
+} as const;
+
+export type ListReclassificationAuditLogParams = {
+  /**
+   * @maximum 500
+   */
+  limit?: number;
 };

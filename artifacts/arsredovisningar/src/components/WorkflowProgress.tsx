@@ -15,6 +15,7 @@ const DEFAULT_STEPS: WorkflowStep[] = [
   { id: "structure", label: "Generate report structure", status: "not-started" },
   { id: "statements", label: "Review financial statements", status: "not-started" },
   { id: "notes", label: "Review notes", status: "not-started" },
+  { id: "reclassification", label: "Reclassifications between notes", status: "not-started" },
   { id: "validate", label: "Validate", status: "not-started" },
   { id: "collaborate", label: "Collaborate & review", status: "not-started" },
   { id: "preview", label: "Preview", status: "not-started" },

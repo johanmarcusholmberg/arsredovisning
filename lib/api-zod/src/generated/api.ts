@@ -2061,3 +2061,265 @@ export const ApplyMappingTemplateParams = zod.object({
 export const ApplyMappingTemplateResponse = zod.object({
   appliedCount: zod.number(),
 });
+
+/**
+ * @summary List reclassification suggestions for a report
+ */
+export const ListReclassificationSuggestionsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const ListReclassificationSuggestionsQueryParams = zod.object({
+  status: zod
+    .enum(["suggested", "accepted", "rejected", "edited", "not_relevant"])
+    .optional(),
+});
+
+export const ListReclassificationSuggestionsResponse = zod.object({
+  suggestions: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      reportId: zod.string().uuid(),
+      sourceNoteRowId: zod.string().uuid().nullish(),
+      targetNoteRowId: zod.string().uuid().nullish(),
+      sourceLabel: zod.string().nullish(),
+      targetLabel: zod.string().nullish(),
+      sourceAccountNumber: zod.string().nullish(),
+      targetAccountNumber: zod.string().nullish(),
+      suggestedAmount: zod.string(),
+      confidenceLevel: zod.enum(["high", "medium", "low"]),
+      ruleKey: zod.string(),
+      explanation: zod.string(),
+      detailJson: zod.record(zod.string(), zod.unknown()).nullish(),
+      effectType: zod.enum([
+        "note_only",
+        "report_node_only",
+        "note_and_report_node",
+      ]),
+      status: zod.enum([
+        "suggested",
+        "accepted",
+        "rejected",
+        "edited",
+        "not_relevant",
+      ]),
+      reviewedByProfileId: zod.string().uuid().nullish(),
+      reviewedAt: zod.coerce.date().nullish(),
+      reviewerComment: zod.string().nullish(),
+      detectedAt: zod.coerce.date(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  summary: zod.object({
+    suggested: zod.number(),
+    accepted: zod.number(),
+    rejected: zod.number(),
+    edited: zod.number(),
+    notRelevant: zod.number(),
+  }),
+});
+
+/**
+ * @summary Run the rule-based engine to (re)detect reclassification suggestions
+ */
+export const DetectReclassificationSuggestionsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const DetectReclassificationSuggestionsResponse = zod.object({
+  detected: zod
+    .number()
+    .describe("Number of candidates produced by the rule engine"),
+  inserted: zod
+    .number()
+    .describe("Number of new suggestions persisted (duplicates skipped)"),
+  skippedAsDuplicates: zod
+    .number()
+    .describe("Number of candidates that already existed"),
+});
+
+/**
+ * @summary Accept, reject, edit, or mark a suggestion not relevant
+ */
+export const UpdateReclassificationSuggestionStatusParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  suggestionId: zod.coerce.string().uuid(),
+});
+
+export const UpdateReclassificationSuggestionStatusBody = zod.object({
+  status: zod.enum(["accepted", "rejected", "edited", "not_relevant"]),
+  reviewerComment: zod.string().nullish(),
+  editedAmount: zod
+    .string()
+    .nullish()
+    .describe('When status=\"edited\", overwrites suggestedAmount'),
+});
+
+export const UpdateReclassificationSuggestionStatusResponse = zod.object({
+  id: zod.string().uuid(),
+  reportId: zod.string().uuid(),
+  sourceNoteRowId: zod.string().uuid().nullish(),
+  targetNoteRowId: zod.string().uuid().nullish(),
+  sourceLabel: zod.string().nullish(),
+  targetLabel: zod.string().nullish(),
+  sourceAccountNumber: zod.string().nullish(),
+  targetAccountNumber: zod.string().nullish(),
+  suggestedAmount: zod.string(),
+  confidenceLevel: zod.enum(["high", "medium", "low"]),
+  ruleKey: zod.string(),
+  explanation: zod.string(),
+  detailJson: zod.record(zod.string(), zod.unknown()).nullish(),
+  effectType: zod.enum([
+    "note_only",
+    "report_node_only",
+    "note_and_report_node",
+  ]),
+  status: zod.enum([
+    "suggested",
+    "accepted",
+    "rejected",
+    "edited",
+    "not_relevant",
+  ]),
+  reviewedByProfileId: zod.string().uuid().nullish(),
+  reviewedAt: zod.coerce.date().nullish(),
+  reviewerComment: zod.string().nullish(),
+  detectedAt: zod.coerce.date(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List applied reclassifications for a report (filter by status)
+ */
+export const ListReclassificationsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const listReclassificationsQueryStatusDefault = `active`;
+
+export const ListReclassificationsQueryParams = zod.object({
+  status: zod
+    .enum(["active", "undone"])
+    .default(listReclassificationsQueryStatusDefault)
+    .describe(
+      'Defaults to \"active\". Pass \"undone\" to list reversed entries.',
+    ),
+});
+
+export const ListReclassificationsResponse = zod.object({
+  reclassifications: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      reportId: zod.string().uuid(),
+      sourceSuggestionId: zod.string().uuid().nullish(),
+      sourceNoteRowId: zod.string().uuid().nullish(),
+      targetNoteRowId: zod.string().uuid(),
+      sourceLabel: zod.string().nullish(),
+      targetLabel: zod.string().nullish(),
+      amount: zod.string(),
+      effectType: zod.enum([
+        "note_only",
+        "report_node_only",
+        "note_and_report_node",
+      ]),
+      status: zod.enum(["active", "undone"]),
+      reason: zod.string().nullish(),
+      createdByProfileId: zod.string().uuid().nullish(),
+      undoneAt: zod.coerce.date().nullish(),
+      undoneByProfileId: zod.string().uuid().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Apply a reclassification (accepted suggestion or manual entry)
+ */
+export const CreateReclassificationParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const createReclassificationBodyEffectTypeDefault = `note_only`;
+
+export const CreateReclassificationBody = zod.object({
+  sourceSuggestionId: zod.string().uuid().nullish(),
+  sourceNoteRowId: zod.string().uuid().nullish(),
+  targetNoteRowId: zod.string().uuid(),
+  sourceLabel: zod.string().nullish(),
+  targetLabel: zod.string().nullish(),
+  amount: zod.string(),
+  effectType: zod
+    .enum(["note_only", "report_node_only", "note_and_report_node"])
+    .default(createReclassificationBodyEffectTypeDefault),
+  reason: zod.string().nullish(),
+});
+
+/**
+ * @summary Reverse a previously applied reclassification
+ */
+export const UndoReclassificationParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  reclassId: zod.coerce.string().uuid(),
+});
+
+export const UndoReclassificationResponse = zod.object({
+  id: zod.string().uuid(),
+  reportId: zod.string().uuid(),
+  sourceSuggestionId: zod.string().uuid().nullish(),
+  sourceNoteRowId: zod.string().uuid().nullish(),
+  targetNoteRowId: zod.string().uuid(),
+  sourceLabel: zod.string().nullish(),
+  targetLabel: zod.string().nullish(),
+  amount: zod.string(),
+  effectType: zod.enum([
+    "note_only",
+    "report_node_only",
+    "note_and_report_node",
+  ]),
+  status: zod.enum(["active", "undone"]),
+  reason: zod.string().nullish(),
+  createdByProfileId: zod.string().uuid().nullish(),
+  undoneAt: zod.coerce.date().nullish(),
+  undoneByProfileId: zod.string().uuid().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List the full audit trail of reclassification activity for a report
+ */
+export const ListReclassificationAuditLogParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const listReclassificationAuditLogQueryLimitDefault = 200;
+export const listReclassificationAuditLogQueryLimitMax = 500;
+
+export const ListReclassificationAuditLogQueryParams = zod.object({
+  limit: zod.coerce
+    .number()
+    .max(listReclassificationAuditLogQueryLimitMax)
+    .default(listReclassificationAuditLogQueryLimitDefault),
+});
+
+export const ListReclassificationAuditLogResponse = zod.object({
+  entries: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      reportId: zod.string().uuid(),
+      suggestionId: zod.string().uuid().nullish(),
+      reclassificationId: zod.string().uuid().nullish(),
+      actorProfileId: zod.string().uuid().nullish(),
+      eventType: zod
+        .string()
+        .describe(
+          "e.g. suggestion_detected, suggestion_accepted, suggestion_rejected, suggestion_edited, suggestion_marked_not_relevant, reclassification_created, reclassification_undone",
+        ),
+      payloadJson: zod.record(zod.string(), zod.unknown()).nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});

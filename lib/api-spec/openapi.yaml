@@ -38,6 +38,8 @@ tags:
     description: Accounting data import (SIE, CSV, Excel)
   - name: mappings
     description: Account mapping and templates
+  - name: reclassifications
+    description: Smart reclassification suggestions and applied reclassifications between notes
 
 paths:
   /healthz:
@@ -1662,6 +1664,169 @@ paths:
                 required:
                   - appliedCount
 
+  # ─── Reclassifications (Phase 6.5) ───────────────────────────────────────────
+  /reports/{reportId}/reclassifications/suggestions:
+    get:
+      operationId: listReclassificationSuggestions
+      tags: [reclassifications]
+      summary: List reclassification suggestions for a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [suggested, accepted, rejected, edited, not_relevant]
+      responses:
+        "200":
+          description: Suggestion list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReclassificationSuggestionListResponse"
+
+  /reports/{reportId}/reclassifications/suggestions/detect:
+    post:
+      operationId: detectReclassificationSuggestions
+      tags: [reclassifications]
+      summary: Run the rule-based engine to (re)detect reclassification suggestions
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Detection complete; returns updated suggestion list and counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReclassificationDetectionResponse"
+
+  /reports/{reportId}/reclassifications/suggestions/{suggestionId}:
+    patch:
+      operationId: updateReclassificationSuggestionStatus
+      tags: [reclassifications]
+      summary: Accept, reject, edit, or mark a suggestion not relevant
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: suggestionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReclassificationSuggestionBody"
+      responses:
+        "200":
+          description: Updated suggestion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReclassificationSuggestion"
+
+  /reports/{reportId}/reclassifications:
+    get:
+      operationId: listReclassifications
+      tags: [reclassifications]
+      summary: List applied reclassifications for a report (filter by status)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          required: false
+          description: Defaults to "active". Pass "undone" to list reversed entries.
+          schema:
+            type: string
+            enum: [active, undone]
+            default: active
+      responses:
+        "200":
+          description: Reclassification list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReclassificationListResponse"
+    post:
+      operationId: createReclassification
+      tags: [reclassifications]
+      summary: Apply a reclassification (accepted suggestion or manual entry)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReclassificationBody"
+      responses:
+        "201":
+          description: Created reclassification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reclassification"
+
+  /reports/{reportId}/reclassifications/{reclassId}/undo:
+    post:
+      operationId: undoReclassification
+      tags: [reclassifications]
+      summary: Reverse a previously applied reclassification
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: reclassId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Reverted reclassification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reclassification"
+
+  /reports/{reportId}/reclassifications/audit-log:
+    get:
+      operationId: listReclassificationAuditLog
+      tags: [reclassifications]
+      summary: List the full audit trail of reclassification activity for a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 200, maximum: 500 }
+      responses:
+        "200":
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReclassificationAuditLogResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -3177,3 +3342,260 @@ components:
       required:
         - name
         - mappings
+
+    ReclassificationSuggestionStatus:
+      type: string
+      enum:
+        - suggested
+        - accepted
+        - rejected
+        - edited
+        - not_relevant
+
+    ReclassificationConfidenceLevel:
+      type: string
+      enum:
+        - high
+        - medium
+        - low
+
+    ReclassificationEffectType:
+      type: string
+      enum:
+        - note_only
+        - report_node_only
+        - note_and_report_node
+
+    ReclassificationStatus:
+      type: string
+      enum:
+        - active
+        - undone
+
+    ReclassificationSuggestion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        reportId: { type: string, format: uuid }
+        sourceNoteRowId:
+          type: string
+          format: uuid
+          nullable: true
+        targetNoteRowId:
+          type: string
+          format: uuid
+          nullable: true
+        sourceLabel:
+          type: string
+          nullable: true
+        targetLabel:
+          type: string
+          nullable: true
+        sourceAccountNumber:
+          type: string
+          nullable: true
+        targetAccountNumber:
+          type: string
+          nullable: true
+        suggestedAmount: { type: string }
+        confidenceLevel: { $ref: "#/components/schemas/ReclassificationConfidenceLevel" }
+        ruleKey: { type: string }
+        explanation: { type: string }
+        detailJson:
+          type: object
+          additionalProperties: true
+          nullable: true
+        effectType: { $ref: "#/components/schemas/ReclassificationEffectType" }
+        status: { $ref: "#/components/schemas/ReclassificationSuggestionStatus" }
+        reviewedByProfileId:
+          type: string
+          format: uuid
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewerComment:
+          type: string
+          nullable: true
+        detectedAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        - id
+        - reportId
+        - suggestedAmount
+        - confidenceLevel
+        - ruleKey
+        - explanation
+        - effectType
+        - status
+        - detectedAt
+        - createdAt
+        - updatedAt
+
+    ReclassificationSuggestionSummary:
+      type: object
+      properties:
+        suggested: { type: integer }
+        accepted: { type: integer }
+        rejected: { type: integer }
+        edited: { type: integer }
+        notRelevant: { type: integer }
+      required: [suggested, accepted, rejected, edited, notRelevant]
+
+    ReclassificationSuggestionListResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items: { $ref: "#/components/schemas/ReclassificationSuggestion" }
+        summary: { $ref: "#/components/schemas/ReclassificationSuggestionSummary" }
+      required: [suggestions, summary]
+
+    ReclassificationDetectionResponse:
+      type: object
+      properties:
+        detected: { type: integer, description: Number of candidates produced by the rule engine }
+        inserted: { type: integer, description: Number of new suggestions persisted (duplicates skipped) }
+        skippedAsDuplicates: { type: integer, description: Number of candidates that already existed }
+      required: [detected, inserted, skippedAsDuplicates]
+
+    UpdateReclassificationSuggestionBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [accepted, rejected, edited, not_relevant]
+        reviewerComment:
+          type: string
+          nullable: true
+        editedAmount:
+          type: string
+          nullable: true
+          description: When status="edited", overwrites suggestedAmount
+      required: [status]
+
+    Reclassification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        reportId: { type: string, format: uuid }
+        sourceSuggestionId:
+          type: string
+          format: uuid
+          nullable: true
+        sourceNoteRowId:
+          type: string
+          format: uuid
+          nullable: true
+        targetNoteRowId: { type: string, format: uuid }
+        sourceLabel:
+          type: string
+          nullable: true
+        targetLabel:
+          type: string
+          nullable: true
+        amount: { type: string }
+        effectType: { $ref: "#/components/schemas/ReclassificationEffectType" }
+        status: { $ref: "#/components/schemas/ReclassificationStatus" }
+        reason:
+          type: string
+          nullable: true
+        createdByProfileId:
+          type: string
+          format: uuid
+          nullable: true
+        undoneAt:
+          type: string
+          format: date-time
+          nullable: true
+        undoneByProfileId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        - id
+        - reportId
+        - targetNoteRowId
+        - amount
+        - effectType
+        - status
+        - createdAt
+        - updatedAt
+
+    ReclassificationListResponse:
+      type: object
+      properties:
+        reclassifications:
+          type: array
+          items: { $ref: "#/components/schemas/Reclassification" }
+      required: [reclassifications]
+
+    CreateReclassificationBody:
+      type: object
+      properties:
+        sourceSuggestionId:
+          type: string
+          format: uuid
+          nullable: true
+        sourceNoteRowId:
+          type: string
+          format: uuid
+          nullable: true
+        targetNoteRowId: { type: string, format: uuid }
+        sourceLabel:
+          type: string
+          nullable: true
+        targetLabel:
+          type: string
+          nullable: true
+        amount: { type: string }
+        effectType:
+          type: string
+          enum: [note_only, report_node_only, note_and_report_node]
+          default: note_only
+        reason:
+          type: string
+          nullable: true
+      required: [targetNoteRowId, amount]
+
+    ReclassificationAuditEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        reportId: { type: string, format: uuid }
+        suggestionId:
+          type: string
+          format: uuid
+          nullable: true
+        reclassificationId:
+          type: string
+          format: uuid
+          nullable: true
+        actorProfileId:
+          type: string
+          format: uuid
+          nullable: true
+        eventType:
+          type: string
+          description: >-
+            e.g. suggestion_detected, suggestion_accepted, suggestion_rejected,
+            suggestion_edited, suggestion_marked_not_relevant,
+            reclassification_created, reclassification_undone
+        payloadJson:
+          type: object
+          additionalProperties: true
+          nullable: true
+        createdAt: { type: string, format: date-time }
+      required: [id, reportId, eventType, createdAt]
+
+    ReclassificationAuditLogResponse:
+      type: object
+      properties:
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/ReclassificationAuditEntry" }
+      required: [entries]

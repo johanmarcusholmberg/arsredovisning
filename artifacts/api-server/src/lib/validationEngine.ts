@@ -7,6 +7,8 @@ import {
   noteStatementReferencesTable,
   financialStatementLinesTable,
   validationDismissalsTable,
+  annualReportReclassificationSuggestionsTable,
+  annualReportReclassificationsTable,
 } from "@workspace/db";
 import { reconcileNotes } from "./noteReconciliation.js";
 
@@ -364,6 +366,49 @@ export async function runValidation(
         quickLinkPath: `/reports/${report.id}/notes`,
       });
     }
+  }
+
+  // ── Reclassifications: pending suggestions and applied reclassifications ──
+  const pendingSuggestions = await db
+    .select({ id: annualReportReclassificationSuggestionsTable.id })
+    .from(annualReportReclassificationSuggestionsTable)
+    .where(
+      and(
+        eq(annualReportReclassificationSuggestionsTable.reportId, report.id),
+        eq(annualReportReclassificationSuggestionsTable.status, "suggested"),
+      ),
+    );
+  if (pendingSuggestions.length > 0) {
+    issues.push({
+      ruleKey: `reclassification:pending_suggestions`,
+      level: "warning",
+      section: "notes",
+      message: `${pendingSuggestions.length} omklassificeringsförslag väntar på beslut. Granska dem innan rapporten lämnas in.`,
+      entityRef: null,
+      isHighRisk: false,
+      quickLinkPath: `/reports/${report.id}/reclassifications`,
+    });
+  }
+
+  const activeReclassifications = await db
+    .select({ id: annualReportReclassificationsTable.id })
+    .from(annualReportReclassificationsTable)
+    .where(
+      and(
+        eq(annualReportReclassificationsTable.reportId, report.id),
+        eq(annualReportReclassificationsTable.status, "active"),
+      ),
+    );
+  if (activeReclassifications.length > 0) {
+    issues.push({
+      ruleKey: `reclassification:applied_count`,
+      level: "info",
+      section: "notes",
+      message: `${activeReclassifications.length} omklassificering(ar) är tillämpade. Bekräfta att de är korrekt motiverade.`,
+      entityRef: null,
+      isHighRisk: false,
+      quickLinkPath: `/reports/${report.id}/reclassifications`,
+    });
   }
 
   // ── Apply dismissals ─────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ import reviewsRouter from "./reviews";
 import collaboratorsRouter from "./collaborators";
 import importsRouter from "./imports";
 import mappingsRouter from "./mappings";
+import reclassificationsRouter from "./reclassifications";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(reviewsRouter);
 router.use(collaboratorsRouter);
 router.use(importsRouter);
 router.use(mappingsRouter);
+router.use(reclassificationsRouter);
 
 export default router;

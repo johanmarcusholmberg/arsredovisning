@@ -28,3 +28,6 @@ export * from "./accountMappings";
 export * from "./mappingRules";
 export * from "./mappingOverrides";
 export * from "./mappingTemplates";
+export * from "./annualReportReclassificationSuggestions";
+export * from "./annualReportReclassifications";
+export * from "./annualReportReclassificationAuditLog";

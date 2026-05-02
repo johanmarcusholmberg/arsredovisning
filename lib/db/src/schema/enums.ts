@@ -145,3 +145,26 @@ export const mappingStatusEnum = pgEnum("mapping_status", [
   "manually_mapped",
   "unmapped",
 ]);
+
+// Phase 6.5 — reclassification & netting between notes
+export const reclassificationSuggestionStatusEnum = pgEnum(
+  "reclassification_suggestion_status",
+  ["suggested", "accepted", "rejected", "edited", "not_relevant"],
+);
+
+export const reclassificationStatusEnum = pgEnum("reclassification_status", [
+  "active",
+  "undone",
+]);
+
+export const reclassificationConfidenceEnum = pgEnum("reclassification_confidence", [
+  "high",
+  "medium",
+  "low",
+]);
+
+export const reclassificationEffectTypeEnum = pgEnum("reclassification_effect_type", [
+  "note_only",
+  "report_node_only",
+  "note_and_report_node",
+]);

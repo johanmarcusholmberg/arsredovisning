@@ -13,6 +13,7 @@ import { ReportWorkspace } from "./pages/ReportWorkspace";
 import { ReportSummary } from "./pages/ReportSummary";
 import { FinancialStatements } from "./pages/FinancialStatements";
 import { NotesPage } from "./pages/NotesPage";
+import { ReclassificationReview } from "./pages/ReclassificationReview";
 import { ValidationView } from "./pages/ValidationView";
 import { ReviewView } from "./pages/ReviewView";
 import { AuditView } from "./pages/AuditView";
@@ -41,6 +42,10 @@ function AppRoutes() {
           <Route path="/reports/:reportId" component={ReportWorkspace} />
           <Route path="/reports/:reportId/statements" component={FinancialStatements} />
           <Route path="/reports/:reportId/notes" component={NotesPage} />
+          <Route
+            path="/reports/:reportId/reclassifications"
+            component={ReclassificationReview}
+          />
           <Route path="/reports/:reportId/validation" component={ValidationView} />
           <Route path="/reports/:reportId/review" component={ReviewView} />
           <Route path="/reports/:reportId/audit" component={AuditView} />
