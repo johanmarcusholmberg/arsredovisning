@@ -45,7 +45,7 @@
 | Phase | Status | Blocked By |
 |-------|--------|------------|
 | 0 | ✅ Complete | — |
-| 1 | ⏳ Not started | GitHub + Supabase setup |
+| 1 | ✅ Complete | — |
 | 1.5 | ⏳ Not started | Phase 1 |
 | 2 | ⏳ Not started | Supabase project + Phase 1.5 |
 | 2.5 | ⏳ Not started | Phase 2 |

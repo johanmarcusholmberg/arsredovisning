@@ -3,13 +3,20 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API specification for Årsredovisningar
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: companies
+    description: Company management
+  - name: reports
+    description: Annual report management
+  - name: dashboard
+    description: Dashboard and summary data
+
 paths:
   /healthz:
     get:
@@ -24,6 +31,211 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /companies:
+    get:
+      operationId: listCompanies
+      tags: [companies]
+      summary: List all companies
+      responses:
+        "200":
+          description: List of companies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Company"
+    post:
+      operationId: createCompany
+      tags: [companies]
+      summary: Create a new company
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompanyBody"
+      responses:
+        "201":
+          description: Company created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+
+  /companies/{companyId}:
+    get:
+      operationId: getCompany
+      tags: [companies]
+      summary: Get a company by ID
+      parameters:
+        - name: companyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Company details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateCompany
+      tags: [companies]
+      summary: Update a company
+      parameters:
+        - name: companyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCompanyBody"
+      responses:
+        "200":
+          description: Company updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+
+  /companies/{companyId}/reports:
+    get:
+      operationId: listReports
+      tags: [reports]
+      summary: List reports for a company
+      parameters:
+        - name: companyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of annual reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnnualReport"
+    post:
+      operationId: createReport
+      tags: [reports]
+      summary: Create a new annual report
+      parameters:
+        - name: companyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReportBody"
+      responses:
+        "201":
+          description: Report created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnualReport"
+
+  /reports/{reportId}:
+    get:
+      operationId: getReport
+      tags: [reports]
+      summary: Get a report by ID
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Annual report details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnualReport"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateReport
+      tags: [reports]
+      summary: Update report metadata
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReportBody"
+      responses:
+        "200":
+          description: Report updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnualReport"
+
+  /reports/{reportId}/summary:
+    get:
+      operationId: getReportSummary
+      tags: [reports]
+      summary: Get report completion summary
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Report completion summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportSummary"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard overview
+      responses:
+        "200":
+          description: Dashboard summary data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +246,253 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+
+    Company:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          description: Company name (företagsnamn)
+        orgNumber:
+          type: string
+          description: Swedish organization number (organisationsnummer)
+        legalForm:
+          type: string
+          description: Legal form (AB, HB, KB, EF, etc.)
+        address:
+          type: string
+        zipCode:
+          type: string
+        city:
+          type: string
+        accountingFramework:
+          type: string
+          description: K2 or K3
+          enum: [K2, K3]
+        fiscalYearStart:
+          type: string
+          description: Fiscal year start (MM-DD, e.g. 01-01)
+        fiscalYearEnd:
+          type: string
+          description: Fiscal year end (MM-DD, e.g. 12-31)
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - orgNumber
+        - legalForm
+        - accountingFramework
+        - fiscalYearStart
+        - fiscalYearEnd
+        - createdAt
+        - updatedAt
+
+    CreateCompanyBody:
+      type: object
+      properties:
+        name:
+          type: string
+        orgNumber:
+          type: string
+        legalForm:
+          type: string
+          enum: [AB, HB, KB, EF, Ideell, Stiftelse]
+        address:
+          type: string
+        zipCode:
+          type: string
+        city:
+          type: string
+        accountingFramework:
+          type: string
+          enum: [K2, K3]
+        fiscalYearStart:
+          type: string
+        fiscalYearEnd:
+          type: string
+      required:
+        - name
+        - orgNumber
+        - legalForm
+        - accountingFramework
+        - fiscalYearStart
+        - fiscalYearEnd
+
+    UpdateCompanyBody:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        zipCode:
+          type: string
+        city:
+          type: string
+        accountingFramework:
+          type: string
+          enum: [K2, K3]
+
+    AnnualReport:
+      type: object
+      properties:
+        id:
+          type: string
+        companyId:
+          type: string
+        companyName:
+          type: string
+        fiscalYearStart:
+          type: string
+          format: date
+        fiscalYearEnd:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [draft, in_progress, complete, exported]
+        accountingFramework:
+          type: string
+          enum: [K2, K3]
+        completionPercent:
+          type: integer
+          description: Overall completion 0-100
+        sectionsCompleted:
+          type: integer
+        sectionsTotal:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - companyId
+        - companyName
+        - fiscalYearStart
+        - fiscalYearEnd
+        - status
+        - accountingFramework
+        - completionPercent
+        - sectionsCompleted
+        - sectionsTotal
+        - createdAt
+        - updatedAt
+
+    CreateReportBody:
+      type: object
+      properties:
+        fiscalYearStart:
+          type: string
+          format: date
+        fiscalYearEnd:
+          type: string
+          format: date
+        accountingFramework:
+          type: string
+          enum: [K2, K3]
+      required:
+        - fiscalYearStart
+        - fiscalYearEnd
+        - accountingFramework
+
+    UpdateReportBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [draft, in_progress, complete, exported]
+
+    ReportSummary:
+      type: object
+      properties:
+        reportId:
+          type: string
+        companyName:
+          type: string
+        fiscalYearStart:
+          type: string
+          format: date
+        fiscalYearEnd:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [draft, in_progress, complete, exported]
+        completionPercent:
+          type: integer
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionStatus"
+      required:
+        - reportId
+        - companyName
+        - fiscalYearStart
+        - fiscalYearEnd
+        - status
+        - completionPercent
+        - sections
+
+    SectionStatus:
+      type: object
+      properties:
+        key:
+          type: string
+          description: "Section identifier (e.g. balance_sheet, income_statement, notes)"
+        label:
+          type: string
+          description: Human-readable section name in Swedish
+        completed:
+          type: boolean
+        requiredFields:
+          type: integer
+        completedFields:
+          type: integer
+      required:
+        - key
+        - label
+        - completed
+        - requiredFields
+        - completedFields
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalCompanies:
+          type: integer
+        totalReports:
+          type: integer
+        reportsInProgress:
+          type: integer
+        reportsComplete:
+          type: integer
+        recentReports:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnnualReport"
+      required:
+        - totalCompanies
+        - totalReports
+        - reportsInProgress
+        - reportsComplete
+        - recentReports
