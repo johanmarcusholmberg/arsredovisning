@@ -77,7 +77,17 @@ The Drizzle schema files in `lib/db/src/schema/*.ts` are the single source of tr
 2. Apply to the dev database: `pnpm --filter @workspace/db run push --force`.
    - `--force` skips the interactive truncation prompt; only run when you've checked the affected tables yourself. For tables that already contain rows and need a new `UNIQUE` constraint, pre-add the constraint via `executeSql` so push won't prompt.
 3. Optionally capture the change as a historical SQL snapshot: `pnpm --filter @workspace/db run generate -- --name=<short_change_summary>`. The files in `lib/db/drizzle/*.sql` are **archival only** — `drizzle-kit migrate` is not run in CI or at runtime. The `push` step in (2) is what actually changes the database; `--force` should only ever be used in dev, never in production.
-4. Verify zero drift: `pnpm typecheck` (which runs `pnpm run check-schema-drift` at the end of the chain). The drift check compares every column / type / nullability between the schema files and the live `information_schema.columns` (base tables only, excluding `__drizzle_migrations`). It fails the build if `DATABASE_URL` is not set unless `SKIP_SCHEMA_DRIFT_CHECK=1` is also set (intended for sandboxed local builds without a DB).
+4. Verify zero drift: `pnpm typecheck` (which runs `pnpm run check-schema-drift` at the end of the chain). The drift check compares the following between Drizzle schema and the live database (base tables only, excluding `__drizzle_migrations`):
+   - Column presence, normalized type, nullability
+   - Column DEFAULTs (with synonym normalization for `now()`/`current_timestamp`, `uuid_generate_v4()`/`gen_random_uuid()`, jsonb literals, and stripped type casts)
+   - Enum value sets (`pg_enum`)
+   - RLS state for tables documented in `lib/db/drizzle/*_rls.sql` (currently the three Phase 6.5 reclassification tables): both `pg_tables.rowsecurity` and the expected policy count must match.
+
+   It fails the build if `DATABASE_URL` is not set unless `SKIP_SCHEMA_DRIFT_CHECK=1` is also set (intended for sandboxed local builds without a DB). Individual categories can be turned off per-run with `DRIFT_CHECK_ENUMS=0`, `DRIFT_CHECK_DEFAULTS=0`, or `DRIFT_CHECK_RLS=0`.
+
+### Row-Level Security
+
+The API server connects with the Supabase **service role key**, which bypasses RLS. RLS therefore only protects against direct browser/anon-role access (and against bugs that accidentally bypass the API layer). Policies for the Phase 6.5 reclassification tables live in `lib/db/drizzle/0003_phase_6_5_reclassification_rls.sql`, and their dependency `auth_profile_id()` is defined in `lib/db/drizzle/0004_phase_6_5_rls_function.sql`. To re-apply both on a fresh database, run those two SQL files via `executeSql` in order.
 
 The drift audit performed on 2026-05-02 (under Task #46) is preserved at `lib/db/drizzle/_drift-audit-2026-05-02.md` for posterity.
 
