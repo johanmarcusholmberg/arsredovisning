@@ -294,8 +294,9 @@ export function NotesPage() {
         <ShieldCheck className="h-4 w-4 text-emerald-600" />
         <AlertTitle>Compliance-assistent</AlertTitle>
         <AlertDescription>
-          Inga blockerande valideringsfel hittades. Granska noggrant innan inlämning —
-          du som upprättare ansvarar för noternas korrekthet enligt ÅRL och K-regelverket.
+          Inga blockerande valideringsfel hittades. Granska noggrant innan
+          inlämning. Verktyget är en complianceassistent — du som upprättare
+          ansvarar för noternas korrekthet enligt ÅRL och K-regelverket.
         </AlertDescription>
       </Alert>
 

@@ -75,7 +75,23 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* A refined, cool professional palette */
+  /*
+   * Palette: NORDIC CALM (MVP default)
+   * --------------------------------------------------------------
+   * Design direction: Financial Stripe + Swedish minimalism.
+   * Tokens are intentionally semantic (background/foreground/primary/...)
+   * so future palettes can be applied by swapping the values inside
+   * `:root` and `.dark` without touching components.
+   *
+   * Future palettes (planned, not yet wired):
+   *   - MIDNIGHT LEDGER  — deep navy + warm gold accents
+   *   - SAND & INK       — warm sand background, near-black ink
+   *   - ARCTIC MINIMAL   — cool whites, glacier blue accents
+   *   - NORDIC NIGHT     — deep slate with restrained primary
+   *
+   * The annual-report PDF/Word output deliberately ignores these
+   * decorative tokens and uses neutral print-safe colors only.
+   */
   --background: 210 20% 98%;
   --foreground: 222 47% 11%;
   

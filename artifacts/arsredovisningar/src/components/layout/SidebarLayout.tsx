@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Building, Home, Settings, LogOut, Briefcase } from "lucide-react";
+import { Building, Home, Settings, LogOut, Briefcase, ListChecks } from "lucide-react";
 import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -56,6 +56,14 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
             )}
             <SidebarMenu>
               <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location === "/launch-checklist"}>
+                  <Link href="/launch-checklist">
+                    <ListChecks className="h-4 w-4" />
+                    <span>Launch checklist</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={location === "/settings"}>
                   <Link href="/settings">
                     <Settings className="h-4 w-4" />
@@ -77,7 +85,7 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
             <SidebarTrigger />
             <span className="ml-4 font-bold">Årsredovisningar</span>
           </header>
-          <div className="flex-1 overflow-auto p-6 md:p-8 lg:p-10 max-w-7xl mx-auto w-full">
+          <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10 max-w-7xl mx-auto w-full">
             {children}
           </div>
         </main>

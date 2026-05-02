@@ -42,6 +42,12 @@ The application is built as a pnpm monorepo using Node.js 24 and TypeScript 5.9.
 - **File Management**: Secure upload and download of project files (e.g., SIE, PDF) with permission and entitlement gating.
 - **Export**: Generation and download of PDF/Word exports with watermark enforcement for demo projects. Phase 6.6/7 introduces a single source-of-truth `AnnualReportExportData` contract (`lib/export-contract`) that powers Preview = PDF = Word, with consistency checks, readiness gating, cover-sheet settings, signed-URL downloads, audit logging, and an export history list at `/reports/:reportId/preview`.
 
+### Phase 8 — Launch Polish
+- **Launch Checklist** at `/launch-checklist` (`pages/LaunchChecklist.tsx`) — internal/admin readiness page covering env vars, Supabase tables/RLS, auth, payment, export, AI, storage, note numbering, manual QA, and Known Limitations (Swedish-only output, K2/K3 only, no Fortnox/Visma, no Bolagsverket fetch, no multi-step approvals, no version branching, no template management).
+- **Compliance wording** standardized to: *"Inga blockerande valideringsfel hittades. Granska noggrant innan inlämning. Verktyget är en complianceassistent — du som upprättare ansvarar..."* (NotesPage). The product is positioned as a compliance assistant, never a guarantee.
+- **Palette tokens** in `index.css` are documented as semantic — current default is **Nordic Calm**. Future palettes (Midnight Ledger, Sand & Ink, Arctic Minimal, Nordic Night) can be applied by swapping values in `:root`/`.dark` without touching components. PDF/Word export deliberately ignores decorative tokens.
+- **Responsive layout** tightened: SidebarLayout content padding now scales `p-4 sm:p-6 md:p-8 lg:p-10` so mobile browsers don't crop content.
+
 ### System Design Choices
 - **Accounting Framework**: K3 (BFNAR 2012:1) is primary.
 - **Demo Handling**: Dedicated `helpers/demo.ts` ensures demo projects use `demo-assets` storage buckets and apply watermarks, strictly separating them from production assets.

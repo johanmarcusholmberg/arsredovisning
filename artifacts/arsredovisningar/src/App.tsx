@@ -19,6 +19,7 @@ import { ValidationView } from "./pages/ValidationView";
 import { ReviewView } from "./pages/ReviewView";
 import { AuditView } from "./pages/AuditView";
 import { Settings } from "./pages/Settings";
+import { LaunchChecklist } from "./pages/LaunchChecklist";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import NotFound from "@/pages/not-found";
@@ -53,6 +54,7 @@ function AppRoutes() {
           <Route path="/reports/:reportId/summary" component={ReportSummary} />
           <Route path="/reports/:reportId/preview" component={PreviewExport} />
           <Route path="/settings" component={Settings} />
+          <Route path="/launch-checklist" component={LaunchChecklist} />
           <Route component={NotFound} />
         </Switch>
       </SidebarLayout>
