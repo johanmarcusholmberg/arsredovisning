@@ -51,13 +51,9 @@ export async function recalculateNoteNumbers(
   const active = allNotes.filter((n) => n.status !== "not_applicable");
   const inactive = allNotes.filter((n) => n.status === "not_applicable");
 
-  // Apply default ordering rules
+  // Sort active notes by their natural order. We use this for the
+  // sequential pass (notes without an override).
   active.sort((a, b) => {
-    if (a.manualNumberOverride && b.manualNumberOverride) {
-      return a.manualNumberOverride - b.manualNumberOverride;
-    }
-    if (a.manualNumberOverride) return -1;
-    if (b.manualNumberOverride) return 1;
     if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
     const da = defaultOrderFor(a.noteType);
     const db_ = defaultOrderFor(b.noteType);
@@ -65,11 +61,35 @@ export async function recalculateNoteNumbers(
     return a.createdAt.getTime() - b.createdAt.getTime();
   });
 
+  // Two-pass assignment so manualNumberOverride is honored as an EXPLICIT
+  // 1-based note number (not just a sort priority).
+  // Pass 1: claim the override numbers (first-write-wins on conflict).
+  // Pass 2: assign remaining notes the next free integer in 1..N.
+  const finalNumber = new Map<string, number>();
+  const claimed = new Set<number>();
+
+  for (const note of active) {
+    const ov = note.manualNumberOverride;
+    if (ov !== null && ov >= 1 && !claimed.has(ov)) {
+      finalNumber.set(note.id, ov);
+      claimed.add(ov);
+    }
+  }
+
+  let nextFree = 1;
+  for (const note of active) {
+    if (finalNumber.has(note.id)) continue;
+    while (claimed.has(nextFree)) nextFree++;
+    finalNumber.set(note.id, nextFree);
+    claimed.add(nextFree);
+    nextFree++;
+  }
+
   let assigned = 0;
   const updates: Array<Promise<unknown>> = [];
 
-  active.forEach((note, idx) => {
-    const newNumber = idx + 1;
+  for (const note of active) {
+    const newNumber = finalNumber.get(note.id) ?? null;
     if (note.noteNumber !== newNumber) {
       updates.push(
         db
@@ -79,7 +99,7 @@ export async function recalculateNoteNumbers(
       );
       assigned++;
     }
-  });
+  }
 
   // Clear note_number on inactive notes
   for (const n of inactive) {
