@@ -1,0 +1,98 @@
+#32 - Phase 6.6 — Export Template, Preview Model & PDF/Word Readiness
+What & Why
+Prepare the formal Swedish annual-report export so that Phase 7 can implement real PDF and Word generation without re-inventing layout, data shape or note logic. This phase introduces a single shared annual-report data contract, a reusable export data builder, a document-style A4 preview, formal Swedish report components, layout constants, and consistency checks for note references and reclassification/netting. The same data contract and components must later power the browser preview, PDF export and Word export — preventing drift between what the user sees and what is filed.
+
+This phase explicitly does not implement real PDF or Word generation, does not connect Stripe/download logic, and does not yet block export on validation failures.
+
+Done looks like
+A new "Preview & Export" page exists in the report workspace at /reports/:reportId/preview (linked from the workspace sidebar and from the existing Report Summary screen).
+The preview renders the report as a formal Swedish annual-report document, in A4-portrait pages, with the section order: optional cover sheet → Förvaltningsberättelse → Resultaträkning → Balansräkning → (Kassaflödesanalys if enabled) → Noter → Underskrifter.
+Resultaträkning and Balansräkning tables include a "Not" column whose values come from the central note-numbering logic.
+Notes section uses the same automatic note numbers and links to/from statement lines by ID.
+The preview uses final approved presentation amounts (after approved mappings, manual edits, reclassifications and netting from Phases 6.4 and 6.5), and excludes rejected/undone reclassifications.
+A demo project preview renders dummy data through the same data contract and shows a watermark "DEMO – EJ FÖR INLÄMNING".
+An "Export Readiness" panel appears next to the preview, listing validation, note-reference, note-totals, reclassification/netting, AI-text confirmation, cover sheet, paid entitlement, permission and demo/real status. Real PDF/Word download buttons exist as visible but disabled placeholders labeled as "Available in next phase".
+A cover-sheet settings UI lets the user pick: no cover, generated cover (with title/subtitle/logo/financial year), or uploaded cover placeholder. The generated cover renders inside the preview.
+An internal docs file docs/export-template-and-preview-model.md explains that this preview is the source of truth for PDF/Word export and lists the rules Phase 7 must follow.
+Compliance wording across the preview/readiness UI uses the safe phrasing listed below — never "legally approved", "guaranteed compliant", "100% correct" or "approved by Bolagsverket".
+Backend exposes one endpoint that returns the full annual-report export data contract for a project, used by the preview and ready to be reused by Phase 7 PDF/Word export.
+Out of scope
+Real PDF generation (no pdfkit/react-pdf/Puppeteer rendering, no PDF download).
+Real Word/DOCX generation (no docx/pptxgenjs/equivalent output).
+Final export blocking based on validation results — surface results only.
+Stripe charge/entitlement gating of downloads (panel reads the existing entitlement state but no purchase flow changes).
+Real merging of an uploaded cover PDF/image into the export — only data fields and a UI placeholder.
+Changing or extending Phase 6.4 / 6.5 logic (mappings, note management, reclassification, netting). This phase consumes their outputs.
+Print-from-browser polish beyond the in-app preview (no @page print CSS export).
+Translating the annual-report document itself: the report content is Swedish only. The surrounding app UI may stay bilingual but no new i18n work is required.
+Steps
+Annual-report export data contract (shared TypeScript types + Zod). Define one canonical AnnualReportExportData model in a shared lib so both server and client use the same shape. Cover the sections from the spec (company, report, cover, managementReport, financialStatements with incomeStatement / balanceSheetAssets / balanceSheetEquityAndLiabilities / cashFlow, notes, signatures, appendices) with every field listed in section 2 of the spec, including traceability fields (sourceAccountIds, originalMappedAmount, reclassificationAdjustments, finalPresentationAmount, hasApprovedReclassifications, hasApprovedNetting, linkedReclassificationIds, linkedNoteRowIds, gross/net amounts on note rows, etc.). Note relationships must be by IDs; visible note numbers are derived. Add Zod schemas via the existing OpenAPI/Zod codegen pipeline so client and server stay in sync.
+
+Annual-report export data builder (server-side). Implement a single reusable builder (e.g. buildAnnualReportExportData(projectId, { isDemo })) that assembles the contract from the existing data model: project/company settings, financial statement lines, approved mappings, approved note selection, central note numbering, note↔statement links, manual note edits, approved reclassifications, approved netting, validation state, cover settings. The builder must use final approved presentation amounts, exclude rejected/undone reclassifications, exclude hidden / excluded / not-applicable notes from visible numbering, and keep traceability fields populated for internal review without exposing them in the formal preview. Provide a deterministic dummy-data path for demo projects so demos use the same builder.
+
+Backend endpoint for the export data contract. Add a single API route (e.g. GET /api/projects/:projectId/annual-report-export-data) defined in the OpenAPI spec, validated with the new Zod schema, returning the contract. Generate React Query hooks via the existing codegen. Reuse existing project-permission middleware. No new write endpoints. Cover settings get a small PATCH (or extend existing project settings) for cover mode/title/subtitle/logo/uploaded-file ref.
+
+Layout constants and formal report styling. Add a layout constants module (page size, A4 margins 20–25 mm, fonts and font sizes per the spec, table/row/section spacing, page-break rules, watermark styling). Establish a scoped "report document" style (mostly black/grey/white, restrained typography) that does not inherit the app's Nordic Calm palette. Provide an A4 page-frame component that handles page breaks visually in the preview.
+
+Reusable formal report components. Build AnnualReportDocument, CoverPage, ManagementReportSection, IncomeStatementTable, BalanceSheetTable, CashFlowTable, NotesSection, NoteTable, SignaturePage, Watermark, ReportFooter, plus a generic AnnualReportTable. Tables must follow the rules in section 6 of the spec (label left, Not column centered/right, amounts right with Swedish thousands separators using non-breaking spaces, minus sign for negatives, bold totals, semi-bold subtotals, light horizontal rules, blank Not cell when no note). Components consume the data contract directly; do not duplicate logic from existing dashboard-style components.
+
+Note reference consistency check. Implement a reusable function (server-side, callable from the builder and from the preview) that runs the checks in section 7 of the spec and returns structured results (status, code, message, affectedSection, affectedNoteId?, affectedStatementLineId?, affectedReclassificationId?, severity, recommendedAction). Surface results in the readiness panel; do not block export.
+
+Reclassification/netting consistency check. Implement a reusable function that runs the checks in section 8 of the spec (valid source/target, no double-counting, no removal of amounts, totals reconcile, balance sheet balances, gross/net traceability, etc.) and returns results in the same structured format as step 6. Surface in the readiness panel; do not block export.
+
+Preview & Export page (frontend). Add a new route /reports/:reportId/preview rendered in the existing SidebarLayout. Layout: left side shows the document preview (A4 pages stacked vertically, scrollable), right side shows the Export Readiness panel and cover-sheet settings. Use the new endpoint + components. Wire navigation entries from the sidebar/workflow progress and from the existing Report Summary "Export Report" button.
+
+Cover-sheet settings UI + preview. Provide a small form for cover mode (none / generated / uploaded-placeholder), title, subtitle, optional logo URL, optional uploaded-cover file reference (placeholder field — no real upload merging). Persist via the settings endpoint from step 3. The preview re-renders the cover page based on the saved settings. Suggested generated-cover fields: "Årsredovisning", company name, organization number, financial year, optional subtitle, optional logo.
+
+Export Readiness panel. Render structured items: validation status (placeholder if Phase 6 not yet merged), note-reference consistency, note-totals consistency, reclassification/netting consistency, AI-text confirmation status (read from existing Phase 5/6 state if present, otherwise "not yet available"), cover-sheet status, paid entitlement status (uses existing useEntitlement hook), permission status, demo/real project status. Each item shows pass / warning / blocking-error and the relevant message and recommended action. Include disabled "Download PDF" and "Download Word" buttons labeled as future placeholders. Use the safe wording from section 12 of the spec.
+
+Demo workspace export preview. Wire the demo project to flow dummy data through the same builder and components, including a sample reclassification/netting row if Phase 6.5 demo data exists. Render the watermark "DEMO – EJ FÖR INLÄMNING" diagonally across each page using the watermark component. Disable the placeholder download buttons further with a tooltip explaining demos cannot be exported.
+
+Internal documentation. Add docs/export-template-and-preview-model.md describing: this preview is the single source of truth for export, PDF/Word must reuse the same data contract and components, note numbering comes from the notes module, reclassification/netting must be applied before rendering, presentation amounts must be final-approved (not raw ledger), validation/audit appendices are opt-in, and Phase 7 must not invent a new layout. Keep it short — one page is enough. Add brief module-level comments in the builder and the preview entry component pointing to this doc.
+
+Constraints
+The annual-report document is Swedish-only. Section headings, table headers and cover labels must be in Swedish (Förvaltningsberättelse, Resultaträkning, Balansräkning, Kassaflödesanalys, Noter, Underskrifter, "Not", etc.) regardless of the surrounding app language.
+One data contract for preview, PDF and Word — never branch shapes per output target.
+Never store note references as plain text — always by ID, with the visible number derived.
+Never display "legally approved", "guaranteed compliant", "100% correct" or "approved by Bolagsverket". Use phrasings such as "No blocking validation issues were found. Please review before filing.", "Ready for review", "Ready for export — no blocking issues found", "Export is blocked because required issues remain." (the last only as a future-state message; this phase does not block).
+Do not modify Phase 6.4 / 6.5 logic. Read from their outputs only.
+All money formatting in the document uses Swedish conventions (thousands separator: non-breaking space; decimal: comma; minus sign as a leading hyphen-minus; SEK or TSEK respected per the report's amountUnit).
+Keep new types, builder, checks and shared components in lib/ packages so the server, the web client and a future PDF/Word renderer can all depend on them without cross-artifact imports.
+Relevant files
+attached_assets/Pasted-PHASE-6-6-Continue-working-on-rsredovisningar-This-phas_1777739530089.txt
+artifacts/arsredovisningar/src/App.tsx
+artifacts/arsredovisningar/src/components/layout/SidebarLayout.tsx
+artifacts/arsredovisningar/src/components/WorkflowProgress.tsx
+artifacts/arsredovisningar/src/components/StatementTable.tsx
+artifacts/arsredovisningar/src/components/NoteCard.tsx
+artifacts/arsredovisningar/src/components/NoteDetailDrawer.tsx
+artifacts/arsredovisningar/src/pages/ReportSummary.tsx
+artifacts/arsredovisningar/src/pages/FinancialStatements.tsx
+artifacts/arsredovisningar/src/pages/NotesPage.tsx
+artifacts/arsredovisningar/src/pages/ValidationView.tsx
+artifacts/arsredovisningar/src/hooks/useEntitlement.ts
+artifacts/api-server/src/routes/reports.ts
+artifacts/api-server/src/routes/financialStatements.ts
+artifacts/api-server/src/routes/notes.ts
+artifacts/api-server/src/routes/validation.ts
+artifacts/api-server/src/routes/index.ts
+lib/api-spec/src
+lib/api-spec/orval.config.ts
+lib/api-zod/src/index.ts
+lib/api-client-react/src/index.ts
+lib/db/src/schema/index.ts
+lib/db/src/schema/annualReportProjects.ts
+lib/db/src/schema/financialStatementLines.ts
+lib/db/src/schema/reportNotes.ts
+lib/db/src/schema/reportNoteReferences.ts
+lib/db/src/schema/noteStatementReferences.ts
+lib/db/src/schema/exportFiles.ts
+lib/db/src/schema/projectEntitlements.ts
+lib/db/src/schema/validationRuns.ts
+Dependencies
+
+Phase 6.4 — Robust Note Management & Reference Integrity
+Open task
+
+Phase 6.5 — Smart Reclassification & Netting Between Notes
+Open task
