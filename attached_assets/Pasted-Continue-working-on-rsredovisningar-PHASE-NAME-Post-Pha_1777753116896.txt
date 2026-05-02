@@ -1,0 +1,468 @@
+Continue working on “Årsredovisningar”.
+
+PHASE NAME:
+Post-Phase 7 Update – Kassaflödesanalys: legal requirement logic, calculation model, review UX and export integration
+
+IMPORTANT CONTEXT:
+Phase 7 has already been implemented.
+PDF/Word export, preview flow, validation flow, and report template/export structure may already exist.
+
+Do not rebuild the export engine.
+Do not replace the existing PDF/Word export implementation.
+Do not rewrite the report template system from scratch.
+Do not remove or simplify existing validation, note numbering, annual-report layout, payment/export unlock, or preview logic.
+
+Instead, extend the existing implementation so cash flow statement handling becomes legally aware, reviewable, validated, and correctly integrated into the already-built annual-report preview and export system.
+
+GOAL:
+Update the application’s handling of Swedish cash flow statements (“kassaflödesanalys”).
+
+The system must:
+1. Determine whether a cash flow statement is mandatory, optional, or unknown.
+2. Explain the requirement to the user in plain Swedish.
+3. Generate a cash flow statement from imported accounting data where possible.
+4. Allow guided manual adjustments where source data is incomplete.
+5. Validate that opening cash + cash flow for the year = closing cash.
+6. Ensure cash and cash equivalents match the balance sheet.
+7. Integrate the validated cash flow statement into the existing PDF/Word export and preview.
+8. Block export when a mandatory cash flow statement is missing, invalid, or not reviewed.
+
+LEGAL / ACCOUNTING LOGIC:
+Implement the following rule model.
+
+A cash flow statement is mandatory when:
+- The company is classified as a “större företag”.
+- The entity is a bostadsrättsförening, if this legal form is supported in the app.
+- The project is a group annual report where cash flow statement is required.
+
+For Aktiebolag and ordinary annual reports:
+A company should be classified as “större företag” when it is listed on a regulated market OR when more than one of the following three thresholds are exceeded for each of the two most recent financial years:
+- Average number of employees > 50
+- Balance sheet total > 40,000,000 SEK
+- Net revenue > 80,000,000 SEK
+
+If the app does not have enough information to determine this automatically, show a “Needs review” state and ask the user to confirm missing values.
+
+Important:
+- Do not assume that K3 alone always means cash flow statement is mandatory.
+- Do not assume that K2 alone always means cash flow statement is forbidden.
+- The decision should be based primarily on company size, legal form, and report type.
+- Smaller companies may choose to include a voluntary cash flow statement if the product supports it.
+- If voluntary cash flow statement is enabled, clearly label it as voluntary in the workflow, but the exported report should still use normal Swedish annual-report terminology.
+
+BACKEND / DATA MODEL:
+Add or extend existing tables/types without breaking current projects.
+
+Create or extend structures for:
+
+1. cash_flow_requirement_assessment
+
+Fields:
+- id
+- project_id
+- company_id
+- financial_year
+- legal_form
+- reporting_framework
+- report_type: annual_report / group_report
+- is_listed_company
+- is_housing_association
+- employees_current_year
+- employees_previous_year
+- balance_total_current_year
+- balance_total_previous_year
+- net_revenue_current_year
+- net_revenue_previous_year
+- threshold_employees_met
+- threshold_balance_total_met
+- threshold_net_revenue_met
+- larger_company_assessment: true / false / unknown
+- cash_flow_requirement: mandatory / optional / not_supported / unknown
+- assessment_status: calculated / needs_user_confirmation / manually_overridden
+- user_override_reason
+- reviewed_by_user
+- reviewed_at
+- created_at
+- updated_at
+
+2. cash_flow_statement
+
+Fields:
+- id
+- project_id
+- financial_year
+- method: indirect
+- status: draft / needs_review / validated / blocked
+- opening_cash_and_cash_equivalents
+- cash_flow_from_operating_activities
+- cash_flow_from_investing_activities
+- cash_flow_from_financing_activities
+- total_cash_flow_for_year
+- closing_cash_and_cash_equivalents
+- calculated_closing_cash_and_cash_equivalents
+- reconciliation_difference
+- has_manual_adjustments
+- validation_status
+- created_at
+- updated_at
+
+3. cash_flow_line_items
+
+Fields:
+- id
+- cash_flow_statement_id
+- section: operating / investing / financing / reconciliation
+- line_code
+- label_sv
+- amount_current_year
+- amount_previous_year_optional
+- source_type: mapped_accounts / calculated / manual_adjustment / imported_value
+- source_accounts
+- calculation_explanation_sv
+- is_editable
+- is_required
+- sort_order
+
+4. cash_flow_adjustments
+
+Fields:
+- id
+- cash_flow_statement_id
+- line_item_id
+- adjustment_amount
+- adjustment_reason
+- previous_amount
+- new_amount
+- created_by
+- created_at
+- updated_at
+
+If similar tables or types already exist, extend them instead of creating duplicates.
+
+CASH FLOW FORMAT:
+Use the indirect method as the default and only supported method at launch.
+
+Use Swedish annual-report terminology.
+
+The statement should follow this structure:
+
+DEN LÖPANDE VERKSAMHETEN
+- Resultat efter finansiella poster
+- Justeringar för poster som inte ingår i kassaflödet
+- Betald skatt
+- Kassaflöde från den löpande verksamheten före förändringar av rörelsekapital
+- Förändring av varulager
+- Förändring av rörelsefordringar
+- Förändring av rörelseskulder
+- Kassaflöde från den löpande verksamheten
+
+INVESTERINGSVERKSAMHETEN
+- Förvärv av materiella anläggningstillgångar
+- Försäljning av materiella anläggningstillgångar
+- Förvärv av immateriella anläggningstillgångar
+- Förvärv/försäljning av finansiella anläggningstillgångar
+- Kassaflöde från investeringsverksamheten
+
+FINANSIERINGSVERKSAMHETEN
+- Nyemission
+- Upptagna lån
+- Amortering av lån
+- Utbetald utdelning
+- Kassaflöde från finansieringsverksamheten
+
+RECONCILIATION
+- Årets kassaflöde
+- Likvida medel vid årets början
+- Likvida medel vid årets slut
+
+ACCOUNT MAPPING / CALCULATION LOGIC:
+Use the existing import, SIE/CSV/Excel parsing, chart-of-accounts mapping, report mapping, and financial statement logic where available.
+
+Create a cash-flow mapping layer that can infer:
+- Cash and bank accounts
+- Result after financial items
+- Depreciation, amortisation, impairment, and other non-cash items
+- Tax paid or tax expense adjustment
+- Inventory movement
+- Receivables movement
+- Payables movement
+- Fixed asset additions/disposals
+- Loans received and repaid
+- Equity injections
+- Dividends paid
+
+The app must not silently guess high-risk values.
+
+If a calculation cannot be performed safely:
+- Mark the line as “Needs review”
+- Show the reason
+- Allow manual adjustment with required explanation
+- Keep audit trail
+
+Each cash flow line should allow the user to open:
+- Source accounts
+- Opening balance
+- Closing balance
+- Movement
+- Cash-flow effect
+- Calculation explanation
+- Manual adjustments
+
+VALIDATION RULES:
+Extend the existing validation engine.
+
+1. Requirement validation:
+- If cash flow statement is mandatory but missing, block final validation and export.
+- If cash flow requirement is unknown, block final validation and export until user confirms company size/legal requirement.
+- If optional and disabled, allow export but show that no cash flow statement will be included.
+- If optional and enabled, validate it with the same reconciliation rules as mandatory cash flow.
+
+2. Reconciliation validation:
+- Opening cash + total cash flow for year must equal closing cash.
+- If difference ≠ 0, show blocking error.
+- Apply the project’s existing rounding settings and tolerance.
+- Show exact difference and affected lines.
+
+3. Balance sheet consistency:
+- Cash and cash equivalents in the cash flow statement must match the balance sheet cash/bank value.
+- If the annual report uses rounded values, reconcile using the same rounding model as the existing export.
+- Do not export a cash flow statement that contradicts the balance sheet.
+
+4. Source completeness validation:
+Warn if:
+- Cash/bank accounts are missing or unmapped.
+- Previous-year balance sheet data is missing.
+- Fixed asset movements cannot be derived.
+- Tax paid cannot be calculated reliably.
+- Loans/equity/dividends are detected but not classified.
+
+5. Manual adjustment validation:
+- Require explanation for every manual adjustment.
+- Store previous value, new value, user, timestamp, and reason.
+- Show manual adjustments in the review panel.
+
+6. Export validation:
+- Existing PDF/Word export must refuse clean export if mandatory cash flow is missing or invalid.
+- Existing demo/watermarked export must also show the correct state.
+- Payment/export unlock must not bypass cash-flow validation.
+
+USER EXPERIENCE:
+Add or update the annual-report workflow step:
+
+“Kassaflödesanalys”
+
+This should integrate into the existing workflow navigation, checklist, and validation status system.
+
+The step should support these states:
+- Obligatorisk
+- Frivillig
+- Behöver bedömas
+- Saknas
+- Behöver granskas
+- Validerad
+- Blockerad
+
+Requirement card:
+Title:
+“Behövs kassaflödesanalys?”
+
+Display:
+- Företagskategori: Mindre / Större / Okänd
+- Regelverk: K2 / K3 / RFR2 / IFRS
+- Rapporttyp: Årsredovisning / Koncernredovisning
+- Bedömning: Obligatorisk / Frivillig / Behöver granskas
+
+For mandatory:
+Show:
+“Kassaflödesanalys krävs för detta företag eftersom företaget bedöms omfattas av kravet enligt årsredovisningslagen.”
+
+For optional:
+Show:
+“Kassaflödesanalys verkar inte vara obligatorisk för detta företag. Du kan ändå välja att inkludera en frivillig kassaflödesanalys.”
+
+For needs assessment:
+Show:
+“Vi behöver bekräfta några uppgifter innan vi kan avgöra om kassaflödesanalys är obligatorisk.”
+
+Ask for missing values:
+- Average employees current year
+- Average employees previous year
+- Balance sheet total current year
+- Balance sheet total previous year
+- Net revenue current year
+- Net revenue previous year
+- Listed company yes/no
+- Group annual report yes/no
+- Housing association yes/no, if relevant
+
+Include expandable explanation:
+“Varför behövs detta?”
+
+Plain-language explanation:
+“Kravet på kassaflödesanalys beror främst på företagets storlek, juridiska form och rapporttyp. Därför kontrollerar vi gränsvärden för anställda, balansomslutning och nettoomsättning innan rapporten färdigställs.”
+
+CASH FLOW EDITOR UX:
+Create or update a cash-flow editor/review screen.
+
+The user should see:
+- Structured cash-flow statement
+- Status per line
+- Source/calculation drawer or side panel
+- Manual adjustment option where allowed
+- Reconciliation summary
+- Balance-sheet consistency check
+- Validation messages
+
+Status badges:
+- Beräknad
+- Behöver granskas
+- Manuell justering
+- Saknar källa
+- Validerad
+- Blockerad
+
+For each line item:
+Show:
+- Label
+- Amount
+- Source badge
+- Calculation explanation
+- Review button
+- Manual adjustment button if editable
+
+Manual adjustment modal:
+Fields:
+- Adjustment amount
+- Reason
+- Optional note
+- Confirmation checkbox:
+“Jag förstår att manuella justeringar påverkar kassaflödesanalysen och behöver kunna motiveras.”
+
+PLAIN SWEDISH EXPLANATIONS:
+Use user-friendly explanations, for example:
+
+“Den här raden visar hur mycket kapital som bundits eller frigjorts i kundfordringar under året.”
+
+“En ökning av kundfordringar minskar kassaflödet eftersom intäkten ännu inte har betalats in.”
+
+“Likvida medel vid årets slut ska stämma med balansräkningens kassa och bank.”
+
+“Differensen visar att kassaflödesanalysen inte stämmer mot balansräkningen ännu.”
+
+Keep expert details expandable.
+
+EXISTING EXPORT INTEGRATION:
+Because Phase 7 is already done, update the existing export system.
+
+Add cash-flow statement rendering to:
+- Annual report preview
+- PDF export
+- Word export
+- Any export data contract
+- Any export validation gate
+- Demo/watermarked export, where relevant
+
+The cash flow statement should appear in the annual report after the balance sheet and before notes, unless the current template already defines another correct Swedish order.
+
+Do not include cash flow statement in export if:
+- It is optional and user has not enabled it.
+- The requirement is unknown.
+- It is mandatory but not validated.
+
+If mandatory and invalid, show blocked export state:
+“Kassaflödesanalysen måste granskas och stämmas av innan årsredovisningen kan färdigställas.”
+
+If optional and disabled, do not include it and do not show placeholder pages.
+
+The exported cash flow statement must:
+- Use Swedish labels
+- Use the same number formatting as the existing annual report
+- Use the same rounding logic as the existing annual report
+- Use the same typography/table style as income statement and balance sheet
+- Not show internal status badges, explanations, warnings, or source accounts
+- Only show clean annual-report content
+
+ADMIN / CONFIGURATION:
+Add a central compliance/rules config for thresholds:
+
+- employees_threshold = 50
+- balance_total_threshold = 40000000
+- net_revenue_threshold = 80000000
+
+Do not hard-code these values in multiple components.
+
+If the app already has a compliance rules config, extend it.
+
+SECURITY / AUDIT:
+Cash flow manual adjustments must be auditable.
+
+Store:
+- who changed the value
+- when it was changed
+- previous value
+- new value
+- reason
+
+If collaboration/review exists:
+- Allow comments on cash-flow lines.
+- Show review status in the workflow checklist.
+
+MIGRATION / BACKWARDS COMPATIBILITY:
+Since Phase 7 is already implemented:
+- Add safe migrations only.
+- Do not break existing projects.
+- Existing projects without cash-flow data should get requirement status “unknown” or “needs assessment”, not corrupted data.
+- Existing exports should continue working for projects where cash-flow statement is optional and disabled.
+- Mandatory cases should now be correctly blocked until the cash-flow statement is completed.
+
+ACCEPTANCE CRITERIA:
+The update is complete when:
+
+1. Existing projects still open correctly.
+2. The app can determine if cash flow statement is mandatory, optional, or unknown.
+3. The app asks for missing company-size data when needed.
+4. Mandatory cash flow blocks final validation and clean PDF/Word export if missing or invalid.
+5. Optional cash flow can be enabled or disabled by the user.
+6. A Swedish indirect-method cash flow statement can be generated from mapped accounting data where possible.
+7. Each line item can show source accounts and calculation explanation.
+8. Manual adjustments require a reason and are auditable.
+9. Opening cash + årets kassaflöde = closing cash is validated.
+10. Closing cash matches the balance sheet cash/bank value.
+11. The existing PDF/Word export renders the cash flow statement cleanly when included.
+12. Demo/watermarked export handles cash-flow state correctly.
+13. Payment/export unlock does not bypass cash-flow validation.
+14. No existing note numbering, validation, preview, payment, or export logic is broken.
+
+IMPORTANT COPY:
+Use Swedish copy in the annual-report workflow and exported annual report.
+
+Use terms:
+- Kassaflödesanalys
+- Obligatorisk
+- Frivillig
+- Behöver bedömas
+- Behöver granskas
+- Validerad
+- Blockerad
+- Större företag
+- Likvida medel
+- Den löpande verksamheten
+- Investeringsverksamheten
+- Finansieringsverksamheten
+- Årets kassaflöde
+- Likvida medel vid årets början
+- Likvida medel vid årets slut
+- Manuell justering
+- Källa och beräkning
+- Stämmer mot balansräkningen
+- Differens att utreda
+
+DO NOT:
+- Do not rebuild the export engine.
+- Do not replace the existing PDF/Word templates from Phase 7.
+- Do not remove existing validation rules.
+- Do not let payment/export unlock bypass cash-flow validation.
+- Do not claim the app guarantees legal compliance.
+- Do not silently guess uncertain cash-flow values.
+- Do not export internal review badges or calculation explanations.
+- Do not create separate simplified/expert user modes. Use one workflow with adaptive guidance.
