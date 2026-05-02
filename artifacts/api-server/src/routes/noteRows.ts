@@ -69,6 +69,47 @@ async function getNote(noteId: string, reportId: string) {
   return n ?? null;
 }
 
+/**
+ * Recompute report_notes.currentYearValue / previousYearValue from the
+ * underlying non-subtotal rows so the canonical note totals stay in sync
+ * with the row-level breakdown the user is editing.
+ *
+ * When the note has no rows at all we leave the existing values alone — a
+ * note with a single hand-entered total (no row breakdown) should keep its
+ * value. As soon as rows exist they become the source of truth.
+ */
+async function syncNoteTotalsFromRows(noteId: string): Promise<void> {
+  const rows = await db
+    .select()
+    .from(reportNoteRowsTable)
+    .where(eq(reportNoteRowsTable.noteId, noteId));
+
+  if (rows.length === 0) return;
+
+  let cur: number | null = null;
+  let prev: number | null = null;
+  for (const r of rows) {
+    if (r.isSubtotal) continue;
+    if (r.currentYearAmount !== null) {
+      const c = Number(r.currentYearAmount);
+      if (Number.isFinite(c)) cur = (cur ?? 0) + c;
+    }
+    if (r.previousYearAmount !== null) {
+      const p = Number(r.previousYearAmount);
+      if (Number.isFinite(p)) prev = (prev ?? 0) + p;
+    }
+  }
+
+  await db
+    .update(reportNotesTable)
+    .set({
+      currentYearValue: cur === null ? null : cur.toFixed(2),
+      previousYearValue: prev === null ? null : prev.toFixed(2),
+      updatedAt: new Date(),
+    })
+    .where(eq(reportNotesTable.id, noteId));
+}
+
 // ─── Drilldown helper ────────────────────────────────────────────────────────
 
 interface AccountRange {
@@ -285,6 +326,8 @@ router.post(
       })
       .returning();
 
+    await syncNoteTotalsFromRows(noteId);
+
     await logAuditEvent({
       eventType: "note_row_created",
       actorProfileId: profileId,
@@ -346,6 +389,8 @@ router.patch(
       return;
     }
 
+    await syncNoteTotalsFromRows(noteId);
+
     await logAuditEvent({
       eventType: "note_row_updated",
       actorProfileId: profileId,
@@ -384,6 +429,8 @@ router.delete(
       res.status(404).json({ error: "not_found", message: "Row not found" });
       return;
     }
+
+    await syncNoteTotalsFromRows(noteId);
 
     await logAuditEvent({
       eventType: "note_row_deleted",

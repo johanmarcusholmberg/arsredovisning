@@ -166,17 +166,30 @@ export async function reconcileNotes(reportId: string): Promise<ReconciliationRe
 
     const linkedLineKeys = noteRefs.map((r) => `${r.statementType}:${r.lineKey}`);
 
+    // Per-year status. We then collapse them into the single ReconciliationStatus
+    // exposed on the item, but mismatches on either year flip the whole note
+    // to "mismatch" — never silently green when the previous-year totals diverge.
+    function classify(noteVal: number | null, stmtVal: number | null): "ok" | "mismatch" | "no_amounts" {
+      if (noteVal === null && stmtVal === null) return "no_amounts";
+      if (noteVal === null || stmtVal === null) return "mismatch";
+      return Math.abs(noteVal - stmtVal) <= TOLERANCE ? "ok" : "mismatch";
+    }
+
     let status: ReconciliationStatus;
     if (noteRefs.length === 0) {
-      status = noteTotalCurrent !== null ? "missing_link" : "no_amounts";
-    } else if (noteTotalCurrent === null && statementTotalCurrent === null) {
-      status = "no_amounts";
-    } else if (noteTotalCurrent === null || statementTotalCurrent === null) {
-      status = "mismatch";
-    } else if (Math.abs(noteTotalCurrent - statementTotalCurrent) <= TOLERANCE) {
-      status = "ok";
+      status = (noteTotalCurrent !== null || noteTotalPrevious !== null)
+        ? "missing_link"
+        : "no_amounts";
     } else {
-      status = "mismatch";
+      const cur = classify(noteTotalCurrent, statementTotalCurrent);
+      const prev = classify(noteTotalPrevious, statementTotalPrevious);
+      if (cur === "mismatch" || prev === "mismatch") {
+        status = "mismatch";
+      } else if (cur === "no_amounts" && prev === "no_amounts") {
+        status = "no_amounts";
+      } else {
+        status = "ok";
+      }
     }
 
     items.push({
