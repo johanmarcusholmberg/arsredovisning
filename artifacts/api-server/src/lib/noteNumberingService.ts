@@ -1,8 +1,9 @@
-import { eq, asc, inArray } from "drizzle-orm";
+import { eq, asc, inArray, and } from "drizzle-orm";
 import {
   db,
   reportNotesTable,
   noteStatementReferencesTable,
+  financialStatementLinesTable,
 } from "@workspace/db";
 
 /**
@@ -122,6 +123,46 @@ export async function recalculateNoteNumbers(
       );
 
     if (refUpdates.length > 0) await Promise.all(refUpdates);
+
+    // Sync the badge text on financial_statement_lines so the statements table
+    // shows the new note numbers. We group refs by (statementType, lineKey) and
+    // collect the active note numbers for each line.
+    const noteNumberById = new Map<string, number>();
+    active.forEach((n, idx) => noteNumberById.set(n.id, idx + 1));
+
+    const linesByKey = new Map<string, number[]>();
+    for (const r of refs) {
+      const num = noteNumberById.get(r.noteId);
+      if (!num) continue; // skip refs to inactive notes
+      const key = `${r.statementType}::${r.lineKey}`;
+      const arr = linesByKey.get(key) ?? [];
+      arr.push(num);
+      linesByKey.set(key, arr);
+    }
+
+    const reportId = allNotes[0].reportId;
+    const lineUpdates: Array<Promise<unknown>> = [];
+    for (const [key, nums] of linesByKey.entries()) {
+      const [statementType, lineKey] = key.split("::");
+      const sortedNums = [...new Set(nums)].sort((a, b) => a - b);
+      const badgeText = sortedNums.join(", ");
+      lineUpdates.push(
+        db
+          .update(financialStatementLinesTable)
+          .set({ noteReferenceText: badgeText, updatedAt: new Date() })
+          .where(
+            and(
+              eq(financialStatementLinesTable.reportId, reportId),
+              eq(
+                financialStatementLinesTable.statementType,
+                statementType as "income_statement" | "balance_sheet" | "cash_flow",
+              ),
+              eq(financialStatementLinesTable.lineKey, lineKey),
+            ),
+          ),
+      );
+    }
+    if (lineUpdates.length > 0) await Promise.all(lineUpdates);
   }
 
   return { renumbered: assigned, total: allNotes.length };
