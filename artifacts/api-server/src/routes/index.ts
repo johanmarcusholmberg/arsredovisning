@@ -7,6 +7,7 @@ import reportsRouter from "./reports";
 import dashboardRouter from "./dashboard";
 import projectsRouter from "./projects";
 import entitlementRouter from "./entitlement";
+import filesRouter from "./files";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(reportsRouter);
 router.use(dashboardRouter);
 router.use(projectsRouter);
 router.use(entitlementRouter);
+router.use(filesRouter);
 
 export default router;

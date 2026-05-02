@@ -13,7 +13,7 @@ pnpm workspace monorepo using TypeScript. A web application for preparing Swedis
 - **Frontend**: React 19 + Vite (wouter routing, shadcn/ui, TanStack Query, Zod v4, Tailwind v4, framer-motion)
 - **API framework**: Express 5
 - **Database**: PostgreSQL + Drizzle ORM (Replit built-in; schema in `lib/db`)
-- **Auth**: Supabase Auth (JWT-based; frontend uses `@supabase/supabase-js`, backend validates via service role key)
+- **Auth**: Supabase Auth (JWT-based; backend validates via service role key — not yet configured, returns 503)
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec in `lib/api-spec/openapi.yaml` → React Query hooks + Zod schemas)
 - **Build**: esbuild (CJS bundle for API server)
@@ -23,7 +23,8 @@ pnpm workspace monorepo using TypeScript. A web application for preparing Swedis
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push-force` — push DB schema (note: interactive prompts; prefer running raw SQL migrations via executeSql for CI)
+- `pnpm --filter @workspace/db run push` — push DB schema to database (requires DATABASE_URL secret)
+- `pnpm --filter @workspace/scripts run setup-storage-buckets` — create Supabase Storage buckets (requires Supabase env vars)
 
 ## Artifacts
 
@@ -36,10 +37,12 @@ pnpm workspace monorepo using TypeScript. A web application for preparing Swedis
 
 ## Auth Flow
 
-- Unauthenticated users are redirected to `/arsredovisningar/login`
+- Unauthenticated users are redirected to `/login`
 - All API routes (except `/api/healthz`) require `Authorization: Bearer <token>`
-- The frontend's custom fetch mutator (`lib/api-client-react/src/custom-fetch.ts`) injects the token automatically via `setAuthTokenGetter` wired in `AuthContext`
 - Backend verifies tokens using `supabaseAdmin.auth.getUser(token)` in `src/middlewares/auth.ts`
+- **Phase 2.5**: Auth middleware returns 503 if Supabase is not configured (graceful degradation)
+- **Phase 2.5**: Profile is auto-created on first login (auth_id → profiles row)
+- The frontend's custom fetch mutator (`lib/api-client-react/src/custom-fetch.ts`) injects the token automatically
 - After auth, `syncProfile` middleware auto-creates a `profiles` row for new users (keyed on Supabase `auth_id`)
 
 ## Profile Sync (Phase 2)
@@ -74,23 +77,58 @@ All tables defined in `lib/db/src/schema/`. DB is Replit built-in PostgreSQL.
 | `postalCode` | `zip_code` | `zipCode` |
 | `fiscalYearStart` | `fiscal_year_start` | `fiscalYearStart` |
 | `fiscalYearEnd` | `fiscal_year_end` | `fiscalYearEnd` |
+| `createdByProfileId` | `created_by_profile_id` | `createdByProfileId` |
 
 ## Environment Variables / Secrets
 
-| Name | Used by | Purpose |
-|------|---------|---------|
-| `VITE_SUPABASE_URL` | Frontend + Backend | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Frontend | Public anon key for Supabase client |
-| `SUPABASE_SERVICE_ROLE_KEY` | Backend | Service role key for JWT verification |
-| `SESSION_SECRET` | Backend | Express session secret |
-| `DATABASE_URL` | Backend | Replit built-in PostgreSQL connection string |
+See `.env.example` for the full annotated list with server-only vs client-safe annotations.
+
+| Name | Used by | Required | Purpose |
+|------|---------|----------|---------|
+| `PORT` | Backend | ✅ | TCP port (set by Replit workflows) |
+| `DATABASE_URL` | Backend | ✅ | Replit built-in PostgreSQL connection string |
+| `VITE_SUPABASE_URL` | Frontend + Backend | Supabase Auth | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Frontend | Supabase Auth | Public anon key |
+| `SUPABASE_URL` | Backend | Supabase Auth + Storage | Same as VITE_SUPABASE_URL (no VITE_ prefix) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Backend | Supabase Auth + Storage | ⚠️ NEVER expose to browser |
+| `SESSION_SECRET` | Backend | Sessions | Express session secret |
+| `STRIPE_SECRET_KEY` | Backend | Phase 4 | ⚠️ NEVER expose to browser |
+| `STRIPE_PUBLISHABLE_KEY` | Frontend | Phase 4 | Stripe publishable key |
+| `OPENAI_API_KEY` | Backend | Phase 5 | ⚠️ NEVER expose to browser |
+| `EXPORT_SERVICE_URL` | Backend | Phase 7 | PDF/Word export service URL |
+
+## Database Schema (Phase 2.5)
+
+All tables live in Replit's built-in PostgreSQL, managed via Drizzle ORM (`lib/db/src/schema/`).
+
+| Table | Purpose |
+|-------|---------|
+| `profiles` | One row per auth user (auth_id links to Supabase Auth) |
+| `user_preferences` | Per-user UI settings (language, theme) |
+| `companies` | Swedish legal entities (AB, HB, KB, etc.) |
+| `annual_report_projects` | One per company per fiscal year |
+| `project_access` | Role-based access (owner / accountant / viewer) |
+| `project_entitlements` | Payment gate per project |
+| `audit_events` | Append-only action log (JSONB event_data) |
+| `project_snapshots` | Point-in-time JSONB snapshots |
+| `project_files` | Upload metadata (SIE, PDF, etc.) |
+| `export_files` | Generated export metadata (PDF, Word) |
+| `reports` | Legacy Phase 1 table (kept for backward compat) |
+
+## Backend Security Helpers (Phase 2.5)
+
+| File | Purpose |
+|------|---------|
+| `artifacts/api-server/src/helpers/permissions.ts` | Named permission checkers (`canViewProject`, `canEditProject`, `canUploadFiles`, `hasPaidProjectEntitlement`, etc.) |
+| `artifacts/api-server/src/helpers/auditLog.ts` | `logAuditEvent()` + `AUDIT_EVENTS` constants |
+| `artifacts/api-server/src/helpers/demo.ts` | Demo project detection, storage bucket routing, watermark enforcement |
 
 ## API Routes
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/api/healthz` | none | Health check |
-| GET | `/api/entitlement` | required | User's access tier (Phase 2: always "paid") |
+| GET | `/api/entitlement` | required | User's access tier (Phase 2.5: demo or paid) |
 | GET | `/api/companies` | required | List user's companies |
 | POST | `/api/companies` | required | Create a company |
 | GET | `/api/companies/:id` | required | Get a company |
@@ -104,6 +142,21 @@ All tables defined in `lib/db/src/schema/`. DB is Replit built-in PostgreSQL.
 | GET | `/api/projects` | required | List user's projects |
 | POST | `/api/projects` | required | Create a project |
 | GET | `/api/projects/:id` | required | Get a project |
+| POST | `/api/projects/:id/files/upload` | required | Upload file (permission + entitlement gated) |
+| GET | `/api/projects/:id/files/:fid/download` | required | Get signed download URL |
+| GET | `/api/projects/:id/exports/:eid/download` | required | Get signed export URL (watermark enforced) |
+
+## Frontend Routes (arsredovisningar)
+
+| Route | Component | Notes |
+|-------|-----------|-------|
+| `/` | `LandingPage` | Hero, 8-step workflow, trust section |
+| `/login` | `LoginPage` | Auth pages (Supabase stub) |
+| `/signup` | `SignupPage` | Auth pages (Supabase stub) |
+| `/dashboard` | `DashboardPage` | Demo card + locked real project card |
+| `/demo/:section?` | `DemoWorkspacePage` | 8 sections, read-only, Nordic Design AB demo data |
+| `/workspace/:section?` | `PaidWorkspacePage` | Paid workspace shell |
+| `/pricing` | `PricingPage` | 999 kr per report |
 
 ## Frontend Key Files (arsredovisningar)
 
@@ -120,25 +173,42 @@ All tables defined in `lib/db/src/schema/`. DB is Replit built-in PostgreSQL.
 - `lib/api-zod/src/generated/api.ts` — generated Zod schemas (do not edit)
 - `lib/db/src/schema/` — Drizzle table definitions
 
+## Documentation
+
+All project documentation lives in `docs/`:
+
+- `docs/backend-architecture.md` — **NEW Phase 2.5** — data model, RLS strategy, storage, permissions guide
+- `docs/rls-policies.sql` — **NEW Phase 2.5** — ready-to-apply Supabase RLS policies
+- `docs/storage-buckets.md` — **NEW Phase 2.5** — bucket definitions and path conventions
+- `docs/build-phases.md` — recommended phase order and status
+- `docs/phase-1-summary.md` — Phase 1 summary
+- `docs/functionality-specification.md` — product specification
+- `docs/mvp-build-blueprint.md` — MVP scope and architecture decisions
+- `docs/backend-security-notes.md` — environment variable rules, RLS, API security
+- `docs/replit-setup-notes.md` — setup status, secrets, Supabase/GitHub readiness
+
 ## Phase Status
 
-- **Phase 0** ✅ Complete — project structure, docs
-- **Phase 1** ✅ Complete — frontend shell, backend API stubs, demo data
-- **Phase 1.5** ✅ Complete — Supabase Auth wired end-to-end, UX/UI design system
-- **Phase 2** ✅ Complete — user-scoped data, profile auto-creation, entitlements, audit log, real projects CRUD, WorkflowProgress UI
-- **Phase 2.5** ⏳ Next — SIE file import pipeline
-- **Phase 3** ⏳ Pending — report generation engine
-- **Phase 3.5** ⏳ Pending — PDF/Word export
-- **Phase 4** ⏳ Pending — Stripe payment gating
-- **Phase 5** ⏳ Pending — AI assistance
+- **Phase 0** ✅ Complete — structure reviewed, docs created
+- **Phase 1** ✅ Complete — frontend shell, backend API, real seeded data
+- **Phase 1.5** ✅ Complete — Supabase Auth wired end-to-end
+- **Phase 2.5** ✅ Complete — Backend & Security Foundation (schema, RLS, permissions, audit log, file routes)
+- **Phase 2** ⏳ Not started — paid workspace foundation
+- **Phase 3** ⏳ Not started — SIE file import and account mapping
+- **Phase 4** ⏳ Not started — Stripe payment integration
+- **Phase 5** ⏳ Not started — Notes module and auto-numbering
+- **Phase 6** ⏳ Not started — Validation, collaboration, audit trail
+- **Phase 7** ⏳ Not started — PDF/Word export and download flow
 
 ## Important Design Decisions
 
-- **Language**: UI is SV/EN toggleable. Annual report content (notes, statements, headings) is **always Swedish** — non-negotiable for ÅRL compliance.
-- **Framework**: K3 (BFNAR 2012:1) is the primary framework. K2 supported but secondary.
-- **Auth**: Supabase Auth via JWT. `requireAuth` + `syncProfile` middleware chain on all protected API routes.
-- **Payments**: Stripe gating deferred to Phase 4. Phase 2 entitlement always returns "paid".
-- **IDs**: All DB primary keys use UUID (Supabase-compatible).
-- **Audit log**: Fire-and-forget via `logAuditEvent()`. Errors are logged but never thrown.
+- **Language**: UI is SV/EN toggleable. Annual report content is **always Swedish** — non-negotiable for ÅRL compliance.
+- **Framework**: K3 (BFNAR 2012:1) primary; K2 deferred.
+- **Auth**: Supabase Auth JWT — backend validates via service role key. Returns 503 gracefully if not configured.
+- **Payments**: Stripe (Phase 4) — `project_entitlements` table ready. Demo projects always watermarked.
+- **Demo separation**: `helpers/demo.ts` enforces demo → `demo-assets` bucket; never production buckets.
+- **Audit log**: Append-only `audit_events` table. `logAuditEvent()` is non-throwing.
+- **IDs**: All DB primary keys use UUID.
+- **Security**: `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `OPENAI_API_KEY` — server-only. Never prefix with `VITE_`.
 - **DB push**: `drizzle-kit push --force` has interactive prompts — prefer raw SQL migrations via `executeSql` in CI.
 - **OpenAPI fiscal year fields**: stored as plain `text` in DB (e.g. "2024-01-01"). Do NOT use `format: date` in OpenAPI spec — Orval would generate `zod.coerce.date()` causing type mismatch.

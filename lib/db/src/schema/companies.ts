@@ -1,32 +1,32 @@
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { profilesTable } from "./profiles";
+import { accountingFrameworkEnum } from "./enums";
 
 /**
  * companies — Swedish legal entities (AB, HB, KB, etc.).
- * organizationNumber maps to DB column "org_number" (Phase 1 naming preserved).
- * postalCode maps to DB column "zip_code" (Phase 1 naming preserved).
- * fiscalYearStart / fiscalYearEnd: MM-DD format, e.g. "01-01" / "12-31".
- * createdByProfileId: FK to profiles.id for user-scoped queries (added Phase 2).
- * Future RLS: users only see companies they own via createdByProfileId.
+ * organizationNumber is the Swedish organisationsnummer (e.g. "556123-4567").
+ * legalForm: "AB" | "HB" | "KB" | "EK" | "HF" | etc. (kept as text — not a closed enum in Swedish law).
+ * accountingFramework: "K2" | "K3" — enforced by accountingFrameworkEnum pgEnum.
+ * createdByProfileId: FK to profiles.id — user who created this company record.
+ *   Used for user-scoped queries (users only see companies they created).
+ * ownerProfileId: nullable FK for future transfer-of-ownership / ownership tracking.
+ * RLS: users only see companies where createdByProfileId = auth.uid() (via profiles lookup).
  */
 export const companiesTable = pgTable("companies", {
   id: uuid("id").primaryKey().defaultRandom(),
+  ownerProfileId: uuid("owner_profile_id").references(() => profilesTable.id),
   name: text("name").notNull(),
-  organizationNumber: text("org_number").notNull().unique(),
+  organizationNumber: text("organization_number").notNull().unique(),
   legalForm: text("legal_form").notNull().default("AB"),
-  accountingFramework: text("accounting_framework").notNull().default("K3"),
-  fiscalYearStart: text("fiscal_year_start").notNull().default("01-01"),
-  fiscalYearEnd: text("fiscal_year_end").notNull().default("12-31"),
+  accountingFramework: accountingFrameworkEnum("accounting_framework").notNull().default("K3"),
   address: text("address"),
   city: text("city"),
-  postalCode: text("zip_code"),
+  postalCode: text("postal_code"),
   createdByProfileId: uuid("created_by_profile_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
 export const insertCompanySchema = createInsertSchema(companiesTable).omit({

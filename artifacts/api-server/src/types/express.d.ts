@@ -4,7 +4,9 @@ import { Profile } from "@workspace/db";
 declare global {
   namespace Express {
     interface Request {
-      user?: User;
+      user?: User & {
+        profileId: string;
+      };
       profile?: Profile;
     }
   }

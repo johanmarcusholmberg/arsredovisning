@@ -2,13 +2,16 @@ import { pgTable, text, timestamp, uuid, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { annualReportProjectsTable } from "./annualReportProjects";
+import { profilesTable } from "./profiles";
+import { entitlementTypeEnum } from "./enums";
 
 /**
  * project_entitlements — payment/access gate per project.
- * source: "stripe_payment" | "subscription" | "manual_grant" | "trial"
+ * entitlementType: "stripe_payment" | "subscription" | "manual_grant" | "trial" | "demo".
+ * profileId: the profile that holds this entitlement (payer or grantee).
  * stripePaymentIntentId / stripeSubscriptionId: populated in Phase 4 when Stripe is wired.
  * isActive: false means the entitlement has expired or been revoked.
- * Future: Phase 4 will add Stripe webhook handlers that update this table.
+ * RLS: users can read their own entitlements. Written by service role (Stripe webhook handler).
  * Until Phase 4, real project creation is blocked at the UI level (payment gate screen).
  */
 export const projectEntitlementsTable = pgTable("project_entitlements", {
@@ -16,6 +19,8 @@ export const projectEntitlementsTable = pgTable("project_entitlements", {
   projectId: uuid("project_id")
     .notNull()
     .references(() => annualReportProjectsTable.id),
+  profileId: uuid("profile_id").references(() => profilesTable.id),
+  entitlementType: entitlementTypeEnum("entitlement_type").notNull().default("manual_grant"),
   source: text("source").notNull().default("manual_grant"),
   isActive: boolean("is_active").notNull().default(true),
   stripePaymentIntentId: text("stripe_payment_intent_id"),

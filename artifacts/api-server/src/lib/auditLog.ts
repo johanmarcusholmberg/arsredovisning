@@ -20,7 +20,7 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
       actorProfileId: event.actorProfileId ?? null,
       companyId: event.companyId ?? null,
       projectId: event.projectId ?? null,
-      payload: event.payload ?? null,
+      eventData: event.payload ?? null,
     });
   } catch (err) {
     logger.error({ err, event }, "Failed to write audit event");

@@ -1,0 +1,52 @@
+import { pgEnum } from "drizzle-orm/pg-core";
+
+/**
+ * Shared pgEnum definitions for constrained columns.
+ * Using enums ensures the DB enforces valid values and makes
+ * the schema self-documenting.
+ */
+
+export const accountingFrameworkEnum = pgEnum("accounting_framework", ["K2", "K3"]);
+
+export const projectStatusEnum = pgEnum("project_status", [
+  "draft",
+  "in_review",
+  "approved",
+  "exported",
+  "archived",
+]);
+
+export const annualReportLanguageEnum = pgEnum("annual_report_language", ["sv", "en"]);
+
+export const projectRoleEnum = pgEnum("project_role", ["owner", "accountant", "viewer"]);
+
+export const entitlementTypeEnum = pgEnum("entitlement_type", [
+  "stripe_payment",
+  "subscription",
+  "manual_grant",
+  "trial",
+  "demo",
+]);
+
+export const uploadStatusEnum = pgEnum("upload_status", [
+  "pending",
+  "uploaded",
+  "failed",
+  "deleted",
+]);
+
+export const parseStatusEnum = pgEnum("parse_status", [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+]);
+
+export const exportFormatEnum = pgEnum("export_format", ["pdf", "word", "excel"]);
+
+export const exportStatusEnum = pgEnum("export_status", [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+]);

@@ -1,14 +1,16 @@
-import { pgTable, text, timestamp, uuid, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, timestamp, uuid, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { profilesTable } from "./profiles";
 import { annualReportProjectsTable } from "./annualReportProjects";
+import { projectRoleEnum } from "./enums";
 
 /**
  * project_access — many-to-many: which profiles can access which projects, and in what role.
- * role: "owner" | "accountant" | "viewer"
+ * role: "owner" | "accountant" | "viewer" — enforced by the projectRoleEnum pgEnum.
  * Future RLS: Supabase RLS policies will use this table to enforce per-row access.
  * The combination (profileId, projectId) is the primary key — one row per profile per project.
+ * grantedByProfileId: nullable FK — tracks who granted access; null for auto-grants (e.g., creator).
  */
 export const projectAccessTable = pgTable(
   "project_access",
@@ -19,8 +21,8 @@ export const projectAccessTable = pgTable(
     projectId: uuid("project_id")
       .notNull()
       .references(() => annualReportProjectsTable.id),
-    role: text("role").notNull().default("viewer"),
-    grantedByProfileId: uuid("granted_by_profile_id"),
+    role: projectRoleEnum("role").notNull().default("viewer"),
+    grantedByProfileId: uuid("granted_by_profile_id").references(() => profilesTable.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

@@ -1,3 +1,19 @@
+/**
+ * Companies routes — Phase 1 / Phase 2 / Phase 2.5.
+ *
+ * These routes map between the OpenAPI contract (which uses legacy field names
+ * from the original spec: orgNumber, zipCode) and the updated Drizzle schema
+ * (organizationNumber, postalCode). The API contract field names are preserved
+ * for backward compatibility with existing frontend code.
+ *
+ * The fiscalYearStart / fiscalYearEnd fields from the original spec have been
+ * moved to annual_report_projects — they are no longer on companies.
+ * The response omits those fields from Phase 2.5 onward.
+ *
+ * User-scoping: all routes filter by createdByProfileId = req.profile.id,
+ * so users only see companies they own (Phase 2 security model).
+ */
+
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, companiesTable, type Company } from "@workspace/db";
@@ -14,6 +30,7 @@ const router: IRouter = Router();
 /**
  * Map a DB Company row to the API response shape.
  * DB uses organizationNumber/postalCode; OpenAPI/frontend uses orgNumber/zipCode.
+ * fiscalYearStart / fiscalYearEnd are omitted (moved to annual_report_projects).
  */
 function toApiCompany(c: Company) {
   return {
@@ -22,8 +39,6 @@ function toApiCompany(c: Company) {
     orgNumber: c.organizationNumber,
     legalForm: c.legalForm,
     accountingFramework: c.accountingFramework as "K2" | "K3",
-    fiscalYearStart: c.fiscalYearStart ?? "",
-    fiscalYearEnd: c.fiscalYearEnd ?? "",
     address: c.address ?? undefined,
     zipCode: c.postalCode ?? undefined,
     city: c.city ?? undefined,
@@ -69,7 +84,7 @@ router.post("/companies", async (req, res): Promise<void> => {
     .values({
       ...rest,
       organizationNumber: orgNumber,
-      postalCode: zipCode,
+      postalCode: zipCode ?? null,
       createdByProfileId: profileId,
     })
     .returning();
