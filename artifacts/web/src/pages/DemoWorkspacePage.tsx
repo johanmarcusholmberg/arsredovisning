@@ -3,7 +3,7 @@ import { DemoDataBadge } from "@/components/badges/DemoDataBadge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
   LayoutDashboard, FileUp, GitBranch, BarChart2,
-  FileText, ShieldCheck, Users, Download, ChevronRight
+  FileText, ShieldCheck, Users, Download, ChevronRight, BookOpen
 } from "lucide-react";
 import { OverviewSection } from "./demo/OverviewSection";
 import { ImportSection } from "./demo/ImportSection";
@@ -13,11 +13,12 @@ import { NotesSection } from "./demo/NotesSection";
 import { ValidationSection } from "./demo/ValidationSection";
 import { ReviewSection } from "./demo/ReviewSection";
 import { ExportSection } from "./demo/ExportSection";
+import { ExamplePdfSection } from "./demo/ExamplePdfSection";
 import { GuidancePanel } from "@/components/GuidancePanel";
 import { MobileWorkspaceDrawer, DrawerNavItem } from "@/components/MobileWorkspaceDrawer";
 import { Link } from "wouter";
 
-type SectionKey = "overview" | "import" | "mapping" | "statements" | "notes" | "validation" | "review" | "export";
+type SectionKey = "overview" | "import" | "mapping" | "statements" | "notes" | "validation" | "review" | "export" | "example";
 
 const sectionComponents: Record<SectionKey, React.ComponentType> = {
   overview: OverviewSection,
@@ -28,6 +29,7 @@ const sectionComponents: Record<SectionKey, React.ComponentType> = {
   validation: ValidationSection,
   review: ReviewSection,
   export: ExportSection,
+  example: ExamplePdfSection,
 };
 
 const sectionIcons: Record<SectionKey, React.ComponentType<{ className?: string }>> = {
@@ -39,11 +41,12 @@ const sectionIcons: Record<SectionKey, React.ComponentType<{ className?: string 
   validation: ShieldCheck,
   review: Users,
   export: Download,
+  example: BookOpen,
 };
 
 const sectionKeys: SectionKey[] = [
   "overview", "import", "mapping", "statements",
-  "notes", "validation", "review", "export",
+  "notes", "validation", "review", "export", "example",
 ];
 
 const sectionStringKeys: Record<SectionKey, string> = {
@@ -55,6 +58,7 @@ const sectionStringKeys: Record<SectionKey, string> = {
   validation: "demo.sidebar.validation",
   review: "demo.sidebar.review",
   export: "demo.sidebar.export",
+  example: "demo.sidebar.example",
 };
 
 const sectionGuidanceKeys: Record<SectionKey, string> = {
@@ -66,6 +70,7 @@ const sectionGuidanceKeys: Record<SectionKey, string> = {
   validation: "guidance.demo.validation",
   review: "guidance.demo.review",
   export: "guidance.demo.export",
+  example: "guidance.demo.example",
 };
 
 export default function DemoWorkspacePage() {

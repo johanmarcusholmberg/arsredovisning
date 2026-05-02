@@ -1,8 +1,10 @@
 import { demoData } from "@/data/demoData";
 import { StatusBadge } from "@/components/badges/StatusBadge";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Building2, Calendar, FileCheck, ArrowRight } from "lucide-react";
+import { Building2, Calendar, FileCheck, ArrowRight, BookOpen } from "lucide-react";
 import { WorkflowProgress, WorkflowStep } from "@/components/WorkflowProgress";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 
 type StatusType = "draft" | "done" | "warning" | "error" | "in_progress";
 
@@ -105,6 +107,31 @@ export function OverviewSection() {
       <div className="rounded-xl border border-border bg-card p-5 mt-6">
         <h2 className="text-base font-semibold text-foreground mb-6">Process</h2>
         <WorkflowProgress steps={workflowSteps} />
+      </div>
+
+      {/* Example PDF callout */}
+      <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-5 mt-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-primary/10 p-2 shrink-0">
+              <BookOpen className="size-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">
+                {t("demo.export.example.title")}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("demo.export.example.description")}
+              </p>
+            </div>
+          </div>
+          <Link href="/demo/example" className="shrink-0">
+            <Button className="w-full sm:w-auto gap-2">
+              {t("demo.export.example.cta")}
+              <ArrowRight className="size-4" />
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

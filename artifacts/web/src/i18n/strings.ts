@@ -125,6 +125,7 @@ export const strings = {
     "demo.sidebar.validation": "Validering",
     "demo.sidebar.review": "Granskning",
     "demo.sidebar.export": "Förhandsgranska & Exportera",
+    "demo.sidebar.example": "Exempel-PDF",
 
     // Overview section
     "demo.overview.company.title": "Företagsinformation",
@@ -200,6 +201,23 @@ export const strings = {
     "demo.export.pdf": "Exportera som PDF",
     "demo.export.word": "Exportera som Word",
     "demo.export.manual.title": "Manuell justering",
+    "demo.export.example.title": "Se hur en färdig årsredovisning kan se ut",
+    "demo.export.example.description": "Förhandsvisa ett exempel på en färdig årsredovisning skapad i Årsredovisningar. Exemplet använder fiktiva värden och är vattenmärkt.",
+    "demo.export.example.cta": "Öppna exempel-PDF",
+
+    // Example PDF section
+    "demo.example.title": "Se hur en färdig årsredovisning kan se ut",
+    "demo.example.subtitle": "Förhandsvisa ett exempel på en färdig årsredovisning skapad i Årsredovisningar. Exemplet använder fiktiva värden och är vattenmärkt.",
+    "demo.example.notice": "Detta är endast ett exempel med fiktiva värden. En riktig årsredovisning kan skapas efter betalning.",
+    "demo.example.watermark.label": "EXEMPEL – FIKTIVA VÄRDEN",
+    "demo.example.zoom.in": "Zooma in",
+    "demo.example.zoom.out": "Zooma ut",
+    "demo.example.print": "Skriv ut",
+    "demo.example.download": "Ladda ner ren PDF",
+    "demo.example.cta.title": "Vill du skapa en riktig årsredovisning?",
+    "demo.example.cta.description": "Lås upp ett projekt för ett bolag och ett räkenskapsår. Då kan du importera SIE-fil, redigera, validera och exportera en ren PDF och Word.",
+    "demo.example.cta.unlock": "Lås upp och skapa din årsredovisning",
+    "demo.example.cta.pricing": "Se priser",
 
     // ── Shared UX components ────────────────────────────────────────────────
     "badge.demo_data": "Demo-data",
@@ -231,6 +249,7 @@ export const strings = {
     "guidance.demo.validation": "Valideringen varnar om något är obalanserat eller om obligatoriska uppgifter saknas i enlighet med vald norm.",
     "guidance.demo.review": "Här kan kollegor eller kund kommentera specifika rader och noter. Man kan godkänna eller avvisa.",
     "guidance.demo.export": "När allt är grönt och validerat, är rapporterna redo att laddas ned och lämnas in.",
+    "guidance.demo.example": "Här ser du ett komplett exempel på hur en färdig årsredovisning ser ut i produkten. Allt innehåll är fiktivt och vattenmärkt. För att skapa en riktig årsredovisning behöver du betala för ett projekt.",
 
     "guidance.workspace.overview": "Här ser du status för din årsredovisning och var du befinner dig i processen.",
     "guidance.workspace.import": "Ladda upp din SIE4-fil för att komma igång. Filen bearbetas automatiskt.",
@@ -497,6 +516,7 @@ export const strings = {
     "demo.sidebar.validation": "Validation",
     "demo.sidebar.review": "Review",
     "demo.sidebar.export": "Preview & Export",
+    "demo.sidebar.example": "Example PDF",
 
     // Overview section
     "demo.overview.company.title": "Company information",
@@ -572,6 +592,23 @@ export const strings = {
     "demo.export.pdf": "Export as PDF",
     "demo.export.word": "Export as Word",
     "demo.export.manual.title": "Manual adjustment",
+    "demo.export.example.title": "See what a finished annual report looks like",
+    "demo.export.example.description": "Preview a sample of a finished annual report created in Årsredovisningar. The example uses fictional values and is watermarked.",
+    "demo.export.example.cta": "Open example PDF",
+
+    // Example PDF section
+    "demo.example.title": "See what a finished annual report looks like",
+    "demo.example.subtitle": "Preview a sample of a finished annual report created in Årsredovisningar. The example uses fictional values and is watermarked.",
+    "demo.example.notice": "This is only an example with fictional values. A real annual report can be created after payment. Annual report output is always in Swedish to comply with ÅRL.",
+    "demo.example.watermark.label": "EXAMPLE – FICTIONAL VALUES",
+    "demo.example.zoom.in": "Zoom in",
+    "demo.example.zoom.out": "Zoom out",
+    "demo.example.print": "Print",
+    "demo.example.download": "Download clean PDF",
+    "demo.example.cta.title": "Want to create a real annual report?",
+    "demo.example.cta.description": "Unlock a project for one company and one fiscal year. You can then import a SIE file, edit, validate, and export a clean PDF and Word document.",
+    "demo.example.cta.unlock": "Unlock and create your annual report",
+    "demo.example.cta.pricing": "See pricing",
 
     // ── Shared UX components ────────────────────────────────────────────────
     "badge.demo_data": "Demo data",
@@ -603,6 +640,7 @@ export const strings = {
     "guidance.demo.validation": "Validation warns if something is out of balance or if mandatory information is missing per the selected standard.",
     "guidance.demo.review": "Here colleagues or the client can comment on specific lines and notes. They can approve or reject.",
     "guidance.demo.export": "When everything is green and validated, the reports are ready to download and submit.",
+    "guidance.demo.example": "Here you see a complete example of what a finished annual report looks like in the product. All content is fictional and watermarked. To create a real annual report you need to pay for a project.",
 
     "guidance.workspace.overview": "Here you see the status of your annual report and where you are in the process.",
     "guidance.workspace.import": "Upload your SIE4 file to get started. The file is processed automatically.",

@@ -58,10 +58,16 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            <div className="mt-5">
+            <div className="mt-5 space-y-2">
               <Link href="/demo">
                 <Button className="w-full gap-2">
                   {t("dashboard.demo_card.open")}
+                  <ArrowRight className="size-4" />
+                </Button>
+              </Link>
+              <Link href="/demo/example">
+                <Button variant="outline" className="w-full gap-2">
+                  {t("demo.export.example.cta")}
                   <ArrowRight className="size-4" />
                 </Button>
               </Link>
