@@ -924,7 +924,7 @@ components:
         id:
           type: string
           format: uuid
-        projectId:
+        reportId:
           type: string
           format: uuid
         statementType:
@@ -990,7 +990,7 @@ components:
           format: date-time
       required:
         - id
-        - projectId
+        - reportId
         - statementType
         - lineKey
         - swedishLabel
@@ -1082,7 +1082,29 @@ components:
         mappingSource:
           type: string
           nullable: true
+        framework:
+          type: string
+          nullable: true
+        linkedAccountIds:
+          type: string
+          nullable: true
+          description: Comma-separated account ranges, e.g. "3000-3999,5000-6999"
         suggestedNoteType:
+          type: string
+          nullable: true
+        noteReferenceStatus:
+          type: string
+          nullable: true
+        noteReferenceText:
+          type: string
+          nullable: true
+        isManuallyAdjusted:
+          type: boolean
+          nullable: true
+        manualAdjustmentOriginal:
+          type: string
+          nullable: true
+        manualAdjustmentReason:
           type: string
           nullable: true
         sourceAccounts:
@@ -1167,7 +1189,7 @@ components:
     ReportStructureResponse:
       type: object
       properties:
-        projectId:
+        reportId:
           type: string
           format: uuid
         framework:
@@ -1182,7 +1204,7 @@ components:
           items:
             $ref: "#/components/schemas/ReportStructureSection"
       required:
-        - projectId
+        - reportId
         - framework
         - cashFlowRequired
         - isBrf

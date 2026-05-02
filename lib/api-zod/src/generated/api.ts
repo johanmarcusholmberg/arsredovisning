@@ -373,7 +373,7 @@ export const GetFinancialStatementsResponse = zod.object({
   incomeStatement: zod.array(
     zod.object({
       id: zod.string().uuid(),
-      projectId: zod.string().uuid(),
+      reportId: zod.string().uuid(),
       statementType: zod.enum([
         "income_statement",
         "balance_sheet",
@@ -410,7 +410,7 @@ export const GetFinancialStatementsResponse = zod.object({
   balanceSheet: zod.array(
     zod.object({
       id: zod.string().uuid(),
-      projectId: zod.string().uuid(),
+      reportId: zod.string().uuid(),
       statementType: zod.enum([
         "income_statement",
         "balance_sheet",
@@ -447,7 +447,7 @@ export const GetFinancialStatementsResponse = zod.object({
   cashFlow: zod.array(
     zod.object({
       id: zod.string().uuid(),
-      projectId: zod.string().uuid(),
+      reportId: zod.string().uuid(),
       statementType: zod.enum([
         "income_statement",
         "balance_sheet",
@@ -505,7 +505,7 @@ export const UpdateStatementLineBody = zod.object({
 
 export const UpdateStatementLineResponse = zod.object({
   id: zod.string().uuid(),
-  projectId: zod.string().uuid(),
+  reportId: zod.string().uuid(),
   statementType: zod.enum(["income_statement", "balance_sheet", "cash_flow"]),
   lineKey: zod.string(),
   swedishLabel: zod.string(),
@@ -549,7 +549,17 @@ export const GetStatementLineDrilldownResponse = zod.object({
   swedishLabel: zod.string(),
   calculationMethod: zod.string(),
   mappingSource: zod.string().nullish(),
+  framework: zod.string().nullish(),
+  linkedAccountIds: zod
+    .string()
+    .nullish()
+    .describe('Comma-separated account ranges, e.g. \"3000-3999,5000-6999\"'),
   suggestedNoteType: zod.string().nullish(),
+  noteReferenceStatus: zod.string().nullish(),
+  noteReferenceText: zod.string().nullish(),
+  isManuallyAdjusted: zod.boolean().nullish(),
+  manualAdjustmentOriginal: zod.string().nullish(),
+  manualAdjustmentReason: zod.string().nullish(),
   sourceAccounts: zod.array(
     zod.object({
       accountNumber: zod.string(),
@@ -589,7 +599,7 @@ export const GetReportStructureParams = zod.object({
 });
 
 export const GetReportStructureResponse = zod.object({
-  projectId: zod.string().uuid(),
+  reportId: zod.string().uuid(),
   framework: zod.enum(["K2", "K3"]),
   cashFlowRequired: zod.boolean(),
   isBrf: zod.boolean(),

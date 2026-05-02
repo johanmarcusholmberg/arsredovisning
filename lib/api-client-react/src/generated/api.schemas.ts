@@ -295,7 +295,7 @@ export const FinancialStatementLineFramework = {
 
 export interface FinancialStatementLine {
   id: string;
-  projectId: string;
+  reportId: string;
   statementType: FinancialStatementLineStatementType;
   lineKey: string;
   swedishLabel: string;
@@ -374,7 +374,15 @@ export interface StatementLineDrilldown {
   swedishLabel: string;
   calculationMethod: string;
   mappingSource?: string | null;
+  framework?: string | null;
+  /** Comma-separated account ranges, e.g. "3000-3999,5000-6999" */
+  linkedAccountIds?: string | null;
   suggestedNoteType?: string | null;
+  noteReferenceStatus?: string | null;
+  noteReferenceText?: string | null;
+  isManuallyAdjusted?: boolean | null;
+  manualAdjustmentOriginal?: string | null;
+  manualAdjustmentReason?: string | null;
   sourceAccounts: SourceAccount[];
   noteReferenceReason?: string | null;
 }
@@ -417,7 +425,7 @@ export const ReportStructureResponseFramework = {
 } as const;
 
 export interface ReportStructureResponse {
-  projectId: string;
+  reportId: string;
   framework: ReportStructureResponseFramework;
   cashFlowRequired: boolean;
   isBrf: boolean;

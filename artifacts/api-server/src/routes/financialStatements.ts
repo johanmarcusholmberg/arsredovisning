@@ -17,14 +17,11 @@ import {
 
 const router: IRouter = Router();
 
-// ─── Helper: verify report access ────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function getReportWithCompany(reportId: string, profileId: string) {
   const [row] = await db
-    .select({
-      report: reportsTable,
-      company: companiesTable,
-    })
+    .select({ report: reportsTable, company: companiesTable })
     .from(reportsTable)
     .innerJoin(companiesTable, eq(reportsTable.companyId, companiesTable.id))
     .where(
@@ -34,6 +31,18 @@ async function getReportWithCompany(reportId: string, profileId: string) {
       ),
     );
   return row ?? null;
+}
+
+/** Encode account ranges as a compact string: "3000-3999,5000-6999" */
+function encodeAccountRanges(ranges: [number, number][] | undefined): string | null {
+  if (!ranges || ranges.length === 0) return null;
+  return ranges.map(([lo, hi]) => (lo === hi ? `${lo}` : `${lo}-${hi}`)).join(",");
+}
+
+/** Detect BRF from legalForm */
+function isBrfForm(legalForm: string): boolean {
+  const lf = legalForm.toLowerCase();
+  return lf.includes("brf") || lf.includes("bostadsrättsförening") || lf.includes("bostadsrattsforening");
 }
 
 // ─── POST /reports/:reportId/financial-statements/generate ───────────────────
@@ -50,10 +59,10 @@ router.post(
 
     const framework = (row.report.accountingFramework as "K2" | "K3") ?? "K3";
     const legalForm = row.company.legalForm ?? "AB";
+    const isBrf = isBrfForm(legalForm);
     const cashFlowRequired = isCashFlowRequired(framework);
     const rules = getFrameworkRules(framework);
 
-    // Delete existing statement lines before regenerating
     await db
       .delete(financialStatementLinesTable)
       .where(eq(financialStatementLinesTable.reportId, reportId));
@@ -64,44 +73,48 @@ router.post(
       ...(cashFlowRequired ? rules.cashFlow : []),
     ];
 
-    const insertValues = allTemplates.map((t) => ({
-      reportId,
-      statementType: t.statementType,
-      lineKey: t.lineKey,
-      swedishLabel: t.swedishLabel,
-      sortOrder: t.sortOrder,
-      isSubtotal: t.isSubtotal,
-      isTotal: t.isTotal,
-      isHeading: t.isHeading,
-      calculationMethod: t.calculationMethod,
-      framework,
-    }));
+    const insertValues = allTemplates.map((t) => {
+      const linkedAccountIds = encodeAccountRanges(t.accountRanges);
+      const swedishLabel = (isBrf && t.brfLabelOverride) ? t.brfLabelOverride : t.swedishLabel;
+      return {
+        reportId,
+        statementType: t.statementType,
+        lineKey: t.lineKey,
+        swedishLabel,
+        sortOrder: t.sortOrder,
+        isSubtotal: t.isSubtotal,
+        isTotal: t.isTotal,
+        isHeading: t.isHeading,
+        calculationMethod: t.calculationMethod,
+        linkedAccountIds,
+        mappingSource: linkedAccountIds ? "framework_template" : null,
+        framework,
+      };
+    });
 
     const insertedLines = await db
       .insert(financialStatementLinesTable)
       .values(insertValues)
       .returning();
 
-    // Suggest note references
+    // Suggest note references for lines that have a suggestedNoteType
+    await db
+      .delete(reportNoteReferencesTable)
+      .where(eq(reportNoteReferencesTable.reportId, reportId));
+
     const noteRefInserts = insertedLines
-      .filter((line) => {
-        const template = allTemplates.find((t) => t.lineKey === line.lineKey);
-        return template?.suggestedNoteType !== undefined;
-      })
       .map((line) => {
-        const template = allTemplates.find((t) => t.lineKey === line.lineKey)!;
+        const template = allTemplates.find((t) => t.lineKey === line.lineKey);
+        if (!template?.suggestedNoteType) return null;
         return {
           reportId,
           statementType: line.statementType,
           financialStatementLineId: line.id,
-          suggestedNoteType: template.suggestedNoteType!,
+          suggestedNoteType: template.suggestedNoteType,
           referenceStatus: "suggested" as const,
         };
-      });
-
-    await db
-      .delete(reportNoteReferencesTable)
-      .where(eq(reportNoteReferencesTable.reportId, reportId));
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
 
     if (noteRefInserts.length > 0) {
       await db.insert(reportNoteReferencesTable).values(noteRefInserts);
@@ -111,13 +124,7 @@ router.post(
       eventType: "financial_statements_generated",
       actorProfileId: profileId,
       companyId: row.company.id,
-      payload: { framework, linesGenerated: insertedLines.length, noteReferencesSuggested: noteRefInserts.length },
-    });
-
-    await logAuditEvent({
-      eventType: "framework_rules_applied",
-      actorProfileId: profileId,
-      payload: { framework, legalForm },
+      payload: { framework, legalForm, isBrf, linesGenerated: insertedLines.length, noteReferencesSuggested: noteRefInserts.length },
     });
 
     req.log.info({ reportId, framework, lines: insertedLines.length }, "Statements generated");
@@ -157,10 +164,27 @@ router.get(
       ? lines.filter((l) => l.statementType === statementTypeFilter)
       : lines;
 
+    // Attach note reference statuses from report_note_references
+    const noteRefs = await db
+      .select()
+      .from(reportNoteReferencesTable)
+      .where(eq(reportNoteReferencesTable.reportId, reportId));
+
+    const noteRefMap = new Map(noteRefs.map((nr) => [nr.financialStatementLineId, nr]));
+
+    const linesWithNoteRef = filtered.map((line) => {
+      const nr = noteRefMap.get(line.id);
+      return {
+        ...line,
+        noteReferenceStatus: nr?.referenceStatus ?? null,
+        suggestedNoteType: nr?.suggestedNoteType ?? null,
+      };
+    });
+
     res.json({
-      incomeStatement: filtered.filter((l) => l.statementType === "income_statement"),
-      balanceSheet: filtered.filter((l) => l.statementType === "balance_sheet"),
-      cashFlow: filtered.filter((l) => l.statementType === "cash_flow"),
+      incomeStatement: linesWithNoteRef.filter((l) => l.statementType === "income_statement"),
+      balanceSheet: linesWithNoteRef.filter((l) => l.statementType === "balance_sheet"),
+      cashFlow: linesWithNoteRef.filter((l) => l.statementType === "cash_flow"),
       cashFlowRequired,
       framework,
       hasAnyLines: lines.length > 0,
@@ -189,11 +213,7 @@ router.patch(
           eq(financialStatementLinesTable.reportId, reportId),
         ),
       );
-
-    if (!existing) {
-      res.status(404).json({ error: "not_found", message: "Statement line not found" });
-      return;
-    }
+    if (!existing) { res.status(404).json({ error: "not_found", message: "Statement line not found" }); return; }
 
     const { noteReferenceText, manualAdjustmentAmount, manualAdjustmentReason } = req.body as {
       noteReferenceText?: string | null;
@@ -205,15 +225,49 @@ router.patch(
       updatedAt: new Date(),
     };
 
+    // ── Note reference update ────────────────────────────────────────────────
     if (noteReferenceText !== undefined) {
       updateData.noteReferenceText = noteReferenceText ?? undefined;
+
+      // Sync report_note_references status
+      const [existingRef] = await db
+        .select()
+        .from(reportNoteReferencesTable)
+        .where(eq(reportNoteReferencesTable.financialStatementLineId, lineId));
+
+      if (noteReferenceText) {
+        if (existingRef) {
+          await db
+            .update(reportNoteReferencesTable)
+            .set({ referenceStatus: "active", updatedAt: new Date() })
+            .where(eq(reportNoteReferencesTable.financialStatementLineId, lineId));
+        } else {
+          await db.insert(reportNoteReferencesTable).values({
+            reportId,
+            statementType: existing.statementType,
+            financialStatementLineId: lineId,
+            referenceStatus: "active",
+          });
+        }
+      } else {
+        // Cleared — revert to suggested or not_applicable
+        if (existingRef) {
+          const newStatus = existingRef.suggestedNoteType ? "suggested" : "not_applicable";
+          await db
+            .update(reportNoteReferencesTable)
+            .set({ referenceStatus: newStatus, updatedAt: new Date() })
+            .where(eq(reportNoteReferencesTable.financialStatementLineId, lineId));
+        }
+      }
+
       await logAuditEvent({
         eventType: "note_reference_updated",
         actorProfileId: profileId,
-        payload: { lineId, lineKey: existing.lineKey, noteReferenceText },
+        payload: { lineId, lineKey: existing.lineKey, noteReferenceText, reportId },
       });
     }
 
+    // ── Manual adjustment update ─────────────────────────────────────────────
     if (manualAdjustmentAmount !== undefined) {
       const isFirst = !existing.isManuallyAdjusted;
       updateData.isManuallyAdjusted = true;
@@ -227,7 +281,13 @@ router.patch(
       await logAuditEvent({
         eventType: isFirst ? "manual_adjustment_created" : "manual_adjustment_updated",
         actorProfileId: profileId,
-        payload: { lineId, lineKey: existing.lineKey, original: existing.currentYearAmount, adjusted: manualAdjustmentAmount, reason: manualAdjustmentReason },
+        payload: {
+          lineId,
+          lineKey: existing.lineKey,
+          original: existing.currentYearAmount,
+          adjusted: manualAdjustmentAmount,
+          reason: manualAdjustmentReason,
+        },
       });
     }
 
@@ -262,29 +322,35 @@ router.get(
           eq(financialStatementLinesTable.reportId, reportId),
         ),
       );
+    if (!line) { res.status(404).json({ error: "not_found", message: "Statement line not found" }); return; }
 
-    if (!line) {
-      res.status(404).json({ error: "not_found", message: "Statement line not found" });
-      return;
-    }
+    // Get the note reference for this line
+    const [noteRef] = await db
+      .select()
+      .from(reportNoteReferencesTable)
+      .where(eq(reportNoteReferencesTable.financialStatementLineId, lineId));
 
-    const framework = (row.report.accountingFramework as "K2" | "K3") ?? "K3";
-    const rules = getFrameworkRules(framework);
-    const allLines = [...rules.incomeStatement, ...rules.balanceSheet, ...rules.cashFlow];
-    const template = allLines.find((t) => t.lineKey === line.lineKey);
-
-    const linkedIds = line.linkedAccountIds
+    // Parse linkedAccountIds ("3000-3999,5000-6999") into source account ranges
+    const accountRangeStrings = line.linkedAccountIds
       ? line.linkedAccountIds.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
 
-    const sourceAccounts = linkedIds.map((acctId) => ({
-      accountNumber: acctId,
-      accountName: null,
-      balance: "0.00",
+    // Each range entry becomes a "source account" descriptor
+    // When SIE data is available (Phase 3), these will be joined with real balances
+    const sourceAccounts = accountRangeStrings.map((rangeStr) => ({
+      accountNumber: rangeStr,
+      accountName: `Konton ${rangeStr}`,
+      balance: null as string | null,
     }));
 
-    const noteRefReason = template?.suggestedNoteType
-      ? `Rad av typen "${line.lineKey}" → föreslår not av typen "${template.suggestedNoteType}"`
+    const framework = (row.report.accountingFramework as "K2" | "K3") ?? "K3";
+    const rules = getFrameworkRules(framework);
+    const allTemplateLines = [...rules.incomeStatement, ...rules.balanceSheet, ...rules.cashFlow];
+    const template = allTemplateLines.find((t) => t.lineKey === line.lineKey);
+
+    const suggestedNoteType = noteRef?.suggestedNoteType ?? template?.suggestedNoteType ?? null;
+    const noteRefReason = suggestedNoteType
+      ? `Rad "${line.lineKey}" → föreslår not av typen "${suggestedNoteType}" (status: ${noteRef?.referenceStatus ?? "ingen referens skapad"})`
       : null;
 
     res.json({
@@ -293,7 +359,14 @@ router.get(
       swedishLabel: line.swedishLabel,
       calculationMethod: line.calculationMethod,
       mappingSource: line.mappingSource,
-      suggestedNoteType: template?.suggestedNoteType ?? null,
+      framework: line.framework,
+      linkedAccountIds: line.linkedAccountIds,
+      suggestedNoteType,
+      noteReferenceStatus: noteRef?.referenceStatus ?? null,
+      noteReferenceText: line.noteReferenceText,
+      isManuallyAdjusted: line.isManuallyAdjusted,
+      manualAdjustmentOriginal: line.manualAdjustmentOriginal,
+      manualAdjustmentReason: line.manualAdjustmentReason,
       sourceAccounts,
       noteReferenceReason: noteRefReason,
     });
@@ -313,7 +386,7 @@ router.post(
     if (!row) { res.status(404).json({ error: "not_found", message: "Report not found" }); return; }
 
     const { values } = req.body as {
-      values?: Array<{ lineId: string; amount: string; source: string }>;
+      values?: Array<{ lineId: string; amount: string; source?: string }>;
     };
 
     if (!Array.isArray(values) || values.length === 0) {
@@ -323,11 +396,12 @@ router.post(
 
     let updated = 0;
     for (const entry of values) {
-      await db
+      const source = entry.source ?? "manual";
+      const result = await db
         .update(financialStatementLinesTable)
         .set({
           previousYearAmount: entry.amount,
-          previousYearSource: entry.source as "imported" | "manual" | "previous_report_placeholder",
+          previousYearSource: source as "imported" | "manual" | "previous_report_placeholder",
           updatedAt: new Date(),
         })
         .where(
@@ -335,14 +409,15 @@ router.post(
             eq(financialStatementLinesTable.id, entry.lineId),
             eq(financialStatementLinesTable.reportId, reportId),
           ),
-        );
-      updated++;
+        )
+        .returning();
+      if (result.length > 0) updated++;
     }
 
     await logAuditEvent({
       eventType: "previous_year_value_added",
       actorProfileId: profileId,
-      payload: { count: updated },
+      payload: { count: updated, reportId },
     });
 
     res.json({ updated });
@@ -364,8 +439,7 @@ router.get(
     const framework = (row.report.accountingFramework as "K2" | "K3") ?? "K3";
     const legalForm = row.company.legalForm ?? "AB";
     const cashFlowRequired = isCashFlowRequired(framework);
-    const isBrf = legalForm.toLowerCase().includes("brf") ||
-      legalForm.toLowerCase().includes("bostadsrättsförening");
+    const isBrf = isBrfForm(legalForm);
 
     const sections = buildReportStructure(framework, legalForm, cashFlowRequired);
 
@@ -391,11 +465,16 @@ router.patch(
     const row = await getReportWithCompany(reportId, profileId);
     if (!row) { res.status(404).json({ error: "not_found", message: "Report not found" }); return; }
 
-    const { accountingFramework } = req.body as { accountingFramework?: "K2" | "K3" };
+    const { accountingFramework, regenerateStatements } = req.body as {
+      accountingFramework?: "K2" | "K3";
+      regenerateStatements?: boolean;
+    };
     if (!accountingFramework || !["K2", "K3"].includes(accountingFramework)) {
       res.status(400).json({ error: "invalid_input", message: "accountingFramework must be K2 or K3" });
       return;
     }
+
+    const oldFramework = row.report.accountingFramework;
 
     const [updated] = await db
       .update(reportsTable)
@@ -403,10 +482,20 @@ router.patch(
       .where(eq(reportsTable.id, reportId))
       .returning();
 
+    // If regenerateStatements is requested, delete existing lines (frontend will re-call generate)
+    if (regenerateStatements) {
+      await db
+        .delete(financialStatementLinesTable)
+        .where(eq(financialStatementLinesTable.reportId, reportId));
+      await db
+        .delete(reportNoteReferencesTable)
+        .where(eq(reportNoteReferencesTable.reportId, reportId));
+    }
+
     await logAuditEvent({
       eventType: "framework_rules_applied",
       actorProfileId: profileId,
-      payload: { from: row.report.accountingFramework, to: accountingFramework },
+      payload: { from: oldFramework, to: accountingFramework, regenerateStatements: !!regenerateStatements },
     });
 
     res.json({ ...updated, companyName: row.company.name });

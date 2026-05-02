@@ -2,14 +2,27 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronDown, ChevronRight, AlertTriangle, FileText, BookOpen } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  AlertTriangle,
+  FileText,
+  BookOpen,
+  Pencil,
+  RotateCcw,
+  Info,
+} from "lucide-react";
 import {
   useGetStatementLineDrilldown,
   getGetStatementLineDrilldownQueryKey,
   useUpdateStatementLine,
+  useSavePreviousYearValues,
 } from "@workspace/api-client-react";
 import type { FinancialStatementLine } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface StatementTableProps {
   lines: FinancialStatementLine[];
@@ -28,6 +41,8 @@ function formatAmount(val: string | null | undefined): string {
   }).format(n);
 }
 
+// ─── Note Reference Cell ──────────────────────────────────────────────────────
+
 function NoteReferenceCell({
   line,
   reportId,
@@ -44,33 +59,48 @@ function NoteReferenceCell({
   const handleSave = () => {
     update.mutate(
       { reportId, lineId: line.id, data: { noteReferenceText: draft || null } },
-      { onSuccess: () => { setOpen(false); onUpdated(); } },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          onUpdated();
+        },
+      },
     );
   };
 
   const hasRef = !!line.noteReferenceText;
+  const isSuggested = !!(line as FinancialStatementLine & { suggestedNoteType?: string }).suggestedNoteType && !hasRef;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           className={cn(
-            "h-6 min-w-[2rem] px-1.5 rounded text-xs font-mono transition-colors border",
+            "h-6 min-w-[2.5rem] px-1.5 rounded text-xs font-mono transition-colors border",
             hasRef
               ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
-              : "bg-transparent text-muted-foreground/40 border-dashed border-muted-foreground/20 hover:border-muted-foreground/40 hover:text-muted-foreground/60",
+              : isSuggested
+              ? "bg-amber-500/10 text-amber-700 border-amber-500/30 hover:bg-amber-500/20"
+              : "bg-transparent text-muted-foreground/30 border-dashed border-muted-foreground/20 hover:border-muted-foreground/40 hover:text-muted-foreground/60",
           )}
+          title={isSuggested ? "Notreferens föreslagen — klicka för att bekräfta" : hasRef ? "Redigera notreferens" : "Lägg till notreferens"}
         >
-          {hasRef ? `Not ${line.noteReferenceText}` : "—"}
+          {hasRef ? `Not ${line.noteReferenceText}` : isSuggested ? "?" : "—"}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-3" align="center">
+      <PopoverContent className="w-72 p-3" align="center">
         <div className="space-y-2">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <BookOpen className="h-3 w-3" />
             Notreferens
           </div>
-          <p className="text-xs text-muted-foreground">{line.swedishLabel}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2">{line.swedishLabel}</p>
+          {isSuggested && (
+            <div className="flex items-start gap-1.5 rounded bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700">
+              <Info className="h-3 w-3 mt-0.5 shrink-0" />
+              Not av typ &ldquo;{(line as FinancialStatementLine & { suggestedNoteType?: string }).suggestedNoteType}&rdquo; föreslås för denna rad.
+            </div>
+          )}
           <Input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -80,6 +110,7 @@ function NoteReferenceCell({
               if (e.key === "Enter") handleSave();
               if (e.key === "Escape") setOpen(false);
             }}
+            autoFocus
           />
           <div className="flex gap-1 pt-1">
             <Button size="sm" className="h-6 text-xs flex-1" onClick={handleSave} disabled={update.isPending}>
@@ -89,7 +120,7 @@ function NoteReferenceCell({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 text-xs"
+                className="h-6 text-xs text-destructive hover:text-destructive"
                 onClick={() => {
                   setDraft("");
                   update.mutate(
@@ -107,6 +138,8 @@ function NoteReferenceCell({
     </Popover>
   );
 }
+
+// ─── Drilldown Panel ──────────────────────────────────────────────────────────
 
 function DrilldownPanel({ line, reportId }: { line: FinancialStatementLine; reportId: string }) {
   const { data, isLoading } = useGetStatementLineDrilldown(reportId, line.id, {
@@ -135,45 +168,72 @@ function DrilldownPanel({ line, reportId }: { line: FinancialStatementLine; repo
           <span className="text-muted-foreground font-medium">Mappningskälla</span>
           <p className="font-mono mt-0.5">{data?.mappingSource ?? "—"}</p>
         </div>
+        {data?.linkedAccountIds && (
+          <div>
+            <span className="text-muted-foreground font-medium">Kontogrupper</span>
+            <p className="font-mono mt-0.5 text-[11px]">{data.linkedAccountIds}</p>
+          </div>
+        )}
         {data?.suggestedNoteType && (
           <div>
             <span className="text-muted-foreground font-medium">Föreslagen nottyp</span>
             <p className="font-mono mt-0.5">{data.suggestedNoteType}</p>
+            {data.noteReferenceStatus && (
+              <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                Status: {data.noteReferenceStatus}
+              </p>
+            )}
+          </div>
+        )}
+        {data?.isManuallyAdjusted && data.manualAdjustmentOriginal !== null && (
+          <div className="col-span-2 rounded bg-amber-500/10 px-2 py-2">
+            <span className="text-amber-700 font-medium text-[11px]">Manuellt justerat</span>
+            <p className="text-[11px] mt-0.5">
+              Originalvärde: <span className="font-mono">{formatAmount(data.manualAdjustmentOriginal as string | undefined)}</span>
+            </p>
+            {data.manualAdjustmentReason && (
+              <p className="text-[11px] text-amber-700/80 mt-0.5">Orsak: {data.manualAdjustmentReason}</p>
+            )}
           </div>
         )}
         {data?.noteReferenceReason && (
           <div className="col-span-2">
-            <span className="text-muted-foreground font-medium">Orsak till notförslag</span>
-            <p className="mt-0.5 text-xs">{data.noteReferenceReason}</p>
+            <span className="text-muted-foreground font-medium">Notförslag</span>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{data.noteReferenceReason}</p>
           </div>
         )}
       </div>
+
       {data?.sourceAccounts && data.sourceAccounts.length > 0 ? (
         <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Källkonton</p>
+          <p className="text-xs font-medium text-muted-foreground mb-1">Kontogrupper (SIE-saldon tillgängliga efter import)</p>
           <div className="rounded border border-border overflow-hidden text-xs">
             <div className="grid grid-cols-3 bg-muted/40 px-3 py-1.5 font-medium text-muted-foreground">
-              <span>Kontonr</span>
-              <span>Namn</span>
+              <span>Kontogrupp</span>
+              <span>Benämning</span>
               <span className="text-right">Saldo</span>
             </div>
             {data.sourceAccounts.map((acct) => (
               <div key={acct.accountNumber} className="grid grid-cols-3 px-3 py-1.5 border-t border-border">
-                <span className="font-mono">{acct.accountNumber}</span>
+                <span className="font-mono text-[11px]">{acct.accountNumber}</span>
                 <span className="text-muted-foreground">{acct.accountName ?? "—"}</span>
-                <span className="text-right font-mono">{formatAmount(acct.balance)}</span>
+                <span className="text-right font-mono text-muted-foreground/50 italic">
+                  {acct.balance !== null ? formatAmount(acct.balance) : "—"}
+                </span>
               </div>
             ))}
           </div>
         </div>
       ) : (
         <p className="text-xs text-muted-foreground italic">
-          Inga källkonton kopplade — importera SIE-fil för att se kontodetaljer.
+          Inga kontogrupper kopplade (beräknad rad).
         </p>
       )}
     </div>
   );
 }
+
+// ─── Previous Year Cell ───────────────────────────────────────────────────────
 
 function PreviousYearCell({
   line,
@@ -184,35 +244,231 @@ function PreviousYearCell({
   reportId: string;
   onUpdated: () => void;
 }) {
-  const update = useUpdateStatementLine();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const savePrevYear = useSavePreviousYearValues();
+  const { toast } = useToast();
 
-  if (line.isHeading || line.isTotal || line.isSubtotal) {
+  if (line.isHeading) return null;
+
+  const hasPrevYear = line.previousYearAmount !== null && line.previousYearAmount !== undefined;
+
+  const handleSave = () => {
+    const trimmed = draft.replace(/\s/g, "");
+    if (!trimmed) { setEditing(false); return; }
+    const parsed = parseFloat(trimmed.replace(",", "."));
+    if (isNaN(parsed)) {
+      toast({ title: "Ogiltigt belopp", description: "Ange ett numeriskt värde.", variant: "destructive" });
+      return;
+    }
+    savePrevYear.mutate(
+      { reportId, data: { values: [{ lineId: line.id, amount: String(parsed), source: "manual" }] } },
+      {
+        onSuccess: () => { setEditing(false); setDraft(""); onUpdated(); },
+        onError: () => toast({ title: "Fel", description: "Kunde inte spara jämförelseårsvärde.", variant: "destructive" }),
+      },
+    );
+  };
+
+  if (editing) {
     return (
-      <span className="text-muted-foreground/50 text-xs font-mono tabular-nums">
-        {formatAmount(line.previousYearAmount)}
-      </span>
+      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <Input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          className="h-6 w-24 text-xs font-mono text-right"
+          placeholder="0"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSave();
+            if (e.key === "Escape") { setEditing(false); setDraft(""); }
+          }}
+          onBlur={handleSave}
+        />
+      </div>
     );
   }
 
-  if (line.previousYearAmount !== null && line.previousYearAmount !== undefined) {
+  if (hasPrevYear) {
     return (
-      <div className="text-right">
-        <span className="font-mono text-sm tabular-nums">{formatAmount(line.previousYearAmount)}</span>
-        {line.previousYearSource && (
-          <p className="text-[10px] text-muted-foreground/60 leading-tight">
-            {line.previousYearSource === "imported" ? "Importerad"
-              : line.previousYearSource === "manual" ? "Manuell"
-              : "Jämförelseår"}
-          </p>
+      <div
+        className="flex items-center gap-1 cursor-pointer group/py"
+        title="Klicka för att redigera jämförelseårsvärde"
+        onClick={(e) => {
+          e.stopPropagation();
+          setDraft(String(line.previousYearAmount));
+          setEditing(true);
+        }}
+      >
+        <span className={cn(
+          "font-mono text-sm tabular-nums",
+          line.isTotal && "font-bold text-base",
+          line.isSubtotal && "font-semibold",
+        )}>
+          {formatAmount(line.previousYearAmount)}
+        </span>
+        <Pencil className="h-2.5 w-2.5 text-muted-foreground/30 opacity-0 group-hover/py:opacity-100 transition-opacity" />
+        {line.previousYearSource === "manual" && (
+          <span className="text-[9px] text-muted-foreground/50 hidden group-hover/py:inline">manuell</span>
         )}
       </div>
     );
   }
 
+  if (line.isTotal || line.isSubtotal) {
+    return <span className="text-muted-foreground/30 font-mono text-xs">—</span>;
+  }
+
   return (
-    <span className="text-xs text-muted-foreground/30 italic font-mono">—</span>
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        setDraft("");
+        setEditing(true);
+      }}
+      className="text-[11px] text-muted-foreground/30 hover:text-muted-foreground/70 italic transition-colors font-mono"
+      title="Ange jämförelseårsvärde"
+    >
+      Ange…
+    </button>
   );
 }
+
+// ─── Manual Adjustment Cell ───────────────────────────────────────────────────
+
+function ManualAdjustmentCell({
+  line,
+  reportId,
+  onUpdated,
+}: {
+  line: FinancialStatementLine;
+  reportId: string;
+  onUpdated: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState(String(line.currentYearAmount ?? ""));
+  const [reason, setReason] = useState("");
+  const update = useUpdateStatementLine();
+  const { toast } = useToast();
+
+  if (line.isHeading || line.calculationMethod === "derived" || line.isTotal || line.isSubtotal) {
+    return null;
+  }
+
+  const handleSave = () => {
+    const parsed = parseFloat(amount.replace(/\s/g, "").replace(",", "."));
+    if (isNaN(parsed)) {
+      toast({ title: "Ogiltigt belopp", variant: "destructive" });
+      return;
+    }
+    update.mutate(
+      {
+        reportId,
+        lineId: line.id,
+        data: { manualAdjustmentAmount: String(parsed), manualAdjustmentReason: reason || null },
+      },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          onUpdated();
+          toast({ title: "Justering sparad" });
+        },
+        onError: () => toast({ title: "Fel", description: "Kunde inte spara justering.", variant: "destructive" }),
+      },
+    );
+  };
+
+  const handleRevert = () => {
+    if (!line.manualAdjustmentOriginal) return;
+    update.mutate(
+      {
+        reportId,
+        lineId: line.id,
+        data: { manualAdjustmentAmount: line.manualAdjustmentOriginal, manualAdjustmentReason: "Återställt till importerat värde" },
+      },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          onUpdated();
+          toast({ title: "Återställt" });
+        },
+      },
+    );
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "opacity-0 group-hover:opacity-100 transition-opacity rounded p-0.5 hover:bg-muted",
+            line.isManuallyAdjusted && "opacity-100 text-amber-500",
+          )}
+          title={line.isManuallyAdjusted ? "Redigera manuell justering" : "Justera belopp manuellt"}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Pencil className="h-3 w-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-3" align="end" onClick={(e) => e.stopPropagation()}>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-medium">
+              <Pencil className="h-3 w-3" />
+              Manuell justering
+            </div>
+            {line.isManuallyAdjusted && line.manualAdjustmentOriginal && (
+              <button
+                onClick={handleRevert}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <RotateCcw className="h-2.5 w-2.5" />
+                Återställ
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground line-clamp-1">{line.swedishLabel}</p>
+          {line.isManuallyAdjusted && line.manualAdjustmentOriginal && (
+            <div className="text-[11px] text-muted-foreground">
+              Originalt: <span className="font-mono">{formatAmount(line.manualAdjustmentOriginal)}</span>
+            </div>
+          )}
+          <div className="space-y-1">
+            <label className="text-[11px] text-muted-foreground">Nytt belopp (SEK)</label>
+            <Input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0"
+              className="h-7 text-xs font-mono text-right"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setOpen(false); }}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[11px] text-muted-foreground">Orsak (valfritt)</label>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Förklaring till justeringen…"
+              className="min-h-[56px] text-xs resize-none"
+              rows={2}
+            />
+          </div>
+          <div className="flex gap-1 pt-1">
+            <Button size="sm" className="h-6 text-xs flex-1" onClick={handleSave} disabled={update.isPending}>
+              Spara justering
+            </Button>
+            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setOpen(false)}>
+              Avbryt
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ─── Main Table ───────────────────────────────────────────────────────────────
 
 export function StatementTable({ lines, reportId, statementType, onLineUpdated }: StatementTableProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -242,13 +498,14 @@ export function StatementTable({ lines, reportId, statementType, onLineUpdated }
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <div>
             <span className="font-semibold">Manuella justeringar aktiva.</span>{" "}
-            En eller flera rader har överskrivits manuellt.
+            En eller flera rader avviker från beräknade värden.
           </div>
         </div>
       )}
 
       <div className="rounded-lg border border-border overflow-hidden">
-        <div className="grid grid-cols-[1fr_80px_130px_130px] bg-muted/30 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border">
+        {/* Header */}
+        <div className="grid grid-cols-[1fr_72px_140px_140px] bg-muted/30 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border">
           <span>Benämning</span>
           <span className="text-center">Not</span>
           <span className="text-right">Innevarande år</span>
@@ -257,25 +514,28 @@ export function StatementTable({ lines, reportId, statementType, onLineUpdated }
 
         {lines.map((line) => {
           const isExp = expanded.has(line.id);
-          const canExpand = !line.isHeading && !line.isSubtotal && !line.isTotal;
+          const canExpand = !line.isHeading;
 
           return (
             <div key={line.id} className="border-b border-border last:border-0">
               <div
                 className={cn(
-                  "grid grid-cols-[1fr_80px_130px_130px] px-4 py-2 items-center gap-2 transition-colors",
+                  "grid grid-cols-[1fr_72px_140px_140px] px-4 py-2 items-center gap-2 transition-colors group",
                   line.isTotal && "bg-muted/30 font-bold border-t-2 border-border",
                   line.isSubtotal && "bg-muted/10 font-semibold",
-                  line.isHeading && "bg-transparent pt-4 pb-1",
+                  line.isHeading && "pt-4 pb-1",
                   canExpand && "hover:bg-muted/10 cursor-pointer",
                   line.isManuallyAdjusted && "bg-amber-500/5",
                 )}
                 onClick={() => canExpand && toggle(line.id)}
               >
+                {/* Label */}
                 <div className="flex items-center gap-1.5 min-w-0">
                   {canExpand ? (
                     <span className="shrink-0 text-muted-foreground/40">
-                      {isExp ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                      {isExp
+                        ? <ChevronDown className="h-3.5 w-3.5" />
+                        : <ChevronRight className="h-3.5 w-3.5" />}
                     </span>
                   ) : (
                     <span className="w-3.5 shrink-0" />
@@ -288,27 +548,43 @@ export function StatementTable({ lines, reportId, statementType, onLineUpdated }
                   >
                     {line.swedishLabel}
                   </span>
-                  {line.isManuallyAdjusted && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
+                  {line.isManuallyAdjusted && (
+                    <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
+                  )}
                 </div>
 
+                {/* Note ref */}
                 <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
                   {!line.isHeading && !line.isTotal && !line.isSubtotal && (
                     <NoteReferenceCell line={line} reportId={reportId} onUpdated={() => onLineUpdated?.()} />
                   )}
                 </div>
 
-                <div className="text-right">
+                {/* Current year */}
+                <div className="text-right flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                   {!line.isHeading && (
-                    <span className={cn("font-mono text-sm tabular-nums", line.isTotal && "text-base font-bold", line.isSubtotal && "font-semibold")}>
-                      {formatAmount(line.currentYearAmount)}
-                    </span>
+                    <>
+                      <ManualAdjustmentCell line={line} reportId={reportId} onUpdated={() => onLineUpdated?.()} />
+                      <span
+                        className={cn(
+                          "font-mono text-sm tabular-nums",
+                          line.isTotal && "text-base font-bold",
+                          line.isSubtotal && "font-semibold",
+                        )}
+                      >
+                        {formatAmount(line.currentYearAmount)}
+                      </span>
+                    </>
                   )}
                 </div>
 
+                {/* Previous year */}
                 <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-                  {!line.isHeading && (
-                    <PreviousYearCell line={line} reportId={reportId} onUpdated={() => onLineUpdated?.()} />
-                  )}
+                  <PreviousYearCell
+                    line={line}
+                    reportId={reportId}
+                    onUpdated={() => onLineUpdated?.()}
+                  />
                 </div>
               </div>
 
