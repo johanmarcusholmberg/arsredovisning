@@ -86,3 +86,35 @@ export const noteStatusEnum = pgEnum("note_status", [
   "not_applicable",
   "missing_info",
 ]);
+
+export const reportSectionEnum = pgEnum("report_section", [
+  "import",
+  "mapping",
+  "financial_statements",
+  "notes",
+  "validation",
+  "export",
+]);
+
+export const reviewStatusEnum = pgEnum("review_status", [
+  "not_started",
+  "in_progress",
+  "ready_for_review",
+  "changes_requested",
+  "approved",
+]);
+
+export const validationLevelEnum = pgEnum("validation_level", [
+  "blocking",
+  "warning",
+  "info",
+]);
+
+export const reportRoleEnum = pgEnum("report_role", [
+  "owner",
+  "admin",
+  "accountant",
+  "reviewer",
+  "auditor",
+  "read_only",
+]);

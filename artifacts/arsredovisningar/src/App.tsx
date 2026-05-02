@@ -13,6 +13,9 @@ import { ReportWorkspace } from "./pages/ReportWorkspace";
 import { ReportSummary } from "./pages/ReportSummary";
 import { FinancialStatements } from "./pages/FinancialStatements";
 import { NotesPage } from "./pages/NotesPage";
+import { ValidationView } from "./pages/ValidationView";
+import { ReviewView } from "./pages/ReviewView";
+import { AuditView } from "./pages/AuditView";
 import { Settings } from "./pages/Settings";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
@@ -38,6 +41,9 @@ function AppRoutes() {
           <Route path="/reports/:reportId" component={ReportWorkspace} />
           <Route path="/reports/:reportId/statements" component={FinancialStatements} />
           <Route path="/reports/:reportId/notes" component={NotesPage} />
+          <Route path="/reports/:reportId/validation" component={ValidationView} />
+          <Route path="/reports/:reportId/review" component={ReviewView} />
+          <Route path="/reports/:reportId/audit" component={AuditView} />
           <Route path="/reports/:reportId/summary" component={ReportSummary} />
           <Route path="/settings" component={Settings} />
           <Route component={NotFound} />

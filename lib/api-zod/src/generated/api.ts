@@ -303,20 +303,6 @@ export const GetReportSummaryResponse = zod.object({
 });
 
 /**
- * @summary List snapshots for a report (Phase 7 stub)
- */
-export const ListSnapshotsParams = zod.object({
-  reportId: zod.coerce.string(),
-});
-
-/**
- * @summary Create a snapshot of the current report state (Phase 7 stub)
- */
-export const CreateSnapshotParams = zod.object({
-  reportId: zod.coerce.string(),
-});
-
-/**
  * @summary Get dashboard overview
  */
 export const GetDashboardSummaryResponse = zod.object({
@@ -898,4 +884,425 @@ export const RequestNoteAiDraftResponse = zod.object({
   provider: zod.enum(["openai", "anthropic", "not_configured"]),
   instructions: zod.string().nullish(),
   noteId: zod.string().uuid(),
+});
+
+/**
+ * @summary Run the validation engine for a report
+ */
+export const RunValidationParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const RunValidationResponse = zod.object({
+  id: zod.string().uuid().nullish(),
+  reportId: zod.string().uuid(),
+  runByProfileId: zod.string().uuid().nullish(),
+  runAt: zod.coerce.date().nullish(),
+  blockingCount: zod.number(),
+  warningCount: zod.number(),
+  infoCount: zod.number(),
+  issues: zod.array(
+    zod.object({
+      ruleKey: zod.string(),
+      level: zod.enum(["blocking", "warning", "info"]),
+      section: zod.enum([
+        "import",
+        "mapping",
+        "financial_statements",
+        "notes",
+        "validation",
+        "export",
+      ]),
+      message: zod.string(),
+      entityRef: zod.string().nullish(),
+      isHighRisk: zod.boolean(),
+      quickLinkPath: zod.string().nullish(),
+    }),
+  ),
+  readinessLevel: zod.enum(["ready", "blocked", "not_run"]),
+});
+
+/**
+ * @summary Get the most recent validation run for a report
+ */
+export const GetLatestValidationRunParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const GetLatestValidationRunResponse = zod.object({
+  id: zod.string().uuid().nullish(),
+  reportId: zod.string().uuid(),
+  runByProfileId: zod.string().uuid().nullish(),
+  runAt: zod.coerce.date().nullish(),
+  blockingCount: zod.number(),
+  warningCount: zod.number(),
+  infoCount: zod.number(),
+  issues: zod.array(
+    zod.object({
+      ruleKey: zod.string(),
+      level: zod.enum(["blocking", "warning", "info"]),
+      section: zod.enum([
+        "import",
+        "mapping",
+        "financial_statements",
+        "notes",
+        "validation",
+        "export",
+      ]),
+      message: zod.string(),
+      entityRef: zod.string().nullish(),
+      isHighRisk: zod.boolean(),
+      quickLinkPath: zod.string().nullish(),
+    }),
+  ),
+  readinessLevel: zod.enum(["ready", "blocked", "not_run"]),
+});
+
+/**
+ * @summary Dismiss (acknowledge) a warning-level validation issue
+ */
+export const DismissValidationIssueParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const DismissValidationIssueBody = zod.object({
+  issueKey: zod.string(),
+  comment: zod.string().nullish(),
+});
+
+export const DismissValidationIssueResponse = zod.object({
+  id: zod.string().uuid(),
+  reportId: zod.string().uuid(),
+  issueKey: zod.string(),
+  dismissedByProfileId: zod.string().uuid().nullish(),
+  dismissedByName: zod.string().nullish(),
+  isHighRisk: zod.boolean(),
+  requiresComment: zod.boolean(),
+  comment: zod.string().nullish(),
+  dismissedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List active validation dismissals for a report
+ */
+export const ListValidationDismissalsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const ListValidationDismissalsResponse = zod.object({
+  dismissals: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      reportId: zod.string().uuid(),
+      issueKey: zod.string(),
+      dismissedByProfileId: zod.string().uuid().nullish(),
+      dismissedByName: zod.string().nullish(),
+      isHighRisk: zod.boolean(),
+      requiresComment: zod.boolean(),
+      comment: zod.string().nullish(),
+      dismissedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary List per-section review states for a report
+ */
+export const ListSectionReviewsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const ListSectionReviewsResponse = zod.object({
+  reviews: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      reportId: zod.string().uuid(),
+      section: zod.enum([
+        "import",
+        "mapping",
+        "financial_statements",
+        "notes",
+        "validation",
+        "export",
+      ]),
+      status: zod.enum([
+        "not_started",
+        "in_progress",
+        "ready_for_review",
+        "changes_requested",
+        "approved",
+      ]),
+      assignedToProfileId: zod.string().uuid().nullish(),
+      assignedToName: zod.string().nullish(),
+      updatedByProfileId: zod.string().uuid().nullish(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update a section's review status or assignee
+ */
+export const UpdateSectionReviewParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  section: zod.enum([
+    "import",
+    "mapping",
+    "financial_statements",
+    "notes",
+    "validation",
+    "export",
+  ]),
+});
+
+export const UpdateSectionReviewBody = zod.object({
+  status: zod
+    .enum([
+      "not_started",
+      "in_progress",
+      "ready_for_review",
+      "changes_requested",
+      "approved",
+    ])
+    .optional(),
+  assignedToProfileId: zod.string().uuid().nullish(),
+});
+
+export const UpdateSectionReviewResponse = zod.object({
+  id: zod.string().uuid(),
+  reportId: zod.string().uuid(),
+  section: zod.enum([
+    "import",
+    "mapping",
+    "financial_statements",
+    "notes",
+    "validation",
+    "export",
+  ]),
+  status: zod.enum([
+    "not_started",
+    "in_progress",
+    "ready_for_review",
+    "changes_requested",
+    "approved",
+  ]),
+  assignedToProfileId: zod.string().uuid().nullish(),
+  assignedToName: zod.string().nullish(),
+  updatedByProfileId: zod.string().uuid().nullish(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List comments for a report (optionally filtered by section)
+ */
+export const ListSectionCommentsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const ListSectionCommentsQueryParams = zod.object({
+  section: zod
+    .enum([
+      "import",
+      "mapping",
+      "financial_statements",
+      "notes",
+      "validation",
+      "export",
+    ])
+    .optional(),
+});
+
+export const ListSectionCommentsResponse = zod.object({
+  comments: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      reportId: zod.string().uuid(),
+      section: zod.enum([
+        "import",
+        "mapping",
+        "financial_statements",
+        "notes",
+        "validation",
+        "export",
+      ]),
+      entityId: zod.string().uuid().nullish(),
+      body: zod.string(),
+      createdByProfileId: zod.string().uuid().nullish(),
+      createdByName: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+      resolved: zod.boolean(),
+      resolvedByProfileId: zod.string().uuid().nullish(),
+      resolvedAt: zod.coerce.date().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a new comment on a section
+ */
+export const CreateSectionCommentParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const CreateSectionCommentBody = zod.object({
+  section: zod.enum([
+    "import",
+    "mapping",
+    "financial_statements",
+    "notes",
+    "validation",
+    "export",
+  ]),
+  body: zod.string().min(1),
+  entityId: zod.string().uuid().nullish(),
+});
+
+/**
+ * @summary Resolve / unresolve a comment
+ */
+export const UpdateSectionCommentParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  commentId: zod.coerce.string().uuid(),
+});
+
+export const UpdateSectionCommentBody = zod.object({
+  resolved: zod.boolean(),
+});
+
+export const UpdateSectionCommentResponse = zod.object({
+  id: zod.string().uuid(),
+  reportId: zod.string().uuid(),
+  section: zod.enum([
+    "import",
+    "mapping",
+    "financial_statements",
+    "notes",
+    "validation",
+    "export",
+  ]),
+  entityId: zod.string().uuid().nullish(),
+  body: zod.string(),
+  createdByProfileId: zod.string().uuid().nullish(),
+  createdByName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  resolved: zod.boolean(),
+  resolvedByProfileId: zod.string().uuid().nullish(),
+  resolvedAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary List collaborators for a report (with role)
+ */
+export const ListCollaboratorsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const ListCollaboratorsResponse = zod.object({
+  collaborators: zod.array(
+    zod.object({
+      profileId: zod.string().uuid(),
+      email: zod.string(),
+      displayName: zod.string().nullish(),
+      role: zod.enum([
+        "owner",
+        "admin",
+        "accountant",
+        "reviewer",
+        "auditor",
+        "read_only",
+      ]),
+      invitedByProfileId: zod.string().uuid().nullish(),
+      createdAt: zod.coerce.date(),
+      isOwner: zod.boolean(),
+    }),
+  ),
+});
+
+/**
+ * @summary Invite a collaborator (placeholder — records intent, no email yet)
+ */
+export const InviteCollaboratorParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const InviteCollaboratorBody = zod.object({
+  email: zod.string().email(),
+  role: zod.enum([
+    "owner",
+    "admin",
+    "accountant",
+    "reviewer",
+    "auditor",
+    "read_only",
+  ]),
+});
+
+/**
+ * @summary Remove a collaborator from a report
+ */
+export const RemoveCollaboratorParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  profileId: zod.coerce.string().uuid(),
+});
+
+/**
+ * @summary List point-in-time snapshots for a report
+ */
+export const ListProjectSnapshotsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const ListProjectSnapshotsResponse = zod.object({
+  snapshots: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      reportId: zod.string().uuid(),
+      label: zod.string().nullish(),
+      actorProfileId: zod.string().uuid().nullish(),
+      actorName: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a named snapshot of the current report state
+ */
+export const CreateProjectSnapshotParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const CreateProjectSnapshotBody = zod.object({
+  label: zod.string(),
+});
+
+/**
+ * @summary List audit/activity events for a report
+ */
+export const ListAuditEventsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const listAuditEventsQueryLimitDefault = 100;
+export const listAuditEventsQueryLimitMax = 500;
+
+export const ListAuditEventsQueryParams = zod.object({
+  category: zod.coerce.string().optional(),
+  limit: zod.coerce
+    .number()
+    .max(listAuditEventsQueryLimitMax)
+    .default(listAuditEventsQueryLimitDefault),
+});
+
+export const ListAuditEventsResponse = zod.object({
+  events: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      eventType: zod.string(),
+      actorProfileId: zod.string().uuid().nullish(),
+      actorName: zod.string().nullish(),
+      eventData: zod.record(zod.string(), zod.unknown()).nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
 });

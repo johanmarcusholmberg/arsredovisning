@@ -14,3 +14,8 @@ export * from "./financialStatementLines";
 export * from "./reportNoteReferences";
 export * from "./reportNotes";
 export * from "./noteStatementReferences";
+export * from "./validationRuns";
+export * from "./validationDismissals";
+export * from "./sectionReviews";
+export * from "./sectionComments";
+export * from "./reportCollaborators";

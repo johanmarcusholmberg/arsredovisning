@@ -15,6 +15,9 @@ import {
   PenTool,
   LayoutDashboard,
   TrendingUp,
+  ShieldAlert,
+  ClipboardCheck,
+  History,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -41,6 +44,27 @@ const SECTIONS = [
     icon: FileText,
     desc: "Redovisningsprinciper och tilläggsupplysningar",
     href: "notes",
+  },
+  {
+    id: "validering",
+    title: "Validering",
+    icon: ShieldAlert,
+    desc: "Kör regler för att hitta blockerande problem och varningar",
+    href: "validation",
+  },
+  {
+    id: "granskning",
+    title: "Granskning & samarbete",
+    icon: ClipboardCheck,
+    desc: "Granskningsstatus per avsnitt, kommentarer och samarbetspartners",
+    href: "review",
+  },
+  {
+    id: "aktivitet",
+    title: "Aktivitet & revisionsspår",
+    icon: History,
+    desc: "Komplett händelselogg och ögonblicksbilder",
+    href: "audit",
   },
   {
     id: "underskrifter",

@@ -214,7 +214,18 @@ All project documentation lives in `docs/`:
   - AI drafting: returns `provider: "not_configured"` with Swedish instructions when `OPENAI_API_KEY` is missing; placeholder draft when key present
   - Frontend: `/reports/:reportId/notes` page with NoteCard list, requirement/status badges, "ej tillämplig" toggle, "Generera förslag" + "Omnumrera" buttons; NoteDetailDrawer with linked lines, current/prev-year values + diff, AI-draft + Save + Godkänn flow, "Why required?"/"Show calc"/Comments accordions; ReportWorkspace "Noter" section now navigates to the page
   - Compliance banner on Notes page; missing-required-text alert
-- **Phase 6** ⏳ Not started — Validation, collaboration, audit trail
+- **Phase 6** ✅ Complete — Validation, Collaboration & Audit Trail
+  - **DB**: `validation_runs` (counts + readiness level), `validation_dismissals` (per-issue, with optional comment + high-risk flag), `section_reviews` (one row per `(reportId, section)`), `section_comments` (threaded, resolvable), `report_collaborators` (profileId + role), `project_snapshots` (label + payload). All keyed on `reportId`. Existing `audit_events` table reused; queries match both `projectId = reportId` and `eventData->>'reportId' = reportId` so older Phase 4/5 events surface too.
+  - **Engine**: `validationEngine.ts` runs deterministic rule set (balance-sheet equality within 1 SEK, large YoY swings ≥ threshold + ≥ pct, missing required notes, etc.); produces `blocking | warning | info` levels with `isHighRisk` flag and `quickLinkPath` for deep linking.
+  - **Permissions**: `permissions.ts` resolves report-level role (owner via `companies.createdByProfileId`, plus `report_collaborators`); enforces edit/comment/manage tiers.
+  - **Endpoints** (all under `/reports/{reportId}`):
+    - `POST /validation/run`, `GET /validation/latest`, `POST /validation/dismiss`, `GET /validation/dismissals`
+    - `GET/PATCH /reviews`, `GET/POST /comments`, `PATCH /comments/{id}`
+    - `GET/POST /collaborators`, `DELETE /collaborators/{profileId}`
+    - `GET/POST /snapshots`, `GET /audit-events?category=&limit=`
+  - **Dismissal rules**: blocking issues never dismissable; high-risk requires non-empty comment; issue must exist in latest run.
+  - **Frontend pages**: `ValidationView` (issue lists by severity, dismissal dialog with mandatory comment for high-risk, quick-link buttons, readiness summary), `ReviewView` (per-section status selector, threaded comments with resolve/reopen, collaborator list with invite/remove), `AuditView` (filterable activity feed, snapshot creator + history). Routes added to `App.tsx`; ReportWorkspace SECTIONS array now includes Validering, Granskning, Aktivitet cards.
+  - **Wording**: validator copy avoids "garanterat / juridiskt / 100% / felfri" — frames itself as a check that "ersätter inte din egen granskning".
 - **Phase 7** ⏳ Not started — PDF/Word export and download flow
 
 ## Important Design Decisions

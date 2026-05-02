@@ -22,6 +22,18 @@ tags:
     description: User entitlement and access tier
   - name: notes
     description: Notes (disclosures) module
+  - name: validation
+    description: Compliance assistant — validation runs and dismissals
+  - name: reviews
+    description: Section-level review states
+  - name: comments
+    description: Per-section threaded comments
+  - name: collaborators
+    description: Per-report collaborators (invite/remove)
+  - name: snapshots
+    description: Point-in-time project snapshots
+  - name: audit
+    description: Audit/activity feed
 
 paths:
   /healthz:
@@ -306,34 +318,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReportSummary"
-
-  /reports/{reportId}/snapshots:
-    get:
-      operationId: listSnapshots
-      tags: [reports]
-      summary: List snapshots for a report (Phase 7 stub)
-      parameters:
-        - name: reportId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "501":
-          description: Not yet implemented
-    post:
-      operationId: createSnapshot
-      tags: [reports]
-      summary: Create a snapshot of the current report state (Phase 7 stub)
-      parameters:
-        - name: reportId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "501":
-          description: Not yet implemented
 
   /dashboard/summary:
     get:
@@ -775,6 +759,370 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AiDraftResponse"
+
+  # ─── Validation ──────────────────────────────────────────────────────────────
+  /reports/{reportId}/validation/run:
+    post:
+      operationId: runValidation
+      tags: [validation]
+      summary: Run the validation engine for a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Validation run result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationRun"
+
+  /reports/{reportId}/validation/latest:
+    get:
+      operationId: getLatestValidationRun
+      tags: [validation]
+      summary: Get the most recent validation run for a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Most recent run, or empty placeholder if none exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationRun"
+
+  /reports/{reportId}/validation/dismiss:
+    post:
+      operationId: dismissValidationIssue
+      tags: [validation]
+      summary: Dismiss (acknowledge) a warning-level validation issue
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DismissIssueBody"
+      responses:
+        "200":
+          description: Dismissal recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationDismissal"
+
+  /reports/{reportId}/validation/dismissals:
+    get:
+      operationId: listValidationDismissals
+      tags: [validation]
+      summary: List active validation dismissals for a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Active dismissals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dismissals:
+                    type: array
+                    items: { $ref: "#/components/schemas/ValidationDismissal" }
+                required: [dismissals]
+
+  # ─── Reviews ─────────────────────────────────────────────────────────────────
+  /reports/{reportId}/reviews:
+    get:
+      operationId: listSectionReviews
+      tags: [reviews]
+      summary: List per-section review states for a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: All section reviews (auto-created if absent)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reviews:
+                    type: array
+                    items: { $ref: "#/components/schemas/SectionReview" }
+                required: [reviews]
+
+  /reports/{reportId}/reviews/{section}:
+    patch:
+      operationId: updateSectionReview
+      tags: [reviews]
+      summary: Update a section's review status or assignee
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: section
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/ReportSection" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSectionReviewBody"
+      responses:
+        "200":
+          description: Updated section review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SectionReview"
+
+  # ─── Comments ────────────────────────────────────────────────────────────────
+  /reports/{reportId}/comments:
+    get:
+      operationId: listSectionComments
+      tags: [comments]
+      summary: List comments for a report (optionally filtered by section)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: section
+          in: query
+          required: false
+          schema: { $ref: "#/components/schemas/ReportSection" }
+      responses:
+        "200":
+          description: Comment list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comments:
+                    type: array
+                    items: { $ref: "#/components/schemas/SectionComment" }
+                required: [comments]
+    post:
+      operationId: createSectionComment
+      tags: [comments]
+      summary: Create a new comment on a section
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSectionCommentBody"
+      responses:
+        "201":
+          description: Created comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SectionComment"
+
+  /reports/{reportId}/comments/{commentId}:
+    patch:
+      operationId: updateSectionComment
+      tags: [comments]
+      summary: Resolve / unresolve a comment
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: commentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resolved: { type: boolean }
+              required: [resolved]
+      responses:
+        "200":
+          description: Updated comment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SectionComment"
+
+  # ─── Collaborators ───────────────────────────────────────────────────────────
+  /reports/{reportId}/collaborators:
+    get:
+      operationId: listCollaborators
+      tags: [collaborators]
+      summary: List collaborators for a report (with role)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Collaborator list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  collaborators:
+                    type: array
+                    items: { $ref: "#/components/schemas/Collaborator" }
+                required: [collaborators]
+    post:
+      operationId: inviteCollaborator
+      tags: [collaborators]
+      summary: Invite a collaborator (placeholder — records intent, no email yet)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteCollaboratorBody"
+      responses:
+        "201":
+          description: Invited collaborator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collaborator"
+
+  /reports/{reportId}/collaborators/{profileId}:
+    delete:
+      operationId: removeCollaborator
+      tags: [collaborators]
+      summary: Remove a collaborator from a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: profileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Removed
+
+  # ─── Snapshots ───────────────────────────────────────────────────────────────
+  /reports/{reportId}/snapshots:
+    get:
+      operationId: listProjectSnapshots
+      tags: [snapshots]
+      summary: List point-in-time snapshots for a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Snapshot list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  snapshots:
+                    type: array
+                    items: { $ref: "#/components/schemas/ProjectSnapshot" }
+                required: [snapshots]
+    post:
+      operationId: createProjectSnapshot
+      tags: [snapshots]
+      summary: Create a named snapshot of the current report state
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: { type: string }
+              required: [label]
+      responses:
+        "201":
+          description: Created snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectSnapshot"
+
+  # ─── Audit feed ──────────────────────────────────────────────────────────────
+  /reports/{reportId}/audit-events:
+    get:
+      operationId: listAuditEvents
+      tags: [audit]
+      summary: List audit/activity events for a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Optional filter (e.g. 'note', 'validation', 'export')
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 100, maximum: 500 }
+      responses:
+        "200":
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/AuditEvent" }
+                required: [events]
 
 components:
   schemas:
@@ -1648,3 +1996,158 @@ components:
       required:
         - provider
         - noteId
+
+    # ─── Phase 6 schemas ─────────────────────────────────────────────────────────
+    ReportSection:
+      type: string
+      enum: [import, mapping, financial_statements, notes, validation, export]
+
+    ValidationLevel:
+      type: string
+      enum: [blocking, warning, info]
+
+    ReviewStatus:
+      type: string
+      enum: [not_started, in_progress, ready_for_review, changes_requested, approved]
+
+    ReportRole:
+      type: string
+      enum: [owner, admin, accountant, reviewer, auditor, read_only]
+
+    ValidationIssue:
+      type: object
+      properties:
+        ruleKey: { type: string }
+        level: { $ref: "#/components/schemas/ValidationLevel" }
+        section: { $ref: "#/components/schemas/ReportSection" }
+        message: { type: string }
+        entityRef: { type: string, nullable: true }
+        isHighRisk: { type: boolean }
+        quickLinkPath: { type: string, nullable: true }
+      required: [ruleKey, level, section, message, isHighRisk]
+
+    ValidationRun:
+      type: object
+      properties:
+        id: { type: string, format: uuid, nullable: true }
+        reportId: { type: string, format: uuid }
+        runByProfileId: { type: string, format: uuid, nullable: true }
+        runAt: { type: string, format: date-time, nullable: true }
+        blockingCount: { type: integer }
+        warningCount: { type: integer }
+        infoCount: { type: integer }
+        issues:
+          type: array
+          items: { $ref: "#/components/schemas/ValidationIssue" }
+        readinessLevel:
+          type: string
+          enum: [ready, blocked, not_run]
+      required: [reportId, blockingCount, warningCount, infoCount, issues, readinessLevel]
+
+    DismissIssueBody:
+      type: object
+      properties:
+        issueKey: { type: string }
+        comment: { type: string, nullable: true }
+      required: [issueKey]
+
+    ValidationDismissal:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        reportId: { type: string, format: uuid }
+        issueKey: { type: string }
+        dismissedByProfileId: { type: string, format: uuid, nullable: true }
+        dismissedByName: { type: string, nullable: true }
+        isHighRisk: { type: boolean }
+        requiresComment: { type: boolean }
+        comment: { type: string, nullable: true }
+        dismissedAt: { type: string, format: date-time }
+      required: [id, reportId, issueKey, isHighRisk, requiresComment, dismissedAt]
+
+    SectionReview:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        reportId: { type: string, format: uuid }
+        section: { $ref: "#/components/schemas/ReportSection" }
+        status: { $ref: "#/components/schemas/ReviewStatus" }
+        assignedToProfileId: { type: string, format: uuid, nullable: true }
+        assignedToName: { type: string, nullable: true }
+        updatedByProfileId: { type: string, format: uuid, nullable: true }
+        updatedAt: { type: string, format: date-time }
+      required: [id, reportId, section, status, updatedAt]
+
+    UpdateSectionReviewBody:
+      type: object
+      properties:
+        status: { $ref: "#/components/schemas/ReviewStatus" }
+        assignedToProfileId: { type: string, format: uuid, nullable: true }
+
+    SectionComment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        reportId: { type: string, format: uuid }
+        section: { $ref: "#/components/schemas/ReportSection" }
+        entityId: { type: string, format: uuid, nullable: true }
+        body: { type: string }
+        createdByProfileId: { type: string, format: uuid, nullable: true }
+        createdByName: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        resolved: { type: boolean }
+        resolvedByProfileId: { type: string, format: uuid, nullable: true }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+      required: [id, reportId, section, body, createdAt, resolved]
+
+    CreateSectionCommentBody:
+      type: object
+      properties:
+        section: { $ref: "#/components/schemas/ReportSection" }
+        body: { type: string, minLength: 1 }
+        entityId: { type: string, format: uuid, nullable: true }
+      required: [section, body]
+
+    Collaborator:
+      type: object
+      properties:
+        profileId: { type: string, format: uuid }
+        email: { type: string }
+        displayName: { type: string, nullable: true }
+        role: { $ref: "#/components/schemas/ReportRole" }
+        invitedByProfileId: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+        isOwner: { type: boolean }
+      required: [profileId, email, role, isOwner, createdAt]
+
+    InviteCollaboratorBody:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/ReportRole" }
+      required: [email, role]
+
+    ProjectSnapshot:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        reportId: { type: string, format: uuid }
+        label: { type: string, nullable: true }
+        actorProfileId: { type: string, format: uuid, nullable: true }
+        actorName: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+      required: [id, reportId, createdAt]
+
+    AuditEvent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        eventType: { type: string }
+        actorProfileId: { type: string, format: uuid, nullable: true }
+        actorName: { type: string, nullable: true }
+        eventData:
+          type: object
+          additionalProperties: true
+          nullable: true
+        createdAt: { type: string, format: date-time }
+      required: [id, eventType, createdAt]

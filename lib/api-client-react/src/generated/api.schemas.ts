@@ -606,6 +606,167 @@ export interface AiDraftResponse {
   noteId: string;
 }
 
+export type ReportSection = (typeof ReportSection)[keyof typeof ReportSection];
+
+export const ReportSection = {
+  import: "import",
+  mapping: "mapping",
+  financial_statements: "financial_statements",
+  notes: "notes",
+  validation: "validation",
+  export: "export",
+} as const;
+
+export type ValidationLevel =
+  (typeof ValidationLevel)[keyof typeof ValidationLevel];
+
+export const ValidationLevel = {
+  blocking: "blocking",
+  warning: "warning",
+  info: "info",
+} as const;
+
+export type ReviewStatus = (typeof ReviewStatus)[keyof typeof ReviewStatus];
+
+export const ReviewStatus = {
+  not_started: "not_started",
+  in_progress: "in_progress",
+  ready_for_review: "ready_for_review",
+  changes_requested: "changes_requested",
+  approved: "approved",
+} as const;
+
+export type ReportRole = (typeof ReportRole)[keyof typeof ReportRole];
+
+export const ReportRole = {
+  owner: "owner",
+  admin: "admin",
+  accountant: "accountant",
+  reviewer: "reviewer",
+  auditor: "auditor",
+  read_only: "read_only",
+} as const;
+
+export interface ValidationIssue {
+  ruleKey: string;
+  level: ValidationLevel;
+  section: ReportSection;
+  message: string;
+  entityRef?: string | null;
+  isHighRisk: boolean;
+  quickLinkPath?: string | null;
+}
+
+export type ValidationRunReadinessLevel =
+  (typeof ValidationRunReadinessLevel)[keyof typeof ValidationRunReadinessLevel];
+
+export const ValidationRunReadinessLevel = {
+  ready: "ready",
+  blocked: "blocked",
+  not_run: "not_run",
+} as const;
+
+export interface ValidationRun {
+  id?: string | null;
+  reportId: string;
+  runByProfileId?: string | null;
+  runAt?: string | null;
+  blockingCount: number;
+  warningCount: number;
+  infoCount: number;
+  issues: ValidationIssue[];
+  readinessLevel: ValidationRunReadinessLevel;
+}
+
+export interface DismissIssueBody {
+  issueKey: string;
+  comment?: string | null;
+}
+
+export interface ValidationDismissal {
+  id: string;
+  reportId: string;
+  issueKey: string;
+  dismissedByProfileId?: string | null;
+  dismissedByName?: string | null;
+  isHighRisk: boolean;
+  requiresComment: boolean;
+  comment?: string | null;
+  dismissedAt: string;
+}
+
+export interface SectionReview {
+  id: string;
+  reportId: string;
+  section: ReportSection;
+  status: ReviewStatus;
+  assignedToProfileId?: string | null;
+  assignedToName?: string | null;
+  updatedByProfileId?: string | null;
+  updatedAt: string;
+}
+
+export interface UpdateSectionReviewBody {
+  status?: ReviewStatus;
+  assignedToProfileId?: string | null;
+}
+
+export interface SectionComment {
+  id: string;
+  reportId: string;
+  section: ReportSection;
+  entityId?: string | null;
+  body: string;
+  createdByProfileId?: string | null;
+  createdByName?: string | null;
+  createdAt: string;
+  resolved: boolean;
+  resolvedByProfileId?: string | null;
+  resolvedAt?: string | null;
+}
+
+export interface CreateSectionCommentBody {
+  section: ReportSection;
+  /** @minLength 1 */
+  body: string;
+  entityId?: string | null;
+}
+
+export interface Collaborator {
+  profileId: string;
+  email: string;
+  displayName?: string | null;
+  role: ReportRole;
+  invitedByProfileId?: string | null;
+  createdAt: string;
+  isOwner: boolean;
+}
+
+export interface InviteCollaboratorBody {
+  email: string;
+  role: ReportRole;
+}
+
+export interface ProjectSnapshot {
+  id: string;
+  reportId: string;
+  label?: string | null;
+  actorProfileId?: string | null;
+  actorName?: string | null;
+  createdAt: string;
+}
+
+export type AuditEventEventData = { [key: string]: unknown } | null;
+
+export interface AuditEvent {
+  id: string;
+  eventType: string;
+  actorProfileId?: string | null;
+  actorName?: string | null;
+  eventData?: AuditEventEventData;
+  createdAt: string;
+}
+
 export type GetFinancialStatementsParams = {
   statementType?: GetFinancialStatementsStatementType;
 };
@@ -621,4 +782,51 @@ export const GetFinancialStatementsStatementType = {
 
 export type SavePreviousYearValues200 = {
   updated: number;
+};
+
+export type ListValidationDismissals200 = {
+  dismissals: ValidationDismissal[];
+};
+
+export type ListSectionReviews200 = {
+  reviews: SectionReview[];
+};
+
+export type ListSectionCommentsParams = {
+  section?: ReportSection;
+};
+
+export type ListSectionComments200 = {
+  comments: SectionComment[];
+};
+
+export type UpdateSectionCommentBody = {
+  resolved: boolean;
+};
+
+export type ListCollaborators200 = {
+  collaborators: Collaborator[];
+};
+
+export type ListProjectSnapshots200 = {
+  snapshots: ProjectSnapshot[];
+};
+
+export type CreateProjectSnapshotBody = {
+  label: string;
+};
+
+export type ListAuditEventsParams = {
+  /**
+   * Optional filter (e.g. 'note', 'validation', 'export')
+   */
+  category?: string;
+  /**
+   * @maximum 500
+   */
+  limit?: number;
+};
+
+export type ListAuditEvents200 = {
+  events: AuditEvent[];
 };

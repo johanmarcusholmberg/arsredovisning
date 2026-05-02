@@ -1,0 +1,655 @@
+PHASE 6.6
+Continue working on “Årsredovisningar”.
+
+This phase is:
+
+Phase 6.6 – Export template, preview model and PDF/Word readiness
+
+This phase comes after:
+
+- Phase 6.4 – Robust note management, note selection and note-reference integrity
+- Phase 6.5 – Smart reclassification and netting between notes
+
+This is a preparation phase before building final PDF/Word export.
+
+Do not build final PDF export yet.
+Do not build final Word export yet.
+Do not connect final Stripe/export download logic yet.
+
+Your task is to prepare the Swedish annual-report export template structure, layout system, data contract and preview model so Phase 7 can implement PDF/Word export correctly.
+
+The export must not become a generic SaaS report.
+
+It must follow Swedish annual-report structure, layout logic and conventions.
+
+The browser preview, PDF export and Word export must later use the same annual-report data contract.
+
+Do not create:
+- one model for preview
+- another model for PDF
+- another model for Word
+
+Do not create separate note-numbering logic for export.
+
+Do not create separate reclassification/netting calculations for export.
+
+The export preview must use:
+- approved mappings
+- approved note selection
+- central automatic note numbering
+- valid note references
+- approved manual note edits
+- approved reclassifications
+- approved netting
+- final presentation amounts
+
+The original imported accounting data must remain traceable internally, but the formal preview should show the approved annual-report presentation.
+
+The formal annual report should follow Swedish annual-report structure and common formatting conventions suitable for review and filing, but the app must not claim legal approval, guaranteed compliance or 100% correctness.
+
+Important:
+
+- Annual report output is Swedish only at launch.
+- Website/app UI can support Swedish and English, but exported annual reports must be Swedish.
+- The report must use one clean Swedish annual-report template from day one.
+- The user can add a cover sheet as the first page.
+- The income statement and balance sheet must include a “Not” column.
+- The notes section must use matching automatic note numbering.
+- Export must be blocked later if note numbering or note references are inconsistent.
+- Export must be blocked later if approved reclassifications/netting cause note totals or statement totals to mismatch.
+- Free/demo export must be watermarked and use dummy data only.
+
+The export preview and export data contract must use the final approved annual-report presentation after:
+
+- account mapping
+- note selection
+- note numbering
+- manual note row edits
+- approved reclassifications
+- approved netting
+- final validation calculations
+
+The original imported accounting data must remain traceable internally, but the formal preview should show the approved annual-report presentation, not raw imported ledger data.
+
+---
+
+## 1. Formal annual report structure
+
+Use this document structure as the source of truth:
+
+1. Optional cover sheet / generated cover page
+2. Förvaltningsberättelse
+3. Resultaträkning
+4. Balansräkning
+5. Kassaflödesanalys, only if required or explicitly enabled
+6. Noter
+7. Underskrifter
+8. Optional export-package appendices, separate from the formal annual report:
+   - Validation summary
+   - Audit/change summary
+
+The formal annual report should not include validation or audit appendices unless the user explicitly selects them as separate export-package appendices.
+
+The formal annual report should not include internal audit/debug details by default.
+
+Internal traceability should remain available in the application, but the formal annual report should only show the final approved annual-report presentation.
+
+---
+
+## 2. Export template data contract
+
+Create a clean TypeScript data contract/model for the annual report export.
+
+The same data contract must later be used by:
+
+- browser preview
+- PDF export
+- Word export
+- export validation
+- demo preview
+
+Do not create separate inconsistent models for preview and export.
+
+The data contract should include at minimum:
+
+### company
+
+- companyName
+- organizationNumber
+- companyType
+- financialYearStart
+- financialYearEnd
+
+### report
+
+- framework: K2/K3
+- annualReportLanguage: Swedish
+- amountUnit: SEK or TSEK
+- generatedAt
+- exportedBy
+- isDemo
+- watermarkText if demo
+- usesApprovedReclassifications
+- usesApprovedNetting
+- finalPresentationVersionId optional
+
+### cover
+
+- mode: generated / uploaded / none
+- title
+- subtitle
+- logoUrl optional
+- uploadedCoverFileRef optional
+- includeCover: true/false
+
+### managementReport
+
+- sections with heading and body
+- resultDisposition table
+- multiYearOverview table if applicable
+
+### financialStatements
+
+- incomeStatement lines
+- balanceSheet asset lines
+- balanceSheet equityAndLiabilities lines
+- cashFlow lines if included
+
+Each financial statement line must support:
+
+- id
+- label
+- level/indent
+- isHeading
+- isSubtotal
+- isTotal
+- noteReferences: array of note IDs and/or note numbers derived from the central note-numbering logic
+- currentYearAmount
+- previousYearAmount
+- amountFormat
+- sourceAccountIds optional
+- originalMappedAmount optional
+- reclassificationAdjustments optional
+- finalPresentationAmount
+- hasApprovedReclassifications
+- hasApprovedNetting
+- linkedReclassificationIds optional
+- linkedNoteRowIds optional
+
+### notes
+
+Each note must support:
+
+- noteId
+- noteNumber
+- noteTitle
+- noteType
+- bodyText
+- tables optional
+- linkedStatementLineIds
+- isRequired
+- status
+- confirmedTextOnly
+- noteRows
+- sourceAccountIds optional
+- grossAmount optional
+- netAmount optional
+- finalPresentationAmount
+- hasNetting
+- hasApprovedReclassifications
+- linkedReclassificationIds optional
+
+Each note row should support:
+
+- id
+- label
+- level/indent
+- currentYearAmount
+- previousYearAmount
+- grossAmount optional
+- netAmount optional
+- finalPresentationAmount
+- isHeading
+- isSubtotal
+- isTotal
+- sourceAccountIds optional
+- linkedReclassificationIds optional
+- hasNetting
+- hasApprovedReclassifications
+
+### signatures
+
+- place
+- date
+- signatories
+- auditor if applicable
+
+### appendices
+
+- includeValidationSummary
+- includeAuditSummary
+
+Important:
+The export data contract must store note relationships by note IDs and statement line IDs.
+Visible note numbers should be derived from the central note-numbering logic.
+Do not store note references as disconnected plain text.
+
+---
+
+## 3. Export data builder
+
+Create a reusable function/module that builds the annual-report export data contract.
+
+Suggested name examples:
+
+- buildAnnualReportExportData()
+- createAnnualReportPreviewModel()
+- buildFinalPresentationReportModel()
+
+This builder should collect and normalize data from:
+
+- company/project settings
+- financial statement lines
+- approved mapping data
+- approved note selection
+- automatic note numbering
+- note-to-statement-line links
+- approved manual note edits
+- approved reclassifications
+- approved netting
+- validation state
+- cover settings
+- demo state if applicable
+
+Rules:
+
+- The builder must use final approved presentation amounts.
+- The builder must exclude rejected reclassification suggestions.
+- The builder must exclude undone reclassifications.
+- The builder must exclude hidden, excluded or not_applicable notes from visible note numbering.
+- The builder must keep internal traceability fields available for app review, but not display them by default in the formal annual report preview.
+- The builder must be reusable by Phase 7 PDF/Word generation.
+
+Do not build separate data builders for preview, PDF and Word.
+
+---
+
+## 4. Export preview component
+
+Create or refactor a report preview component that renders the annual report using the same structure that PDF/Word export will use later.
+
+Important:
+
+This preview should not be just a UI card view.
+
+It should look like a formal document preview.
+
+Requirements:
+
+- A4-style page preview
+- Swedish labels
+- formal Swedish annual-report section order
+- cover page preview
+- Förvaltningsberättelse preview
+- Resultaträkning table with “Not” column
+- Balansräkning table with “Not” column
+- Kassaflödesanalys preview only if included
+- Notes section with numbered notes
+- Signature page preview
+- Demo watermark support
+- Page-break-friendly structure
+- Formal typography
+- Formal table spacing
+- No generic SaaS dashboard styling inside the document preview
+
+The preview must render the final approved annual-report presentation.
+
+If approved reclassifications or netting exist:
+
+- statement lines must show the final presentation amount
+- note totals must match the linked statement line
+- note rows may show netted amounts where approved
+- internal review views may show gross amounts and source accounts
+- the formal preview should not expose technical audit details unless the user opens review details
+
+Do not implement real PDF generation in this phase.
+
+Focus on rendering the document accurately in the browser/app preview.
+
+---
+
+## 5. Layout constants
+
+Create layout constants for the annual report template.
+
+Include:
+
+- page size: A4 portrait
+- margins: 20–25 mm
+- font family
+- heading font sizes
+- body font sizes
+- table font sizes
+- note font sizes
+- footer font sizes
+- table spacing
+- row spacing
+- section spacing
+- page break rules
+- watermark styling
+
+Recommended values:
+
+- main heading: 16–18 pt
+- body text: 10–11 pt
+- table text: 9–10 pt
+- notes text: 9–10 pt
+- footer: 8–9 pt
+
+Keep styling formal and restrained.
+
+The preview should be visually close to a Swedish annual-report document, not a colorful dashboard.
+
+The annual report export/preview should not inherit decorative app theme colors.
+
+The app UI may use the Nordic Calm palette, but the report document itself should remain formal: mostly black, grey and white.
+
+---
+
+## 6. Formal report table components
+
+Create reusable components for:
+
+- AnnualReportTable
+- IncomeStatementTable
+- BalanceSheetTable
+- CashFlowTable
+- NotesSection
+- NoteTable
+- ManagementReportSection
+- SignaturePage
+- CoverPage
+- Watermark
+- ReportFooter
+
+Table rules:
+
+- row labels left-aligned
+- note column centered or right-aligned
+- amount columns right-aligned
+- Swedish thousands separators with spaces
+- negative numbers with minus sign
+- total rows bold
+- subtotal rows semi-bold
+- headings visually distinct
+- no heavy grid
+- use light horizontal rules
+- if line has no note, Not column is blank
+
+The same table components should be structured so they can later support PDF and Word export.
+
+Avoid building export-only table components that differ from the preview components.
+
+---
+
+## 7. Note reference consistency check
+
+Create a reusable function that checks note reference consistency before export.
+
+It should check:
+
+- every displayed note number is unique
+- note numbering sequence is valid
+- every financial statement note reference points to an existing note
+- no note marked not applicable is referenced
+- no inactive note is referenced
+- no hidden note is referenced
+- no excluded optional note is referenced
+- no required note is missing a number
+- preview and export data use the same note numbering source
+- every note total matches the linked income statement or balance sheet line after approved reclassifications
+- every approved reclassification points to valid source and target note/report nodes
+- no rejected reclassification suggestion affects preview/export data
+- no undone reclassification affects preview/export data
+- netted note rows still reconcile to underlying gross amounts internally
+
+Do not block export yet in this phase.
+
+Return structured validation results that Phase 7 can use.
+
+Suggested validation result structure:
+
+- status:
+  - passed
+  - warning
+  - blocking_error
+- code
+- message
+- affectedSection
+- affectedNoteId optional
+- affectedStatementLineId optional
+- affectedReclassificationId optional
+- severity
+- recommendedAction
+
+---
+
+## 8. Reclassification/netting consistency check
+
+Create a reusable function that checks whether approved reclassification and netting decisions are safe for preview/export.
+
+It should check:
+
+- approved reclassifications have valid source and target references
+- approved reclassifications do not point to inactive notes
+- approved reclassifications do not point to hidden or not_applicable notes
+- approved reclassifications do not cause double-counting
+- approved reclassifications do not remove amounts from the annual-report presentation
+- note totals still reconcile to linked statement lines
+- balance sheet still balances after final presentation amounts
+- rejected suggestions do not affect preview/export
+- undone reclassifications do not affect preview/export
+- gross and net values remain internally traceable
+- preview totals use the same final calculation that export will use later
+
+Return structured validation results compatible with the note reference consistency check.
+
+Do not build final export blocking yet, but prepare the result structure so Phase 7 can block export.
+
+---
+
+## 9. Demo export preview
+
+Update the demo workspace export preview so it uses this same template structure.
+
+Demo preview must:
+
+- use dummy values
+- show Resultaträkning with Not column
+- show Balansräkning with Not column
+- show numbered notes
+- include dummy reclassification/netting example if Phase 6.5 demo data exists
+- include watermark text: “DEMO – EJ FÖR INLÄMNING”
+- make it clear the data is sample data
+- not allow clean download/export
+
+The demo preview must use the same data contract as real projects.
+
+Do not create a separate demo-only preview model.
+
+Demo data may be dummy data, but it should pass through the same preview/data contract path.
+
+---
+
+## 10. Cover sheet preparation
+
+Prepare cover sheet handling.
+
+Implement:
+
+- generated cover page layout
+- cover settings UI
+- placeholder for uploaded cover sheet
+- data model fields for uploaded cover file reference
+- preview of generated cover
+
+If uploaded PDF/image cover merging is complex, do not implement final merging yet.
+
+Prepare the structure for Phase 7.
+
+Cover options should include:
+
+- no cover
+- generated cover
+- uploaded cover placeholder
+
+The generated cover should be clean, formal and Swedish.
+
+Suggested generated cover fields:
+
+- Årsredovisning
+- company name
+- organization number
+- financial year
+- optional subtitle
+- optional logo placeholder
+
+Do not overdesign the cover page.
+
+---
+
+## 11. Export readiness preview
+
+On the Preview & export page, show a structured export readiness panel.
+
+Include:
+
+- validation status placeholder
+- note reference consistency status
+- note totals consistency status
+- reclassification/netting consistency status
+- AI text confirmation status
+- cover sheet status
+- paid entitlement status
+- permission status
+- demo/real project status
+
+The readiness panel should prepare the UI for Phase 7 final export blocking.
+
+Do not connect final Stripe/export logic yet.
+
+Do not allow real PDF/Word download in this phase.
+
+If download buttons are visible, mark them as future/disabled placeholders.
+
+---
+
+## 12. Export/compliance wording rule
+
+The application may help users prepare, review and export a Swedish annual report.
+
+The application must not claim:
+
+- legally approved
+- guaranteed compliant
+- 100% correct
+- error-free
+- approved by Bolagsverket
+
+Use safe wording:
+
+- “No blocking validation issues were found. Please review before filing.”
+- “Ready for review”
+- “Ready for export — no blocking issues found”
+- “Export is blocked because required issues remain.”
+
+The exported document should follow Swedish annual-report structure and common layout conventions, but the product remains an assistant and review tool.
+
+---
+
+## 13. Internal developer documentation
+
+Add a short internal documentation file or code comments explaining:
+
+- This preview/template is the source of truth for PDF/Word export.
+- The export must not be implemented with a separate inconsistent layout.
+- PDF and Word export should use the same data contract.
+- Note numbering must come from the notes module and remain consistent.
+- Reclassification and netting adjustments must be applied before preview/export rendering.
+- Preview/export should use final presentation amounts, not raw imported ledger amounts.
+- The formal annual report should not include validation/audit appendices unless the user explicitly selects them as export-package appendices.
+- Phase 7 must reuse this data contract and preview model instead of inventing a new export layout.
+
+Suggested documentation file:
+
+- docs/export-template-and-preview-model.md
+
+---
+
+## 14. Integration with previous phases
+
+This phase must build on the previous workflow.
+
+From Phase 6.4:
+
+- use approved note selection
+- use automatic note numbering
+- use note-to-statement-line references
+- prevent inconsistent note references
+- respect included/excluded/not_applicable/hidden note status
+- keep source account drilldown available outside the formal document preview
+
+From Phase 6.5:
+
+- use approved reclassifications
+- use approved netting
+- use final presentation amounts
+- exclude rejected suggestions
+- exclude undone reclassifications
+- keep internal traceability available outside the formal report preview
+
+The export preview should represent the final annual report as it will appear after all approved presentation decisions.
+
+---
+
+## 15. Acceptance criteria
+
+This preparation phase is complete when:
+
+- A clear export data contract exists.
+- The data contract is used by the browser preview.
+- The data contract is prepared for PDF export.
+- The data contract is prepared for Word export.
+- The data contract includes approved reclassification/netting fields.
+- A reusable export data builder exists.
+- The export data builder uses final approved presentation amounts.
+- The export data builder excludes rejected and undone reclassifications.
+- A document-style annual report preview exists.
+- The preview uses Swedish annual-report section order.
+- Income statement preview includes a “Not” column.
+- Balance sheet preview includes a “Not” column.
+- Cash flow preview supports note references when included.
+- Notes preview uses automatic note numbering.
+- The preview uses final approved presentation amounts.
+- Approved reclassifications/netting are reflected in preview totals.
+- Rejected or undone reclassifications do not affect preview totals.
+- Demo export preview uses the same template and has watermark.
+- Cover page/cover sheet structure exists.
+- Reusable formal table components exist.
+- Note reference consistency check exists.
+- Reclassification/netting consistency check exists.
+- Export readiness panel exists.
+- Compliance wording avoids legal guarantee language.
+- Internal export/template documentation exists.
+- Phase 7 can implement actual PDF/Word generation using this template instead of inventing a new layout.
+
+Do not build final PDF export yet.
+Do not build final Word export yet.
+Do not connect final Stripe/export download logic yet.
+
+After implementation, summarize:
+- what was changed
+- what files were touched
+- what is incomplete
+- what assumptions were made
+- what I should test before continuing to Phase 7
