@@ -20,6 +20,7 @@ import mappingRulesRouter from "./mappingRules";
 import reclassificationsRouter from "./reclassifications";
 import cashFlowRouter from "./cashFlow";
 import annualReportExportRouter from "./annualReportExport";
+import meRouter from "./me";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use(mappingRulesRouter);
 router.use(reclassificationsRouter);
 router.use(cashFlowRouter);
 router.use(annualReportExportRouter);
+router.use(meRouter);
 
 export default router;

@@ -22,7 +22,18 @@ export async function syncProfile(req: Request, res: Response, next: NextFunctio
     .where(eq(profilesTable.authId, authId));
 
   if (existing) {
-    req.profile = existing;
+    // If Supabase Auth has a newer email (e.g. user just confirmed an
+    // email change), keep profiles.email in sync so the UI reflects it.
+    if (email && existing.email !== email) {
+      const [refreshed] = await db
+        .update(profilesTable)
+        .set({ email, updatedAt: new Date() })
+        .where(eq(profilesTable.id, existing.id))
+        .returning();
+      req.profile = refreshed ?? existing;
+    } else {
+      req.profile = existing;
+    }
     next();
     return;
   }

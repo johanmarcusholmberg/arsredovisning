@@ -16,7 +16,8 @@ export const userPreferencesTable = pgTable("user_preferences", {
     .references(() => profilesTable.id, { onDelete: "cascade" }),
   uiLanguage: text("ui_language").notNull().default("sv"),
   theme: text("theme").notNull().default("light"),
-  notificationsPlaceholder: boolean("notifications_placeholder").notNull().default(true),
+  emailWeeklySummary: boolean("email_weekly_summary").notNull().default(true),
+  deadlineAlertsEnabled: boolean("deadline_alerts_enabled").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

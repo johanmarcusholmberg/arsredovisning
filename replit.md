@@ -57,6 +57,14 @@ The application is built as a pnpm monorepo using Node.js 24 and TypeScript 5.9.
 - **API**: 8 endpoints under `/api/reports/:reportId/cash-flow/*`, fully audit-logged via `helpers/auditLog`.
 - **Workflow integration**: new "Kassaflödesanalys" workspace section + workflow step between reclassifications and validation.
 
+### User Settings (post-Phase 8)
+- **Functional Settings page** at `/settings` (`pages/Settings.tsx`) — replaces the previous static mock with a fully wired page backed by `/api/me`, `/api/me/profile`, `/api/me/preferences`, `/api/me/password`, `/api/me/email`. Routes live in `artifacts/api-server/src/routes/me.ts` and reuse `requireAuth + syncProfile`.
+- **Profile fields**: editable Display Name, read-only Email (with a "Change" dialog that initiates Supabase email confirmation), Language select (`profiles.default_ui_language` — `sv` / `en`).
+- **Notifications**: two real preferences `email_weekly_summary` + `deadline_alerts_enabled` on `user_preferences` (replaces the old `notifications_placeholder` column). Toggles auto-save with optimistic updates and are disabled while in flight to avoid out-of-order races.
+- **Password change**: server endpoint re-verifies the current password via a transient anon Supabase client (`signInWithPassword`) before calling `admin.updateUserById`. Because the admin update revokes all existing sessions, the frontend re-issues `supabase.auth.signInWithPassword` with the new password in the mutation's `onSuccess` so the user stays logged in.
+- **Email change**: `admin.updateUserById({ email })` triggers Supabase's confirmation flow. `syncProfile` middleware now re-syncs `profiles.email` whenever the JWT's email differs from the stored row, so the UI reflects the change on the next authenticated request.
+- **Out of scope** (potential follow-ups): forgot-password flow on the login page, MFA enrollment, real notification delivery (preferences only persist intent today).
+
 ### Phase 8 — Launch Polish
 - **Launch Checklist** at `/launch-checklist` (`pages/LaunchChecklist.tsx`) — internal/admin readiness page covering env vars, Supabase tables/RLS, auth, payment, export, AI, storage, note numbering, manual QA, and Known Limitations (Swedish-only output, K2/K3 only, no Fortnox/Visma, no Bolagsverket fetch, no multi-step approvals, no version branching, no template management).
 - **Compliance wording** standardized to: *"Inga blockerande valideringsfel hittades. Granska noggrant innan inlämning. Verktyget är en complianceassistent — du som upprättare ansvarar..."* (NotesPage). The product is positioned as a compliance assistant, never a guarantee.

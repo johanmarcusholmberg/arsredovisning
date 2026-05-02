@@ -2848,3 +2848,96 @@ export const ListReclassificationAuditLogResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Get the current user's profile and preferences
+ */
+export const GetMeResponse = zod.object({
+  profile: zod.object({
+    id: zod.string().uuid(),
+    email: zod.string().email(),
+    displayName: zod.string().nullish(),
+    defaultUiLanguage: zod.enum(["sv", "en"]),
+    role: zod.string(),
+  }),
+  preferences: zod.object({
+    emailWeeklySummary: zod.boolean(),
+    deadlineAlertsEnabled: zod.boolean(),
+  }),
+});
+
+/**
+ * @summary Update the current user's profile (display name, language)
+ */
+export const updateMyProfileBodyDisplayNameMax = 120;
+
+export const UpdateMyProfileBody = zod.object({
+  displayName: zod
+    .string()
+    .min(1)
+    .max(updateMyProfileBodyDisplayNameMax)
+    .nullish(),
+  defaultUiLanguage: zod.enum(["sv", "en"]).optional(),
+});
+
+export const UpdateMyProfileResponse = zod.object({
+  profile: zod.object({
+    id: zod.string().uuid(),
+    email: zod.string().email(),
+    displayName: zod.string().nullish(),
+    defaultUiLanguage: zod.enum(["sv", "en"]),
+    role: zod.string(),
+  }),
+  preferences: zod.object({
+    emailWeeklySummary: zod.boolean(),
+    deadlineAlertsEnabled: zod.boolean(),
+  }),
+});
+
+/**
+ * @summary Update the current user's notification preferences
+ */
+export const UpdateMyPreferencesBody = zod.object({
+  emailWeeklySummary: zod.boolean().optional(),
+  deadlineAlertsEnabled: zod.boolean().optional(),
+});
+
+export const UpdateMyPreferencesResponse = zod.object({
+  profile: zod.object({
+    id: zod.string().uuid(),
+    email: zod.string().email(),
+    displayName: zod.string().nullish(),
+    defaultUiLanguage: zod.enum(["sv", "en"]),
+    role: zod.string(),
+  }),
+  preferences: zod.object({
+    emailWeeklySummary: zod.boolean(),
+    deadlineAlertsEnabled: zod.boolean(),
+  }),
+});
+
+/**
+ * Re-verifies the current password by attempting a password sign-in, then updates to the new password via Supabase admin.
+
+ * @summary Change the current user's password
+ */
+
+export const changeMyPasswordBodyNewPasswordMin = 8;
+export const changeMyPasswordBodyNewPasswordMax = 200;
+
+export const ChangeMyPasswordBody = zod.object({
+  currentPassword: zod.string().min(1),
+  newPassword: zod
+    .string()
+    .min(changeMyPasswordBodyNewPasswordMin)
+    .max(changeMyPasswordBodyNewPasswordMax),
+});
+
+/**
+ * Sends a confirmation link to the new email address via Supabase Auth. The profile.email column is updated lazily on the user's next login.
+
+ * @summary Initiate an email-address change
+ */
+export const ChangeMyEmailBody = zod.object({
+  newEmail: zod.string().email(),
+});

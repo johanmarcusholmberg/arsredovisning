@@ -40,6 +40,8 @@ tags:
     description: Account mapping and templates
   - name: reclassifications
     description: Smart reclassification suggestions and applied reclassifications between notes
+  - name: me
+    description: Current authenticated user — profile, preferences, and account security
 
 paths:
   /healthz:
@@ -1986,6 +1988,112 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReclassificationAuditLogResponse"
+
+  # ─── Me (current user) ──────────────────────────────────────────────────────
+  /me:
+    get:
+      operationId: getMe
+      tags: [me]
+      summary: Get the current user's profile and preferences
+      responses:
+        "200":
+          description: Current user profile + preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+
+  /me/profile:
+    patch:
+      operationId: updateMyProfile
+      tags: [me]
+      summary: Update the current user's profile (display name, language)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMyProfileBody"
+      responses:
+        "200":
+          description: Updated profile + preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+
+  /me/preferences:
+    patch:
+      operationId: updateMyPreferences
+      tags: [me]
+      summary: Update the current user's notification preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMyPreferencesBody"
+      responses:
+        "200":
+          description: Updated profile + preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+
+  /me/password:
+    post:
+      operationId: changeMyPassword
+      tags: [me]
+      summary: Change the current user's password
+      description: >
+        Re-verifies the current password by attempting a password sign-in,
+        then updates to the new password via Supabase admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordBody"
+      responses:
+        "204":
+          description: Password updated successfully
+        "400":
+          description: Invalid input (e.g. weak new password)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Current password incorrect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /me/email:
+    post:
+      operationId: changeMyEmail
+      tags: [me]
+      summary: Initiate an email-address change
+      description: >
+        Sends a confirmation link to the new email address via Supabase Auth.
+        The profile.email column is updated lazily on the user's next login.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeEmailBody"
+      responses:
+        "202":
+          description: Confirmation email sent
+        "400":
+          description: Invalid email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
 components:
   schemas:
@@ -4034,3 +4142,58 @@ components:
           type: array
           items: { $ref: "#/components/schemas/ReclassificationAuditEntry" }
       required: [entries]
+
+    MeProfile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        displayName: { type: string, nullable: true }
+        defaultUiLanguage: { type: string, enum: [sv, en] }
+        role: { type: string }
+      required: [id, email, defaultUiLanguage, role]
+
+    MePreferences:
+      type: object
+      properties:
+        emailWeeklySummary: { type: boolean }
+        deadlineAlertsEnabled: { type: boolean }
+      required: [emailWeeklySummary, deadlineAlertsEnabled]
+
+    MeResponse:
+      type: object
+      properties:
+        profile: { $ref: "#/components/schemas/MeProfile" }
+        preferences: { $ref: "#/components/schemas/MePreferences" }
+      required: [profile, preferences]
+
+    UpdateMyProfileBody:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+          nullable: true
+        defaultUiLanguage:
+          type: string
+          enum: [sv, en]
+
+    UpdateMyPreferencesBody:
+      type: object
+      properties:
+        emailWeeklySummary: { type: boolean }
+        deadlineAlertsEnabled: { type: boolean }
+
+    ChangePasswordBody:
+      type: object
+      properties:
+        currentPassword: { type: string, minLength: 1 }
+        newPassword: { type: string, minLength: 8, maxLength: 200 }
+      required: [currentPassword, newPassword]
+
+    ChangeEmailBody:
+      type: object
+      properties:
+        newEmail: { type: string, format: email }
+      required: [newEmail]

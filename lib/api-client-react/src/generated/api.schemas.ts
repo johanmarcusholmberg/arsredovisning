@@ -1503,6 +1503,68 @@ export interface ReclassificationAuditLogResponse {
   entries: ReclassificationAuditEntry[];
 }
 
+export type MeProfileDefaultUiLanguage =
+  (typeof MeProfileDefaultUiLanguage)[keyof typeof MeProfileDefaultUiLanguage];
+
+export const MeProfileDefaultUiLanguage = {
+  sv: "sv",
+  en: "en",
+} as const;
+
+export interface MeProfile {
+  id: string;
+  email: string;
+  displayName?: string | null;
+  defaultUiLanguage: MeProfileDefaultUiLanguage;
+  role: string;
+}
+
+export interface MePreferences {
+  emailWeeklySummary: boolean;
+  deadlineAlertsEnabled: boolean;
+}
+
+export interface MeResponse {
+  profile: MeProfile;
+  preferences: MePreferences;
+}
+
+export type UpdateMyProfileBodyDefaultUiLanguage =
+  (typeof UpdateMyProfileBodyDefaultUiLanguage)[keyof typeof UpdateMyProfileBodyDefaultUiLanguage];
+
+export const UpdateMyProfileBodyDefaultUiLanguage = {
+  sv: "sv",
+  en: "en",
+} as const;
+
+export interface UpdateMyProfileBody {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  displayName?: string | null;
+  defaultUiLanguage?: UpdateMyProfileBodyDefaultUiLanguage;
+}
+
+export interface UpdateMyPreferencesBody {
+  emailWeeklySummary?: boolean;
+  deadlineAlertsEnabled?: boolean;
+}
+
+export interface ChangePasswordBody {
+  /** @minLength 1 */
+  currentPassword: string;
+  /**
+   * @minLength 8
+   * @maxLength 200
+   */
+  newPassword: string;
+}
+
+export interface ChangeEmailBody {
+  newEmail: string;
+}
+
 export type GetFinancialStatementsParams = {
   statementType?: GetFinancialStatementsStatementType;
 };
