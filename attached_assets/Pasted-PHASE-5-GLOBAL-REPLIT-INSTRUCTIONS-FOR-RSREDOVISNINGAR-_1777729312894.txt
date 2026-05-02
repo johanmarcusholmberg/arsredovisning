@@ -1,0 +1,239 @@
+PHASE 5
+GLOBAL REPLIT INSTRUCTIONS FOR “ÅRSREDOVISNINGAR”
+
+Before making changes:
+- Inspect the existing project structure.
+- Reuse existing components, routes, types, helpers, schemas and styling.
+- Do not replace the whole app.
+- Do not create duplicate systems for the same concept.
+- Do not create separate “simple” and “expert” product modes.
+- Use one unified annual-report workflow for all users.
+- Handle UX differences through adaptive guidance and progressive disclosure.
+- Keep demo data separated from real customer/project data.
+- Keep annual report output Swedish only at launch.
+- Website/app UI may support Swedish and English.
+- Do not claim legal approval, guaranteed compliance or 100% correctness.
+- Position validation as a compliance assistant, not a guarantee.
+- Use wording such as: “No blocking validation issues were found. Please review before filing.”
+- If Supabase is configured, use Supabase Auth, database, RLS and Storage through secure helpers.
+- If Supabase is not configured, create clean placeholders and document exactly what needs to be configured.
+- Do not expose service-role keys or secrets in browser/frontend code.
+- Do not rely on hidden frontend buttons as the only security layer.
+- Do not implement final Stripe production payment logic unless Stripe is actually configured.
+- If payment, AI, export or storage providers are missing, create clean integration points and document assumptions.
+- After implementation, summarize:
+  - what was changed
+  - what files were touched
+  - what is incomplete
+  - what assumptions were made
+  - what I should test before continuing
+
+Continue working on “Årsredovisningar”.
+
+Previous phases should already have:
+- Paid project workspace
+- Import/mapping
+- Financial statements
+- Visible note reference column in income statement and balance sheet
+- Suggested note references
+- Framework rules foundation
+- Annual report structure foundation
+- Previous-year value support
+- Audit log foundation
+
+Your task in this phase:
+Build the Notes module, automatic note numbering and AI-assisted drafting foundation.
+
+Important:
+The Notes module should be a flagship feature.
+AI should assist, not decide silently.
+AI-generated text must always require explicit user confirmation before export.
+Do not claim legal/accounting guarantee.
+Use the validation/compliance positioning:
+“No blocking validation issues were found. Please review before filing.”
+
+Core principle:
+The system suggests. The user confirms. All changes are traceable.
+
+Critical new requirement:
+The system must automatically assign, display and maintain note numbers across:
+- income statement
+- balance sheet
+- cash flow where applicable
+- notes module
+- report preview
+- PDF/Word export later
+
+If notes are added, removed, marked not applicable or reordered, note numbering and all financial statement references must update automatically.
+
+Build the following:
+
+1. Notes page
+Create the “Notes” workspace section.
+
+Each note should show:
+- Note number
+- Note title
+- Required / likely required / optional
+- Status
+- Source
+- Linked financial statement lines
+- Linked source accounts
+- Current-year value
+- Previous-year value
+- Suggested text
+- User-confirmed text
+- Validation status
+- Comments placeholder
+- “Why is this required?”
+- “Show calculation”
+- “Show source accounts”
+
+2. Automatic note numbering
+Implement automatic note numbering.
+
+Requirements:
+- Notes are numbered in the order they should appear in the annual report.
+- Note numbers should be displayed as “Not 1”, “Not 2”, etc.
+- Financial statement references must use the same numbering.
+- If a note is added, removed, marked not applicable or reordered, note numbers update automatically.
+- Financial statement reference columns must update automatically when numbering changes.
+- Export later must use the same numbering as the app preview.
+- Manual numbering override should be avoided unless absolutely necessary.
+- If manual override exists, it must be tracked and validated.
+
+Suggested default note order:
+1. Redovisningsprinciper
+2. Uppskattningar och bedömningar, if relevant
+3. Revenue/net sales-related notes, if relevant
+4. Personnel/employees-related notes, if relevant
+5. Depreciation/amortization-related notes, if relevant
+6. Fixed assets-related notes, if relevant
+7. Equity-related notes, if relevant
+8. Liability/loan-related notes, if relevant
+9. Other notes based on framework/company data
+
+Use framework rules to determine final ordering.
+
+3. Note reference synchronization
+Synchronize note references with financial statement lines.
+
+Requirements:
+- Each note can link to one or more financial statement lines.
+- Each relevant financial statement line can display one or more note references.
+- If a note is marked not applicable, remove or update the financial statement reference.
+- If a financial statement line has a reference to a missing note, mark it as broken.
+- If a required note exists but has no linked financial statement line when one is expected, flag it for validation later.
+- The user should be able to see which line each note belongs to.
+
+4. Note statuses
+Implement note statuses:
+- Not started
+- Suggested
+- Needs review
+- Reviewed
+- Complete
+- Not applicable
+- Missing required information
+
+5. Note requirement logic
+Create a note requirement engine foundation based on:
+- selected framework K3/K2
+- mapped account groups
+- financial statement values
+- company type
+- previous-year values
+- manual project settings
+
+Examples:
+- Fixed asset note suggested when tangible fixed assets exist
+- Personnel/employees note suggested when personnel-related accounts exist
+- Accounting principles note required
+- Equity note suggested/required based on equity accounts
+- Cash-flow-related notes only when relevant
+
+The exact legal rule set can be basic in MVP but the structure should support expansion.
+
+6. AI-assisted drafting
+Create AI-assisted note drafting functionality or a placeholder integration if AI provider is not configured.
+
+AI may help with:
+- drafting note text in Swedish
+- explaining why a note is required
+- summarizing year-over-year changes
+- suggesting wording based on values
+- simplifying explanations for non-accountants
+
+Requirements:
+- AI text must be marked as AI-suggested.
+- AI text must not become final automatically.
+- User must click “Accept suggestion” or edit and confirm.
+- Store accepted AI text separately from generated suggestion.
+- Track who accepted the text and when.
+- Before export, unconfirmed AI text should be treated as incomplete or warning/blocking depending on importance.
+
+7. Manual editing
+Users must be able to manually edit note text.
+
+Track:
+- original suggested text
+- edited text
+- editor
+- timestamp
+- confirmation status
+- audit event
+
+8. Previous-year comparison
+For each relevant note, show:
+- current-year value
+- previous-year value
+- difference
+- source of previous-year value
+- warning if previous-year value is missing
+
+9. “Why is this required?” explanations
+Implement expandable explanations.
+
+Each explanation should include:
+- plain-language explanation
+- accounting/framework reason where available
+- linked data trigger, such as account group or financial statement line
+- source accounts
+
+Do not overwhelm users with technical text by default.
+
+10. Note comments placeholder
+Prepare comments/review UI in notes but do not overbuild full collaboration here if Phase 6 will handle it.
+
+11. Audit logging
+Log:
+- note_suggested
+- note_marked_required
+- note_number_assigned
+- note_numbering_recalculated
+- note_reference_created
+- note_reference_updated
+- note_reference_removed
+- note_marked_not_applicable
+- note_text_ai_generated
+- note_text_accepted
+- note_text_edited
+- note_marked_reviewed
+- note_status_changed
+
+12. Acceptance criteria
+The phase is complete when:
+- Notes can be generated/suggested from framework and imported data.
+- Notes have automatic numbering.
+- Income statement note references update when note numbering changes.
+- Balance sheet note references update when note numbering changes.
+- Cash flow note references are supported where applicable.
+- Notes have statuses.
+- Notes show linked accounts/values.
+- Notes support previous-year comparison.
+- AI-generated text is clearly marked and requires explicit confirmation.
+- Users can manually edit note text.
+- “Why is this required?” works.
+- Note actions are logged.
+- Unconfirmed AI-generated text cannot silently become final.
+Summarize what was changed, what files were touched, what is incomplete, what assumptions were made, and what I should test before continuing to the next phase.
