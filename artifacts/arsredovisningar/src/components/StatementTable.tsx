@@ -19,10 +19,14 @@ import {
   getGetStatementLineDrilldownQueryKey,
   useUpdateStatementLine,
   useSavePreviousYearValues,
+  useListReportNotes,
+  getListReportNotesQueryKey,
 } from "@workspace/api-client-react";
 import type { FinancialStatementLine } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { ArrowUpRight } from "lucide-react";
 
 interface StatementTableProps {
   lines: FinancialStatementLine[];
@@ -55,6 +59,26 @@ function NoteReferenceCell({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(line.noteReferenceText ?? "");
   const update = useUpdateStatementLine();
+  const [, navigate] = useLocation();
+
+  // Look up the note ids that match the badge ("1, 2" → [noteId1, noteId2]).
+  // useQuery dedupes by queryKey so concurrent rows share one network call.
+  const { data: notesData } = useListReportNotes(reportId, {
+    query: { enabled: !!line.noteReferenceText, queryKey: getListReportNotesQueryKey(reportId) },
+  });
+  const linkedNoteIds: Array<{ number: number; id: string; title: string }> = (() => {
+    if (!line.noteReferenceText || !notesData?.notes) return [];
+    const refs = line.noteReferenceText
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter((n) => !Number.isNaN(n));
+    return refs
+      .map((num) => {
+        const note = notesData.notes.find((n) => n.noteNumber === num);
+        return note ? { number: num, id: note.id, title: note.title } : null;
+      })
+      .filter((x): x is { number: number; id: string; title: string } => x !== null);
+  })();
 
   const handleSave = () => {
     update.mutate(
@@ -95,6 +119,27 @@ function NoteReferenceCell({
             Notreferens
           </div>
           <p className="text-xs text-muted-foreground line-clamp-2">{line.swedishLabel}</p>
+          {linkedNoteIds.length > 0 && (
+            <div className="rounded border border-border divide-y bg-muted/20">
+              {linkedNoteIds.map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                    navigate(`/reports/${reportId}/notes?open=${n.id}`);
+                  }}
+                  className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-xs text-left hover:bg-primary/10 transition-colors"
+                  data-testid={`button-open-note-${n.number}`}
+                >
+                  <span className="font-medium">Not {n.number}</span>
+                  <span className="truncate text-muted-foreground flex-1">{n.title}</span>
+                  <ArrowUpRight className="h-3 w-3 text-primary shrink-0" />
+                </button>
+              ))}
+            </div>
+          )}
           {isSuggested && (
             <div className="flex items-start gap-1.5 rounded bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-700">
               <Info className="h-3 w-3 mt-0.5 shrink-0" />

@@ -499,6 +499,11 @@ export interface Note {
   acceptedByProfileId?: string | null;
   acceptedAt?: string | null;
   textIsAiGenerated: boolean;
+  requiresUserConfirmation: boolean;
+  confirmedByUser: boolean;
+  confirmedByProfileId?: string | null;
+  confirmedAt?: string | null;
+  confirmationComment?: string | null;
   manualNumberOverride?: number | null;
   sortOrder: number;
   createdAt: string;
@@ -578,6 +583,98 @@ export interface SuggestNotesResponse {
   updated: number;
   renumbered: number;
   framework: SuggestNotesResponseFramework;
+}
+
+export interface NoteRow {
+  id: string;
+  noteId: string;
+  rowKey: string;
+  label: string;
+  currentYearAmount?: string | null;
+  previousYearAmount?: string | null;
+  isSubtotal: boolean;
+  isManual: boolean;
+  /** JSON array of account-range filters used to derive the amount */
+  sourceAccountRanges?: unknown | null;
+  /** JSON array of explicit account IDs used to derive the amount */
+  sourceAccountIds?: unknown | null;
+  calculationNote?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NoteRowDrilldownAccount {
+  accountNumber: string;
+  accountName: string;
+  currentYearAmount?: string | null;
+  previousYearAmount?: string | null;
+}
+
+/**
+ * Map of rowId -> source account list (for client drilldown)
+ */
+export type NoteRowsResponseDrilldown = {
+  [key: string]: NoteRowDrilldownAccount[];
+};
+
+export interface NoteRowsResponse {
+  rows: NoteRow[];
+  /** Map of rowId -> source account list (for client drilldown) */
+  drilldown: NoteRowsResponseDrilldown;
+}
+
+export interface CreateNoteRowBody {
+  rowKey: string;
+  label: string;
+  currentYearAmount?: string | null;
+  previousYearAmount?: string | null;
+  isSubtotal?: boolean;
+  sortOrder?: number;
+  sourceAccountRanges?: unknown;
+  calculationNote?: string | null;
+}
+
+export interface UpdateNoteRowBody {
+  label?: string;
+  currentYearAmount?: string | null;
+  previousYearAmount?: string | null;
+  isSubtotal?: boolean;
+  sortOrder?: number;
+  sourceAccountRanges?: unknown;
+  calculationNote?: string | null;
+}
+
+export type NoteReconciliationItemStatus =
+  (typeof NoteReconciliationItemStatus)[keyof typeof NoteReconciliationItemStatus];
+
+export const NoteReconciliationItemStatus = {
+  ok: "ok",
+  mismatch: "mismatch",
+  missing_link: "missing_link",
+  no_amounts: "no_amounts",
+} as const;
+
+export interface NoteReconciliationItem {
+  noteId: string;
+  noteNumber?: number | null;
+  title: string;
+  noteTotalCurrent?: string | null;
+  statementTotalCurrent?: string | null;
+  differenceCurrent?: string | null;
+  noteTotalPrevious?: string | null;
+  statementTotalPrevious?: string | null;
+  differencePrevious?: string | null;
+  status: NoteReconciliationItemStatus;
+  linkedLineKeys: string[];
+}
+
+export interface NoteReconciliationResponse {
+  items: NoteReconciliationItem[];
+  okCount: number;
+  mismatchCount: number;
+  missingLinkCount: number;
+  noAmountsCount: number;
 }
 
 export interface RecalculateNumbersResponse {
@@ -999,6 +1096,15 @@ export const GetFinancialStatementsStatementType = {
 
 export type SavePreviousYearValues200 = {
   updated: number;
+};
+
+export type DeleteNoteRow200 = {
+  deleted: boolean;
+};
+
+export type ConfirmNoteTextBody = {
+  confirmed?: boolean;
+  comment?: string | null;
 };
 
 export type ListValidationDismissals200 = {

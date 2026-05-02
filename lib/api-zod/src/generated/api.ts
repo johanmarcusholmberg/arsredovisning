@@ -685,6 +685,11 @@ export const ListReportNotesResponse = zod.object({
       acceptedByProfileId: zod.string().nullish(),
       acceptedAt: zod.coerce.date().nullish(),
       textIsAiGenerated: zod.boolean(),
+      requiresUserConfirmation: zod.boolean(),
+      confirmedByUser: zod.boolean(),
+      confirmedByProfileId: zod.string().nullish(),
+      confirmedAt: zod.coerce.date().nullish(),
+      confirmationComment: zod.string().nullish(),
       manualNumberOverride: zod.number().nullish(),
       sortOrder: zod.number(),
       createdAt: zod.coerce.date(),
@@ -771,6 +776,11 @@ export const UpdateReportNoteResponse = zod.object({
   acceptedByProfileId: zod.string().nullish(),
   acceptedAt: zod.coerce.date().nullish(),
   textIsAiGenerated: zod.boolean(),
+  requiresUserConfirmation: zod.boolean(),
+  confirmedByUser: zod.boolean(),
+  confirmedByProfileId: zod.string().nullish(),
+  confirmedAt: zod.coerce.date().nullish(),
+  confirmationComment: zod.string().nullish(),
   manualNumberOverride: zod.number().nullish(),
   sortOrder: zod.number(),
   createdAt: zod.coerce.date(),
@@ -863,10 +873,276 @@ export const AcceptNoteTextResponse = zod.object({
   acceptedByProfileId: zod.string().nullish(),
   acceptedAt: zod.coerce.date().nullish(),
   textIsAiGenerated: zod.boolean(),
+  requiresUserConfirmation: zod.boolean(),
+  confirmedByUser: zod.boolean(),
+  confirmedByProfileId: zod.string().nullish(),
+  confirmedAt: zod.coerce.date().nullish(),
+  confirmationComment: zod.string().nullish(),
   manualNumberOverride: zod.number().nullish(),
   sortOrder: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List all detail rows for a note (drilldown table)
+ */
+export const ListNoteRowsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  noteId: zod.coerce.string().uuid(),
+});
+
+export const ListNoteRowsResponse = zod.object({
+  rows: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      noteId: zod.string().uuid(),
+      rowKey: zod.string(),
+      label: zod.string(),
+      currentYearAmount: zod.string().nullish(),
+      previousYearAmount: zod.string().nullish(),
+      isSubtotal: zod.boolean(),
+      isManual: zod.boolean(),
+      sourceAccountRanges: zod
+        .unknown()
+        .nullish()
+        .describe(
+          "JSON array of account-range filters used to derive the amount",
+        ),
+      sourceAccountIds: zod
+        .unknown()
+        .nullish()
+        .describe(
+          "JSON array of explicit account IDs used to derive the amount",
+        ),
+      calculationNote: zod.string().nullish(),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  drilldown: zod
+    .record(
+      zod.string(),
+      zod.array(
+        zod.object({
+          accountNumber: zod.string(),
+          accountName: zod.string(),
+          currentYearAmount: zod.string().nullish(),
+          previousYearAmount: zod.string().nullish(),
+        }),
+      ),
+    )
+    .describe("Map of rowId -> source account list (for client drilldown)"),
+});
+
+/**
+ * @summary Create a manual row in a note
+ */
+export const CreateNoteRowParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  noteId: zod.coerce.string().uuid(),
+});
+
+export const CreateNoteRowBody = zod.object({
+  rowKey: zod.string(),
+  label: zod.string(),
+  currentYearAmount: zod.string().nullish(),
+  previousYearAmount: zod.string().nullish(),
+  isSubtotal: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+  sourceAccountRanges: zod.unknown().optional(),
+  calculationNote: zod.string().nullish(),
+});
+
+/**
+ * @summary Update a note row
+ */
+export const UpdateNoteRowParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  noteId: zod.coerce.string().uuid(),
+  rowId: zod.coerce.string().uuid(),
+});
+
+export const UpdateNoteRowBody = zod.object({
+  label: zod.string().optional(),
+  currentYearAmount: zod.string().nullish(),
+  previousYearAmount: zod.string().nullish(),
+  isSubtotal: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+  sourceAccountRanges: zod.unknown().optional(),
+  calculationNote: zod.string().nullish(),
+});
+
+export const UpdateNoteRowResponse = zod.object({
+  id: zod.string().uuid(),
+  noteId: zod.string().uuid(),
+  rowKey: zod.string(),
+  label: zod.string(),
+  currentYearAmount: zod.string().nullish(),
+  previousYearAmount: zod.string().nullish(),
+  isSubtotal: zod.boolean(),
+  isManual: zod.boolean(),
+  sourceAccountRanges: zod
+    .unknown()
+    .nullish()
+    .describe("JSON array of account-range filters used to derive the amount"),
+  sourceAccountIds: zod
+    .unknown()
+    .nullish()
+    .describe("JSON array of explicit account IDs used to derive the amount"),
+  calculationNote: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a note row
+ */
+export const DeleteNoteRowParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  noteId: zod.coerce.string().uuid(),
+  rowId: zod.coerce.string().uuid(),
+});
+
+export const DeleteNoteRowResponse = zod.object({
+  deleted: zod.boolean(),
+});
+
+/**
+ * @summary Re-derive non-manual rows from source accounts and statement lines
+ */
+export const RecomputeNoteRowsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  noteId: zod.coerce.string().uuid(),
+});
+
+export const RecomputeNoteRowsResponse = zod.object({
+  rows: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      noteId: zod.string().uuid(),
+      rowKey: zod.string(),
+      label: zod.string(),
+      currentYearAmount: zod.string().nullish(),
+      previousYearAmount: zod.string().nullish(),
+      isSubtotal: zod.boolean(),
+      isManual: zod.boolean(),
+      sourceAccountRanges: zod
+        .unknown()
+        .nullish()
+        .describe(
+          "JSON array of account-range filters used to derive the amount",
+        ),
+      sourceAccountIds: zod
+        .unknown()
+        .nullish()
+        .describe(
+          "JSON array of explicit account IDs used to derive the amount",
+        ),
+      calculationNote: zod.string().nullish(),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  drilldown: zod
+    .record(
+      zod.string(),
+      zod.array(
+        zod.object({
+          accountNumber: zod.string(),
+          accountName: zod.string(),
+          currentYearAmount: zod.string().nullish(),
+          previousYearAmount: zod.string().nullish(),
+        }),
+      ),
+    )
+    .describe("Map of rowId -> source account list (for client drilldown)"),
+});
+
+/**
+ * @summary Confirm that the user has read and approved the note text
+ */
+export const ConfirmNoteTextParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  noteId: zod.coerce.string().uuid(),
+});
+
+export const ConfirmNoteTextBody = zod.object({
+  confirmed: zod.boolean().optional(),
+  comment: zod.string().nullish(),
+});
+
+export const ConfirmNoteTextResponse = zod.object({
+  id: zod.string().uuid(),
+  reportId: zod.string().uuid(),
+  noteNumber: zod.number().nullish(),
+  noteType: zod.string(),
+  title: zod.string(),
+  requirementLevel: zod.enum(["required", "likely_required", "optional"]),
+  status: zod.enum([
+    "not_started",
+    "suggested",
+    "needs_review",
+    "reviewed",
+    "complete",
+    "not_applicable",
+    "missing_info",
+  ]),
+  framework: zod.enum(["K2", "K3"]),
+  sourceTrigger: zod.string().nullish(),
+  linkedStatementLines: zod
+    .unknown()
+    .nullish()
+    .describe("JSON array of { lineKey, statementType, label }"),
+  linkedAccountGroups: zod.unknown().nullish(),
+  currentYearValue: zod.string().nullish(),
+  previousYearValue: zod.string().nullish(),
+  suggestedText: zod.string().nullish(),
+  acceptedText: zod.string().nullish(),
+  acceptedByProfileId: zod.string().nullish(),
+  acceptedAt: zod.coerce.date().nullish(),
+  textIsAiGenerated: zod.boolean(),
+  requiresUserConfirmation: zod.boolean(),
+  confirmedByUser: zod.boolean(),
+  confirmedByProfileId: zod.string().nullish(),
+  confirmedAt: zod.coerce.date().nullish(),
+  confirmationComment: zod.string().nullish(),
+  manualNumberOverride: zod.number().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Reconcile note totals against linked statement lines
+ */
+export const GetNotesReconciliationParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const GetNotesReconciliationResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      noteId: zod.string().uuid(),
+      noteNumber: zod.number().nullish(),
+      title: zod.string(),
+      noteTotalCurrent: zod.string().nullish(),
+      statementTotalCurrent: zod.string().nullish(),
+      differenceCurrent: zod.string().nullish(),
+      noteTotalPrevious: zod.string().nullish(),
+      statementTotalPrevious: zod.string().nullish(),
+      differencePrevious: zod.string().nullish(),
+      status: zod.enum(["ok", "mismatch", "missing_link", "no_amounts"]),
+      linkedLineKeys: zod.array(zod.string()),
+    }),
+  ),
+  okCount: zod.number(),
+  mismatchCount: zod.number(),
+  missingLinkCount: zod.number(),
+  noAmountsCount: zod.number(),
 });
 
 /**

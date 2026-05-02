@@ -51,6 +51,16 @@ export const reportNotesTable = pgTable("report_notes", {
   acceptedByProfileId: uuid("accepted_by_profile_id"),
   acceptedAt: timestamp("accepted_at", { withTimezone: true }),
   textIsAiGenerated: boolean("text_is_ai_generated").notNull().default(false),
+  // ── Confirmation tracking ────────────────────────────────────────────────
+  // requiresUserConfirmation flips ON the first time the AI text is accepted;
+  // confirmedByUser flips ON when the user explicitly confirms they've read
+  // and approve the AI text. This is independent of acceptedText: the user
+  // may accept text first, then confirm later as part of final review.
+  requiresUserConfirmation: boolean("requires_user_confirmation").notNull().default(false),
+  confirmedByUser: boolean("confirmed_by_user").notNull().default(false),
+  confirmedByProfileId: uuid("confirmed_by_profile_id"),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  confirmationComment: text("confirmation_comment"),
   manualNumberOverride: integer("manual_number_override"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -26,14 +26,17 @@ import type {
   Collaborator,
   ColumnMappingBody,
   Company,
+  ConfirmNoteTextBody,
   CreateCompanyBody,
   CreateNoteBody,
+  CreateNoteRowBody,
   CreateProjectBody,
   CreateProjectSnapshotBody,
   CreateReportBody,
   CreateSectionCommentBody,
   DashboardSummary,
   DeleteNoteResponse,
+  DeleteNoteRow200,
   DismissIssueBody,
   EntitlementInfo,
   ErrorResponse,
@@ -58,6 +61,9 @@ import type {
   MappingTemplate,
   Note,
   NoteListResponse,
+  NoteReconciliationResponse,
+  NoteRow,
+  NoteRowsResponse,
   ProjectSnapshot,
   RecalculateNumbersResponse,
   ReportSection,
@@ -75,6 +81,7 @@ import type {
   UpdateCompanyBody,
   UpdateFrameworkBody,
   UpdateNoteBody,
+  UpdateNoteRowBody,
   UpdateReportBody,
   UpdateSectionCommentBody,
   UpdateSectionReviewBody,
@@ -2642,6 +2649,664 @@ export const useAcceptNoteText = <
 > => {
   return useMutation(getAcceptNoteTextMutationOptions(options));
 };
+
+/**
+ * @summary List all detail rows for a note (drilldown table)
+ */
+export const getListNoteRowsUrl = (reportId: string, noteId: string) => {
+  return `/api/reports/${reportId}/notes/${noteId}/rows`;
+};
+
+export const listNoteRows = async (
+  reportId: string,
+  noteId: string,
+  options?: RequestInit,
+): Promise<NoteRowsResponse> => {
+  return customFetch<NoteRowsResponse>(getListNoteRowsUrl(reportId, noteId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListNoteRowsQueryKey = (reportId: string, noteId: string) => {
+  return [`/api/reports/${reportId}/notes/${noteId}/rows`] as const;
+};
+
+export const getListNoteRowsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listNoteRows>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  noteId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listNoteRows>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListNoteRowsQueryKey(reportId, noteId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listNoteRows>>> = ({
+    signal,
+  }) => listNoteRows(reportId, noteId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(reportId && noteId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listNoteRows>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListNoteRowsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listNoteRows>>
+>;
+export type ListNoteRowsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all detail rows for a note (drilldown table)
+ */
+
+export function useListNoteRows<
+  TData = Awaited<ReturnType<typeof listNoteRows>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  noteId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listNoteRows>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListNoteRowsQueryOptions(reportId, noteId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a manual row in a note
+ */
+export const getCreateNoteRowUrl = (reportId: string, noteId: string) => {
+  return `/api/reports/${reportId}/notes/${noteId}/rows`;
+};
+
+export const createNoteRow = async (
+  reportId: string,
+  noteId: string,
+  createNoteRowBody: CreateNoteRowBody,
+  options?: RequestInit,
+): Promise<NoteRow> => {
+  return customFetch<NoteRow>(getCreateNoteRowUrl(reportId, noteId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createNoteRowBody),
+  });
+};
+
+export const getCreateNoteRowMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createNoteRow>>,
+    TError,
+    { reportId: string; noteId: string; data: BodyType<CreateNoteRowBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createNoteRow>>,
+  TError,
+  { reportId: string; noteId: string; data: BodyType<CreateNoteRowBody> },
+  TContext
+> => {
+  const mutationKey = ["createNoteRow"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createNoteRow>>,
+    { reportId: string; noteId: string; data: BodyType<CreateNoteRowBody> }
+  > = (props) => {
+    const { reportId, noteId, data } = props ?? {};
+
+    return createNoteRow(reportId, noteId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateNoteRowMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createNoteRow>>
+>;
+export type CreateNoteRowMutationBody = BodyType<CreateNoteRowBody>;
+export type CreateNoteRowMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a manual row in a note
+ */
+export const useCreateNoteRow = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createNoteRow>>,
+    TError,
+    { reportId: string; noteId: string; data: BodyType<CreateNoteRowBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createNoteRow>>,
+  TError,
+  { reportId: string; noteId: string; data: BodyType<CreateNoteRowBody> },
+  TContext
+> => {
+  return useMutation(getCreateNoteRowMutationOptions(options));
+};
+
+/**
+ * @summary Update a note row
+ */
+export const getUpdateNoteRowUrl = (
+  reportId: string,
+  noteId: string,
+  rowId: string,
+) => {
+  return `/api/reports/${reportId}/notes/${noteId}/rows/${rowId}`;
+};
+
+export const updateNoteRow = async (
+  reportId: string,
+  noteId: string,
+  rowId: string,
+  updateNoteRowBody: UpdateNoteRowBody,
+  options?: RequestInit,
+): Promise<NoteRow> => {
+  return customFetch<NoteRow>(getUpdateNoteRowUrl(reportId, noteId, rowId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateNoteRowBody),
+  });
+};
+
+export const getUpdateNoteRowMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateNoteRow>>,
+    TError,
+    {
+      reportId: string;
+      noteId: string;
+      rowId: string;
+      data: BodyType<UpdateNoteRowBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateNoteRow>>,
+  TError,
+  {
+    reportId: string;
+    noteId: string;
+    rowId: string;
+    data: BodyType<UpdateNoteRowBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateNoteRow"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateNoteRow>>,
+    {
+      reportId: string;
+      noteId: string;
+      rowId: string;
+      data: BodyType<UpdateNoteRowBody>;
+    }
+  > = (props) => {
+    const { reportId, noteId, rowId, data } = props ?? {};
+
+    return updateNoteRow(reportId, noteId, rowId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateNoteRowMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateNoteRow>>
+>;
+export type UpdateNoteRowMutationBody = BodyType<UpdateNoteRowBody>;
+export type UpdateNoteRowMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a note row
+ */
+export const useUpdateNoteRow = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateNoteRow>>,
+    TError,
+    {
+      reportId: string;
+      noteId: string;
+      rowId: string;
+      data: BodyType<UpdateNoteRowBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateNoteRow>>,
+  TError,
+  {
+    reportId: string;
+    noteId: string;
+    rowId: string;
+    data: BodyType<UpdateNoteRowBody>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateNoteRowMutationOptions(options));
+};
+
+/**
+ * @summary Delete a note row
+ */
+export const getDeleteNoteRowUrl = (
+  reportId: string,
+  noteId: string,
+  rowId: string,
+) => {
+  return `/api/reports/${reportId}/notes/${noteId}/rows/${rowId}`;
+};
+
+export const deleteNoteRow = async (
+  reportId: string,
+  noteId: string,
+  rowId: string,
+  options?: RequestInit,
+): Promise<DeleteNoteRow200> => {
+  return customFetch<DeleteNoteRow200>(
+    getDeleteNoteRowUrl(reportId, noteId, rowId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteNoteRowMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteNoteRow>>,
+    TError,
+    { reportId: string; noteId: string; rowId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteNoteRow>>,
+  TError,
+  { reportId: string; noteId: string; rowId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteNoteRow"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteNoteRow>>,
+    { reportId: string; noteId: string; rowId: string }
+  > = (props) => {
+    const { reportId, noteId, rowId } = props ?? {};
+
+    return deleteNoteRow(reportId, noteId, rowId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteNoteRowMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteNoteRow>>
+>;
+
+export type DeleteNoteRowMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a note row
+ */
+export const useDeleteNoteRow = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteNoteRow>>,
+    TError,
+    { reportId: string; noteId: string; rowId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteNoteRow>>,
+  TError,
+  { reportId: string; noteId: string; rowId: string },
+  TContext
+> => {
+  return useMutation(getDeleteNoteRowMutationOptions(options));
+};
+
+/**
+ * @summary Re-derive non-manual rows from source accounts and statement lines
+ */
+export const getRecomputeNoteRowsUrl = (reportId: string, noteId: string) => {
+  return `/api/reports/${reportId}/notes/${noteId}/rows/recompute`;
+};
+
+export const recomputeNoteRows = async (
+  reportId: string,
+  noteId: string,
+  options?: RequestInit,
+): Promise<NoteRowsResponse> => {
+  return customFetch<NoteRowsResponse>(
+    getRecomputeNoteRowsUrl(reportId, noteId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getRecomputeNoteRowsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recomputeNoteRows>>,
+    TError,
+    { reportId: string; noteId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof recomputeNoteRows>>,
+  TError,
+  { reportId: string; noteId: string },
+  TContext
+> => {
+  const mutationKey = ["recomputeNoteRows"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof recomputeNoteRows>>,
+    { reportId: string; noteId: string }
+  > = (props) => {
+    const { reportId, noteId } = props ?? {};
+
+    return recomputeNoteRows(reportId, noteId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RecomputeNoteRowsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof recomputeNoteRows>>
+>;
+
+export type RecomputeNoteRowsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Re-derive non-manual rows from source accounts and statement lines
+ */
+export const useRecomputeNoteRows = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recomputeNoteRows>>,
+    TError,
+    { reportId: string; noteId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof recomputeNoteRows>>,
+  TError,
+  { reportId: string; noteId: string },
+  TContext
+> => {
+  return useMutation(getRecomputeNoteRowsMutationOptions(options));
+};
+
+/**
+ * @summary Confirm that the user has read and approved the note text
+ */
+export const getConfirmNoteTextUrl = (reportId: string, noteId: string) => {
+  return `/api/reports/${reportId}/notes/${noteId}/confirm`;
+};
+
+export const confirmNoteText = async (
+  reportId: string,
+  noteId: string,
+  confirmNoteTextBody?: ConfirmNoteTextBody,
+  options?: RequestInit,
+): Promise<Note> => {
+  return customFetch<Note>(getConfirmNoteTextUrl(reportId, noteId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(confirmNoteTextBody),
+  });
+};
+
+export const getConfirmNoteTextMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmNoteText>>,
+    TError,
+    { reportId: string; noteId: string; data: BodyType<ConfirmNoteTextBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmNoteText>>,
+  TError,
+  { reportId: string; noteId: string; data: BodyType<ConfirmNoteTextBody> },
+  TContext
+> => {
+  const mutationKey = ["confirmNoteText"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmNoteText>>,
+    { reportId: string; noteId: string; data: BodyType<ConfirmNoteTextBody> }
+  > = (props) => {
+    const { reportId, noteId, data } = props ?? {};
+
+    return confirmNoteText(reportId, noteId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmNoteTextMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmNoteText>>
+>;
+export type ConfirmNoteTextMutationBody = BodyType<ConfirmNoteTextBody>;
+export type ConfirmNoteTextMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Confirm that the user has read and approved the note text
+ */
+export const useConfirmNoteText = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmNoteText>>,
+    TError,
+    { reportId: string; noteId: string; data: BodyType<ConfirmNoteTextBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmNoteText>>,
+  TError,
+  { reportId: string; noteId: string; data: BodyType<ConfirmNoteTextBody> },
+  TContext
+> => {
+  return useMutation(getConfirmNoteTextMutationOptions(options));
+};
+
+/**
+ * @summary Reconcile note totals against linked statement lines
+ */
+export const getGetNotesReconciliationUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/notes/reconciliation`;
+};
+
+export const getNotesReconciliation = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<NoteReconciliationResponse> => {
+  return customFetch<NoteReconciliationResponse>(
+    getGetNotesReconciliationUrl(reportId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetNotesReconciliationQueryKey = (reportId: string) => {
+  return [`/api/reports/${reportId}/notes/reconciliation`] as const;
+};
+
+export const getGetNotesReconciliationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getNotesReconciliation>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getNotesReconciliation>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetNotesReconciliationQueryKey(reportId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getNotesReconciliation>>
+  > = ({ signal }) =>
+    getNotesReconciliation(reportId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getNotesReconciliation>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetNotesReconciliationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getNotesReconciliation>>
+>;
+export type GetNotesReconciliationQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Reconcile note totals against linked statement lines
+ */
+
+export function useGetNotesReconciliation<
+  TData = Awaited<ReturnType<typeof getNotesReconciliation>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getNotesReconciliation>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetNotesReconciliationQueryOptions(reportId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * If an AI provider is configured, returns a Swedish-language draft proposal. Otherwise returns provider="not_configured" and instructions for the user to add an OPENAI_API_KEY. The draft is never auto-accepted.

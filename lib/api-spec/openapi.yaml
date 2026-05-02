@@ -734,6 +734,184 @@ paths:
               schema:
                 $ref: "#/components/schemas/Note"
 
+  /reports/{reportId}/notes/{noteId}/rows:
+    get:
+      operationId: listNoteRows
+      tags: [notes]
+      summary: List all detail rows for a note (drilldown table)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: noteId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Note rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteRowsResponse"
+    post:
+      operationId: createNoteRow
+      tags: [notes]
+      summary: Create a manual row in a note
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: noteId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteRowBody"
+      responses:
+        "201":
+          description: Row created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteRow"
+
+  /reports/{reportId}/notes/{noteId}/rows/{rowId}:
+    patch:
+      operationId: updateNoteRow
+      tags: [notes]
+      summary: Update a note row
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: noteId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: rowId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNoteRowBody"
+      responses:
+        "200":
+          description: Row updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteRow"
+    delete:
+      operationId: deleteNoteRow
+      tags: [notes]
+      summary: Delete a note row
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: noteId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: rowId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Row deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted: { type: boolean }
+                required: [deleted]
+
+  /reports/{reportId}/notes/{noteId}/rows/recompute:
+    post:
+      operationId: recomputeNoteRows
+      tags: [notes]
+      summary: Re-derive non-manual rows from source accounts and statement lines
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: noteId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Rows recomputed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteRowsResponse"
+
+  /reports/{reportId}/notes/{noteId}/confirm:
+    post:
+      operationId: confirmNoteText
+      tags: [notes]
+      summary: Confirm that the user has read and approved the note text
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: noteId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirmed: { type: boolean }
+                comment: { type: string, nullable: true }
+      responses:
+        "200":
+          description: Confirmation recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  /reports/{reportId}/notes/reconciliation:
+    get:
+      operationId: getNotesReconciliation
+      tags: [notes]
+      summary: Reconcile note totals against linked statement lines
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Reconciliation report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteReconciliationResponse"
+
   /reports/{reportId}/notes/{noteId}/ai-draft:
     post:
       operationId: requestNoteAiDraft
@@ -2204,6 +2382,20 @@ components:
           nullable: true
         textIsAiGenerated:
           type: boolean
+        requiresUserConfirmation:
+          type: boolean
+        confirmedByUser:
+          type: boolean
+        confirmedByProfileId:
+          type: string
+          nullable: true
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+        confirmationComment:
+          type: string
+          nullable: true
         manualNumberOverride:
           type: integer
           nullable: true
@@ -2224,6 +2416,8 @@ components:
         - status
         - framework
         - textIsAiGenerated
+        - requiresUserConfirmation
+        - confirmedByUser
         - sortOrder
         - createdAt
         - updatedAt
@@ -2318,6 +2512,120 @@ components:
         - updated
         - renumbered
         - framework
+
+    NoteRow:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        noteId: { type: string, format: uuid }
+        rowKey: { type: string }
+        label: { type: string }
+        currentYearAmount: { type: string, nullable: true }
+        previousYearAmount: { type: string, nullable: true }
+        isSubtotal: { type: boolean }
+        isManual: { type: boolean }
+        sourceAccountRanges:
+          nullable: true
+          description: JSON array of account-range filters used to derive the amount
+        sourceAccountIds:
+          nullable: true
+          description: JSON array of explicit account IDs used to derive the amount
+        calculationNote: { type: string, nullable: true }
+        sortOrder: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required:
+        - id
+        - noteId
+        - rowKey
+        - label
+        - isSubtotal
+        - isManual
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    NoteRowDrilldownAccount:
+      type: object
+      properties:
+        accountNumber: { type: string }
+        accountName: { type: string }
+        currentYearAmount: { type: string, nullable: true }
+        previousYearAmount: { type: string, nullable: true }
+      required: [accountNumber, accountName]
+
+    NoteRowsResponse:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/NoteRow"
+        drilldown:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/NoteRowDrilldownAccount"
+          description: Map of rowId -> source account list (for client drilldown)
+      required: [rows, drilldown]
+
+    CreateNoteRowBody:
+      type: object
+      properties:
+        rowKey: { type: string }
+        label: { type: string }
+        currentYearAmount: { type: string, nullable: true }
+        previousYearAmount: { type: string, nullable: true }
+        isSubtotal: { type: boolean }
+        sortOrder: { type: integer }
+        sourceAccountRanges: {}
+        calculationNote: { type: string, nullable: true }
+      required: [rowKey, label]
+
+    UpdateNoteRowBody:
+      type: object
+      properties:
+        label: { type: string }
+        currentYearAmount: { type: string, nullable: true }
+        previousYearAmount: { type: string, nullable: true }
+        isSubtotal: { type: boolean }
+        sortOrder: { type: integer }
+        sourceAccountRanges: {}
+        calculationNote: { type: string, nullable: true }
+
+    NoteReconciliationItem:
+      type: object
+      properties:
+        noteId: { type: string, format: uuid }
+        noteNumber: { type: integer, nullable: true }
+        title: { type: string }
+        noteTotalCurrent: { type: string, nullable: true }
+        statementTotalCurrent: { type: string, nullable: true }
+        differenceCurrent: { type: string, nullable: true }
+        noteTotalPrevious: { type: string, nullable: true }
+        statementTotalPrevious: { type: string, nullable: true }
+        differencePrevious: { type: string, nullable: true }
+        status:
+          type: string
+          enum: [ok, mismatch, missing_link, no_amounts]
+        linkedLineKeys:
+          type: array
+          items: { type: string }
+      required: [noteId, title, status, linkedLineKeys]
+
+    NoteReconciliationResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/NoteReconciliationItem"
+        okCount: { type: integer }
+        mismatchCount: { type: integer }
+        missingLinkCount: { type: integer }
+        noAmountsCount: { type: integer }
+      required: [items, okCount, mismatchCount, missingLinkCount, noAmountsCount]
 
     RecalculateNumbersResponse:
       type: object

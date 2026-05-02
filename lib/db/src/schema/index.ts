@@ -13,6 +13,7 @@ export * from "./reports";
 export * from "./financialStatementLines";
 export * from "./reportNoteReferences";
 export * from "./reportNotes";
+export * from "./reportNoteRows";
 export * from "./noteStatementReferences";
 export * from "./validationRuns";
 export * from "./validationDismissals";

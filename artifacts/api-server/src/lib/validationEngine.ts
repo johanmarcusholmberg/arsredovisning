@@ -8,6 +8,7 @@ import {
   financialStatementLinesTable,
   validationDismissalsTable,
 } from "@workspace/db";
+import { reconcileNotes } from "./noteReconciliation.js";
 
 /**
  * ValidationIssue — one finding from the engine.
@@ -188,7 +189,7 @@ export async function runValidation(
 
   // Warning: AI-generated text not confirmed by user
   for (const n of activeNotes) {
-    if (n.textIsAiGenerated && n.acceptedText) {
+    if (n.textIsAiGenerated && n.acceptedText && !n.confirmedByUser) {
       issues.push({
         ruleKey: `note:ai_text_unconfirmed:${n.id}`,
         level: "warning",
@@ -196,6 +197,21 @@ export async function runValidation(
         message: `Texten i "${n.title}" är AI-genererad. Granska och bekräfta innan inlämning.`,
         entityRef: n.id,
         isHighRisk: true,
+        quickLinkPath: `/reports/${report.id}/notes`,
+      });
+    }
+  }
+
+  // Blocking: explicit confirmation required but missing
+  for (const n of activeNotes) {
+    if (n.requiresUserConfirmation && !n.confirmedByUser) {
+      issues.push({
+        ruleKey: `note:confirmation_missing:${n.id}`,
+        level: "blocking",
+        section: "notes",
+        message: `Noten "${n.title}" kräver uttrycklig bekräftelse innan rapporten kan lämnas in.`,
+        entityRef: n.id,
+        isHighRisk: false,
         quickLinkPath: `/reports/${report.id}/notes`,
       });
     }
@@ -224,6 +240,58 @@ export async function runValidation(
     }
   }
 
+  // Warning: gaps in note numbering (e.g. 1, 2, 4 with 3 missing)
+  const usedNumbers = activeNotes
+    .map((n) => n.noteNumber)
+    .filter((x): x is number => typeof x === "number")
+    .sort((a, b) => a - b);
+  if (usedNumbers.length > 0) {
+    const expectedMax = usedNumbers.length;
+    const actualMax = usedNumbers[usedNumbers.length - 1];
+    if (actualMax > expectedMax) {
+      const missing: number[] = [];
+      for (let i = 1; i <= actualMax; i++) {
+        if (!usedNumbers.includes(i)) missing.push(i);
+      }
+      if (missing.length > 0) {
+        issues.push({
+          ruleKey: `notes:numbering_gap`,
+          level: "warning",
+          section: "notes",
+          message: `Lucka i notnumreringen: nr ${missing.join(", ")} saknas. Kör om numreringen.`,
+          entityRef: null,
+          isHighRisk: false,
+          quickLinkPath: `/reports/${report.id}/notes`,
+        });
+      }
+    }
+  }
+
+  // Blocking: a statement line carries a "Not X" badge that doesn't resolve
+  // to any active note. This is a structural reference-integrity violation —
+  // we must flag it even when zero active notes exist, because that means
+  // every badge on the report is broken.
+  if (lines.length > 0) {
+    const activeNumberSet = new Set(usedNumbers);
+    for (const l of lines) {
+      const badge = l.noteReferenceText;
+      if (!badge) continue;
+      const refs = badge.split(",").map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n));
+      const broken = refs.filter((n) => !activeNumberSet.has(n));
+      if (broken.length > 0) {
+        issues.push({
+          ruleKey: `noteref:unresolved:${l.id}`,
+          level: "blocking",
+          section: "notes",
+          message: `Raden "${l.swedishLabel}" hänvisar till not ${broken.join(", ")} som inte längre finns. Kör om numreringen.`,
+          entityRef: l.id,
+          isHighRisk: true,
+          quickLinkPath: `/reports/${report.id}/notes`,
+        });
+      }
+    }
+  }
+
   // Warning: broken note references (refs to inactive/missing notes)
   if (notes.length > 0) {
     const refs = await db
@@ -241,6 +309,42 @@ export async function runValidation(
           message: `Notreferens på rad "${r.lineKey}" pekar på en ej tillämplig not.`,
           entityRef: r.id,
           isHighRisk: true,
+          quickLinkPath: `/reports/${report.id}/statements`,
+        });
+      }
+    }
+  }
+
+  // Note total reconciliation — warn when a note's total disagrees with the
+  // sum of its linked statement lines.
+  if (activeNotes.length > 0) {
+    const reconciliation = await reconcileNotes(reportId);
+    for (const item of reconciliation.items) {
+      if (item.status === "mismatch" && item.differenceCurrent !== null) {
+        const diff = Number(item.differenceCurrent);
+        const noteLabel = item.noteNumber !== null
+          ? `Not ${item.noteNumber} (${item.title})`
+          : item.title;
+        issues.push({
+          ruleKey: `note:reconciliation_mismatch:${item.noteId}`,
+          level: "warning",
+          section: "notes",
+          message: `${noteLabel}: notens summa stämmer inte med rapportraderna (differens ${Math.abs(diff).toLocaleString("sv-SE")} kr).`,
+          entityRef: item.noteId,
+          isHighRisk: true,
+          quickLinkPath: `/reports/${report.id}/notes`,
+        });
+      } else if (item.status === "missing_link" && item.noteTotalCurrent !== null) {
+        const noteLabel = item.noteNumber !== null
+          ? `Not ${item.noteNumber} (${item.title})`
+          : item.title;
+        issues.push({
+          ruleKey: `note:reconciliation_missing_link:${item.noteId}`,
+          level: "info",
+          section: "notes",
+          message: `${noteLabel} har en summa men ingen koppling till en rapportrad.`,
+          entityRef: item.noteId,
+          isHighRisk: false,
           quickLinkPath: `/reports/${report.id}/statements`,
         });
       }

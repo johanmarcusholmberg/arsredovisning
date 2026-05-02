@@ -341,6 +341,15 @@ router.post(
         ? true
         : false;
 
+    // Whenever AI text is accepted, flag the note as requiring an explicit
+    // user confirmation pass before the report can be filed. The confirm
+    // endpoint flips confirmedByUser back to true.
+    const requiresConfirmation =
+      aiFlag || existing.requiresUserConfirmation;
+    const stillConfirmed =
+      existing.confirmedByUser &&
+      finalText === existing.acceptedText;
+
     const [updated] = await db
       .update(reportNotesTable)
       .set({
@@ -348,6 +357,10 @@ router.post(
         acceptedByProfileId: profileId,
         acceptedAt: new Date(),
         textIsAiGenerated: aiFlag,
+        requiresUserConfirmation: requiresConfirmation,
+        confirmedByUser: stillConfirmed,
+        confirmedAt: stillConfirmed ? existing.confirmedAt : null,
+        confirmedByProfileId: stillConfirmed ? existing.confirmedByProfileId : null,
         status: existing.status === "not_started" || existing.status === "suggested"
           ? "reviewed"
           : existing.status,

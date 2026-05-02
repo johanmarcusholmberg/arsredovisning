@@ -11,9 +11,13 @@ import {
   useUpdateReportNote,
   useAcceptNoteText,
   useRequestNoteAiDraft,
+  useConfirmNoteText,
   getListReportNotesQueryKey,
   getGetFinancialStatementsQueryKey,
+  getGetNotesReconciliationQueryKey,
 } from "@workspace/api-client-react";
+import { NoteRowsPanel } from "./NoteRowsPanel";
+import { Textarea as CommentTextarea } from "@/components/ui/textarea";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +38,9 @@ import {
   Calculator,
   MessageCircle,
   Save,
+  ShieldAlert,
+  ShieldCheck,
+  ListTree,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -67,14 +74,17 @@ export function NoteDetailDrawer({ note, reportId, open, onClose }: NoteDetailDr
   const updateNote = useUpdateReportNote();
   const acceptText = useAcceptNoteText();
   const aiDraft = useRequestNoteAiDraft();
+  const confirmNote = useConfirmNoteText();
 
   const [draft, setDraft] = useState("");
   const [aiInfo, setAiInfo] = useState<string | null>(null);
+  const [confirmComment, setConfirmComment] = useState("");
 
   useEffect(() => {
     setDraft(note?.acceptedText ?? note?.suggestedText ?? "");
     setAiInfo(null);
-  }, [note?.id, note?.acceptedText, note?.suggestedText]);
+    setConfirmComment(note?.confirmationComment ?? "");
+  }, [note?.id, note?.acceptedText, note?.suggestedText, note?.confirmationComment]);
 
   if (!note) return null;
 
@@ -93,6 +103,31 @@ export function NoteDetailDrawer({ note, reportId, open, onClose }: NoteDetailDr
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getListReportNotesQueryKey(reportId) });
     qc.invalidateQueries({ queryKey: getGetFinancialStatementsQueryKey(reportId) });
+    qc.invalidateQueries({ queryKey: getGetNotesReconciliationQueryKey(reportId) });
+  };
+
+  const handleConfirm = (confirmed: boolean) => {
+    if (!note) return;
+    confirmNote.mutate(
+      {
+        reportId,
+        noteId: note.id,
+        data: { confirmed, comment: confirmComment.trim() || null },
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: confirmed ? "Noten bekräftad" : "Bekräftelse återkallad",
+            description: confirmed
+              ? "Noten är granskad och godkänd för inlämning."
+              : "Noten kräver ny granskning innan inlämning.",
+          });
+          invalidate();
+        },
+        onError: (e) =>
+          toast({ title: "Bekräftelse misslyckades", description: String(e), variant: "destructive" }),
+      },
+    );
   };
 
   const handleSaveDraft = () => {
@@ -183,6 +218,16 @@ export function NoteDetailDrawer({ note, reportId, open, onClose }: NoteDetailDr
             {isAi && (
               <Badge variant="outline" className="bg-violet-500/10 text-violet-700 border-transparent text-[10px] gap-1">
                 <Sparkles className="h-2.5 w-2.5" /> AI-utkast
+              </Badge>
+            )}
+            {note.requiresUserConfirmation && note.confirmedByUser && (
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-transparent text-[10px] gap-1">
+                <ShieldCheck className="h-2.5 w-2.5" /> Bekräftad
+              </Badge>
+            )}
+            {note.requiresUserConfirmation && !note.confirmedByUser && (
+              <Badge variant="outline" className="bg-amber-500/10 text-amber-700 border-transparent text-[10px] gap-1">
+                <ShieldAlert className="h-2.5 w-2.5" /> Kräver bekräftelse
               </Badge>
             )}
           </div>
@@ -296,6 +341,89 @@ export function NoteDetailDrawer({ note, reportId, open, onClose }: NoteDetailDr
                 </span>
               )}
             </div>
+          </div>
+
+          {/* Confirmation panel */}
+          {note.requiresUserConfirmation && (
+            <div className={`rounded-lg border p-4 space-y-3 ${
+              note.confirmedByUser
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : "border-amber-500/30 bg-amber-500/5"
+            }`}>
+              <div className="flex items-center gap-2">
+                {note.confirmedByUser ? (
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                ) : (
+                  <ShieldAlert className="h-4 w-4 text-amber-600" />
+                )}
+                <h4 className="text-sm font-semibold">
+                  {note.confirmedByUser ? "Noten är bekräftad" : "Bekräftelse krävs"}
+                </h4>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {note.confirmedByUser
+                  ? "Du har bekräftat att noten är granskad och korrekt."
+                  : "Granska noten noggrant och bekräfta att texten och beloppen är korrekta innan rapporten kan lämnas in."}
+              </p>
+              <CommentTextarea
+                value={confirmComment}
+                onChange={(e) => setConfirmComment(e.target.value)}
+                placeholder="Kommentar (valfritt) — t.ex. källa eller särskilda noteringar"
+                rows={2}
+                className="text-xs"
+                data-testid="textarea-confirm-comment"
+              />
+              <div className="flex gap-2">
+                {note.confirmedByUser ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleConfirm(false)}
+                      disabled={confirmNote.isPending}
+                      data-testid="button-revoke-confirm"
+                    >
+                      Återkalla bekräftelse
+                    </Button>
+                    {note.confirmedAt && (
+                      <span className="text-[11px] text-muted-foreground self-center ml-auto">
+                        Bekräftad{" "}
+                        {new Date(note.confirmedAt).toLocaleString("sv-SE", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => handleConfirm(true)}
+                    disabled={confirmNote.isPending}
+                    data-testid="button-confirm-note"
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {confirmNote.isPending ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="h-3 w-3 mr-1" />
+                    )}
+                    Bekräfta noten
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Note rows */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-semibold flex items-center gap-1.5">
+                <ListTree className="h-4 w-4" />
+                Specifikationsrader
+              </h4>
+            </div>
+            <NoteRowsPanel reportId={reportId} noteId={note.id} />
           </div>
 
           {/* Status quick set */}
