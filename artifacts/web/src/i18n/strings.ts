@@ -17,7 +17,7 @@ export const strings = {
     "landing.cta.demo": "Utforska demo",
     "landing.cta.start": "Starta på riktigt",
     "landing.cta.section.title": "Redo att börja?",
-    "landing.cta.section.subtitle": "Utforska demon med Nordic Design AB eller skapa ditt första riktiga projekt.",
+    "landing.cta.section.subtitle": "Utforska demon med Nordic Design AB eller skapa din första riktiga årsredovisning.",
     "landing.workflow.title": "Från SIE-fil till signerad årsredovisning",
     "landing.workflow.subtitle": "Åtta tydliga steg — inget lämnas åt slumpen.",
     "landing.step": "Steg",
@@ -46,16 +46,16 @@ export const strings = {
     "dashboard.subscription.cta": "Se priser",
     "dashboard.demo_card.title": "Nordic Design AB 2024",
     "dashboard.demo_card.status": "Utkast",
-    "dashboard.demo_card.header": "Demo-projekt",
+    "dashboard.demo_card.header": "Demo-årsredovisning",
     "dashboard.demo_card.meta": "556123-4567 · K3 · 2024-01-01 – 2024-12-31",
     "dashboard.demo_card.import_done": "Import klar",
     "dashboard.demo_card.mapping_done": "Mappning klar",
     "dashboard.demo_card.validation_warning": "1 validieringsvarning",
-    "dashboard.demo_card.open": "Öppna demo-projekt",
-    "dashboard.real_card.title": "Nytt projekt",
-    "dashboard.real_card.header": "Riktigt projekt",
+    "dashboard.demo_card.open": "Öppna demo-årsredovisning",
+    "dashboard.real_card.title": "Ny årsredovisning",
+    "dashboard.real_card.header": "Riktig årsredovisning",
     "dashboard.real_card.requires_payment": "Kräver betalning",
-    "dashboard.real_card.description": "Skapa ett riktigt K3-projekt med SIE-import och export",
+    "dashboard.real_card.description": "Skapa en riktig K3-årsredovisning med SIE-import och export",
     "dashboard.real_card.price": "Betala per rapport — 999 kr",
     "dashboard.real_card.price_detail": "Fullständig K3-årsredovisning, PDF & Word-export",
     "dashboard.real_card.cta": "Starta på riktigt",
@@ -67,7 +67,7 @@ export const strings = {
     "dashboard.activity.time.recent": "Nyligen",
     "dashboard.activity.time.today": "Idag",
     "dashboard.notifications.title": "Notifieringar",
-    "dashboard.notifications.cta": "Kom igång med ett riktigt projekt —",
+    "dashboard.notifications.cta": "Kom igång med en riktig årsredovisning —",
     "dashboard.notifications.cta_link": "se priser",
 
     // ── Pricing ─────────────────────────────────────────────────────────────
@@ -91,7 +91,7 @@ export const strings = {
     "pricing.card2.feature4": "Teamfunktioner (kommer snart)",
     "pricing.card2.cta": "Kontakta oss för mer information",
     "pricing.includes.title": "Vad ingår efter betalning?",
-    "pricing.includes.1": "Skapa riktiga projekt med SIE-import",
+    "pricing.includes.1": "Skapa riktiga årsredovisningar med SIE-import",
     "pricing.includes.2": "Fullständig K3-årsredovisning",
     "pricing.includes.3": "PDF- och Word-export",
     "pricing.includes.4": "Fullständig valideringsrapport",
@@ -132,7 +132,7 @@ export const strings = {
     "demo.overview.company.org": "Organisationsnummer",
     "demo.overview.company.framework": "Ramverk",
     "demo.overview.company.fiscal": "Räkenskapsår",
-    "demo.overview.status.title": "Projektstatus",
+    "demo.overview.status.title": "Status för årsredovisningen",
     "demo.overview.validation.error": "valideringsfel måste åtgärdas innan export",
 
     // Import section
@@ -187,7 +187,7 @@ export const strings = {
 
     // Review section
     "demo.review.title": "Granskning",
-    "demo.review.notice": "Gransknings- och kommentarsfunktioner kräver ett riktigt projekt. Skrivskyddat i demo.",
+    "demo.review.notice": "Gransknings- och kommentarsfunktioner kräver en riktig årsredovisning. Skrivskyddat i demo.",
     "demo.review.add_comment": "Lägg till kommentar",
     "demo.review.approve": "Godkänn",
     "review.reviewer": "Granskare",
@@ -195,7 +195,7 @@ export const strings = {
 
     // Export section
     "demo.export.title": "Förhandsgranska & Exportera",
-    "demo.export.notice": "Exportfunktioner kräver ett riktigt projekt med betalning. Skrivskyddat i demo.",
+    "demo.export.notice": "Exportfunktioner kräver en riktig årsredovisning med betalning. Skrivskyddat i demo.",
     "demo.export.options": "Exportalternativ",
     "demo.export.pdf": "Exportera som PDF",
     "demo.export.word": "Exportera som Word",
@@ -223,7 +223,7 @@ export const strings = {
     "guidance.panel.close": "Stäng hjälp",
     "guidance.panel.empty": "Ingen kontext tillgänglig.",
 
-    "guidance.demo.overview": "Här får du en överblicksbild av projektet och var ni befinner er i processen.",
+    "guidance.demo.overview": "Här får du en överblicksbild av årsredovisningen och var ni befinner er i processen.",
     "guidance.demo.import": "Ladda upp din SIE4-fil. Systemet extraherar automatiskt verifikationer och saldon för att bygga rapporterna.",
     "guidance.demo.mapping": "Systemet mappar automatiskt dina konton till BAS-kontoplanen. Gröna konton är säkra, gula/röda bör du dubbelkolla.",
     "guidance.demo.statements": "Resultat- och balansräkning enligt ÅRL. Du kan fälla ut varje post för att se exakt hur den har beräknats från saldot.",
@@ -232,7 +232,7 @@ export const strings = {
     "guidance.demo.review": "Här kan kollegor eller kund kommentera specifika rader och noter. Man kan godkänna eller avvisa.",
     "guidance.demo.export": "När allt är grönt och validerat, är rapporterna redo att laddas ned och lämnas in.",
 
-    "guidance.workspace.overview": "Här ser du status för ditt projekt och var du befinner dig i processen.",
+    "guidance.workspace.overview": "Här ser du status för din årsredovisning och var du befinner dig i processen.",
     "guidance.workspace.import": "Ladda upp din SIE4-fil för att komma igång. Filen bearbetas automatiskt.",
     "guidance.workspace.mapping": "Granska och justera hur dina konton mappas till BAS-kontoplanen.",
     "guidance.workspace.statements": "Resultat- och balansräkning genereras från din SIE-data och kontomappning.",
@@ -271,7 +271,7 @@ export const strings = {
     "ai.suggestion.reject": "Avvisa",
     "review.reviewed.label": "Granskad och godkänd",
     "demo.guidance.text": "Detta är demo-data för Nordic Design AB 2024. Alla indata är låsta.",
-    "demo.guidance.cta": "Starta riktigt projekt",
+    "demo.guidance.cta": "Starta riktig årsredovisning",
     "locked.guidance.text": "Denna funktion kräver ett aktivt abonnemang.",
     "locked.guidance.cta": "Se priser",
     "bas.logic.label": "Visa BAS-logik",
@@ -296,7 +296,7 @@ export const strings = {
     "workspace.import.batch.status.confirmed": "Bekräftad",
     "workspace.import.batch.status.cancelled": "Avbruten",
     "workspace.import.demo.title": "Demoimport",
-    "workspace.import.demo.desc": "Demoprojektet visar en exempelimport. Ladda upp dina egna filer i ett riktigt projekt.",
+    "workspace.import.demo.desc": "Demon visar en exempelimport. Ladda upp dina egna filer i en riktig årsredovisning.",
     "workspace.import.demo.upgrade": "Uppgradera för att importera riktiga filer",
 
     // ── Staging preview ───────────────────────────────────────────────────────
@@ -312,7 +312,7 @@ export const strings = {
     "staging.unsupported": "Ej stödda SIE-sektioner",
     "staging.confirm": "Bekräfta import",
     "staging.cancel": "Avbryt import",
-    "staging.confirm.desc": "Datan läggs till projektet och kontomappning startas automatiskt.",
+    "staging.confirm.desc": "Datan läggs till din årsredovisning och kontomappning startas automatiskt.",
     "staging.partial.warning": "Delvis import: inte all data parsades korrekt. Granska varningarna nedan.",
     "staging.accounts.table.title": "Importerade konton (förhandsgranskning)",
 
@@ -389,7 +389,7 @@ export const strings = {
     "landing.cta.demo": "Explore demo",
     "landing.cta.start": "Start for real",
     "landing.cta.section.title": "Ready to start?",
-    "landing.cta.section.subtitle": "Explore the demo with Nordic Design AB or create your first real project.",
+    "landing.cta.section.subtitle": "Explore the demo with Nordic Design AB or create your first real annual report.",
     "landing.workflow.title": "From SIE file to signed annual report",
     "landing.workflow.subtitle": "Eight clear steps — nothing left to chance.",
     "landing.step": "Step",
@@ -418,16 +418,16 @@ export const strings = {
     "dashboard.subscription.cta": "See pricing",
     "dashboard.demo_card.title": "Nordic Design AB 2024",
     "dashboard.demo_card.status": "Draft",
-    "dashboard.demo_card.header": "Demo project",
+    "dashboard.demo_card.header": "Demo annual report",
     "dashboard.demo_card.meta": "556123-4567 · K3 · 2024-01-01 – 2024-12-31",
     "dashboard.demo_card.import_done": "Import done",
     "dashboard.demo_card.mapping_done": "Mapping done",
     "dashboard.demo_card.validation_warning": "1 validation warning",
-    "dashboard.demo_card.open": "Open demo project",
-    "dashboard.real_card.title": "New project",
-    "dashboard.real_card.header": "Real project",
+    "dashboard.demo_card.open": "Open demo annual report",
+    "dashboard.real_card.title": "New annual report",
+    "dashboard.real_card.header": "Real annual report",
     "dashboard.real_card.requires_payment": "Requires payment",
-    "dashboard.real_card.description": "Create a real K3 project with SIE import and export",
+    "dashboard.real_card.description": "Create a real K3 annual report with SIE import and export",
     "dashboard.real_card.price": "Pay per report — 999 SEK",
     "dashboard.real_card.price_detail": "Complete K3 annual report, PDF & Word export",
     "dashboard.real_card.cta": "Start for real",
@@ -439,7 +439,7 @@ export const strings = {
     "dashboard.activity.time.recent": "Recently",
     "dashboard.activity.time.today": "Today",
     "dashboard.notifications.title": "Notifications",
-    "dashboard.notifications.cta": "Get started with a real project —",
+    "dashboard.notifications.cta": "Get started with a real annual report —",
     "dashboard.notifications.cta_link": "see pricing",
 
     // ── Pricing ─────────────────────────────────────────────────────────────
@@ -463,7 +463,7 @@ export const strings = {
     "pricing.card2.feature4": "Team features (coming soon)",
     "pricing.card2.cta": "Contact us for more information",
     "pricing.includes.title": "What is included after payment?",
-    "pricing.includes.1": "Create real projects with SIE import",
+    "pricing.includes.1": "Create real annual reports with SIE import",
     "pricing.includes.2": "Complete K3 annual report",
     "pricing.includes.3": "PDF and Word export",
     "pricing.includes.4": "Full validation report",
@@ -504,7 +504,7 @@ export const strings = {
     "demo.overview.company.org": "Organization number",
     "demo.overview.company.framework": "Framework",
     "demo.overview.company.fiscal": "Fiscal year",
-    "demo.overview.status.title": "Project status",
+    "demo.overview.status.title": "Annual report status",
     "demo.overview.validation.error": "validation error(s) must be resolved before export",
 
     // Import section
@@ -559,7 +559,7 @@ export const strings = {
 
     // Review section
     "demo.review.title": "Review",
-    "demo.review.notice": "Review and comment features require a real project. Read-only in demo.",
+    "demo.review.notice": "Review and comment features require a real annual report. Read-only in demo.",
     "demo.review.add_comment": "Add comment",
     "demo.review.approve": "Approve",
     "review.reviewer": "Reviewer",
@@ -567,7 +567,7 @@ export const strings = {
 
     // Export section
     "demo.export.title": "Preview & Export",
-    "demo.export.notice": "Export features require a real project with payment. Read-only in demo.",
+    "demo.export.notice": "Export features require a real annual report with payment. Read-only in demo.",
     "demo.export.options": "Export options",
     "demo.export.pdf": "Export as PDF",
     "demo.export.word": "Export as Word",
@@ -595,7 +595,7 @@ export const strings = {
     "guidance.panel.close": "Close help",
     "guidance.panel.empty": "No context available.",
 
-    "guidance.demo.overview": "Here you get an overview of the project and where you are in the process.",
+    "guidance.demo.overview": "Here you get an overview of the annual report and where you are in the process.",
     "guidance.demo.import": "Upload your SIE4 file. The system automatically extracts transactions and balances to build the reports.",
     "guidance.demo.mapping": "The system automatically maps your accounts to the BAS chart of accounts. Green accounts are safe, yellow/red should be double-checked.",
     "guidance.demo.statements": "Income and balance sheet per ÅRL. You can expand each line to see exactly how it was calculated from the balance.",
@@ -604,7 +604,7 @@ export const strings = {
     "guidance.demo.review": "Here colleagues or the client can comment on specific lines and notes. They can approve or reject.",
     "guidance.demo.export": "When everything is green and validated, the reports are ready to download and submit.",
 
-    "guidance.workspace.overview": "Here you see the status of your project and where you are in the process.",
+    "guidance.workspace.overview": "Here you see the status of your annual report and where you are in the process.",
     "guidance.workspace.import": "Upload your SIE4 file to get started. The file is processed automatically.",
     "guidance.workspace.mapping": "Review and adjust how your accounts map to the BAS chart of accounts.",
     "guidance.workspace.statements": "Income and balance sheet are generated from your SIE data and account mapping.",
@@ -643,7 +643,7 @@ export const strings = {
     "ai.suggestion.reject": "Reject",
     "review.reviewed.label": "Reviewed and approved",
     "demo.guidance.text": "This is demo data for Nordic Design AB 2024. All inputs are locked.",
-    "demo.guidance.cta": "Start real project",
+    "demo.guidance.cta": "Start real annual report",
     "locked.guidance.text": "This feature requires an active subscription.",
     "locked.guidance.cta": "See pricing",
     "bas.logic.label": "Show BAS logic",
@@ -668,7 +668,7 @@ export const strings = {
     "workspace.import.batch.status.confirmed": "Confirmed",
     "workspace.import.batch.status.cancelled": "Cancelled",
     "workspace.import.demo.title": "Demo import",
-    "workspace.import.demo.desc": "The demo project shows a sample import. Upload your own files in a real project.",
+    "workspace.import.demo.desc": "The demo shows a sample import. Upload your own files in a real annual report.",
     "workspace.import.demo.upgrade": "Upgrade to import real files",
 
     // ── Staging preview ───────────────────────────────────────────────────────
@@ -684,7 +684,7 @@ export const strings = {
     "staging.unsupported": "Unsupported SIE sections",
     "staging.confirm": "Confirm import",
     "staging.cancel": "Cancel import",
-    "staging.confirm.desc": "Data will be added to the project and account mapping will start automatically.",
+    "staging.confirm.desc": "Data will be added to your annual report and account mapping will start automatically.",
     "staging.partial.warning": "Partial import: not all data was parsed correctly. Review the warnings below.",
     "staging.accounts.table.title": "Imported accounts (preview)",
 
