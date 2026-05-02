@@ -60,8 +60,8 @@
 |-------|--------|------------|
 | 0 | ✅ Complete | — |
 | 1 | ✅ Complete | — |
-| 1.5 | ⏳ Not started | Supabase project setup |
-| 2 | ⏳ Not started | Supabase project + Phase 1.5 |
+| 1.5 | ✅ Complete | — |
+| 2 | ✅ Complete | — |
 | 2.5 | ⏳ Not started | Phase 2 |
 | 3 | ⏳ Not started | Phase 2.5 |
 | 3.5 | ⏳ Not started | Phase 3 |

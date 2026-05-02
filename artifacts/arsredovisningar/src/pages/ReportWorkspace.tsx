@@ -1,12 +1,13 @@
 import { useRoute, Link } from "wouter";
 import { useGetReport, getGetReportQueryKey, useUpdateReport } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { FileText, ArrowLeft, CheckCircle2, ChevronRight, BarChart3, Calculator, AlignLeft, PenTool, LayoutDashboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { WorkflowProgress } from "@/components/WorkflowProgress";
 
 const SECTIONS = [
   { id: "förvaltningsberättelse", title: "Förvaltningsberättelse", icon: AlignLeft, desc: "Management report and overview" },
@@ -129,18 +130,15 @@ export function ReportWorkspace() {
         </div>
         
         <div className="space-y-6">
-          <Card className="shadow-sm bg-muted/20 border-border/50">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Progress</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3 border-b bg-muted/20">
+              <CardTitle className="text-lg">9-Step Workflow</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-3xl font-bold">{report.completionPercent}%</span>
-                <span className="text-sm text-muted-foreground mb-1">{report.sectionsCompleted} of {report.sectionsTotal} sections</span>
-              </div>
-              <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${report.completionPercent}%` }} />
-              </div>
+            <CardContent className="pt-4">
+              <WorkflowProgress
+                currentStepId="import"
+                completedStepIds={[]}
+              />
             </CardContent>
           </Card>
 
@@ -149,10 +147,10 @@ export function ReportWorkspace() {
                <CardTitle className="text-lg">Quick Actions</CardTitle>
              </CardHeader>
              <CardContent className="space-y-2">
-               <Button variant="outline" className="w-full justify-start">
+               <Button variant="outline" className="w-full justify-start" disabled>
                  <FileText className="mr-2 h-4 w-4" /> Download Draft PDF
                </Button>
-               <Button variant="outline" className="w-full justify-start">
+               <Button variant="outline" className="w-full justify-start" disabled>
                  <PenTool className="mr-2 h-4 w-4" /> Send for Signature
                </Button>
              </CardContent>

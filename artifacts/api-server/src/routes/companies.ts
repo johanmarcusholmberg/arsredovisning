@@ -1,27 +1,60 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, companiesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
+import { db, companiesTable, type Company } from "@workspace/db";
 import {
   CreateCompanyBody,
   UpdateCompanyBody,
   GetCompanyParams,
   UpdateCompanyParams,
-  GetCompanyResponse,
-  UpdateCompanyResponse,
-  ListCompaniesResponse,
 } from "@workspace/api-zod";
+import { logAuditEvent } from "../lib/auditLog.js";
 
 const router: IRouter = Router();
 
+/**
+ * Map a DB Company row to the API response shape.
+ * DB uses organizationNumber/postalCode; OpenAPI/frontend uses orgNumber/zipCode.
+ */
+function toApiCompany(c: Company) {
+  return {
+    id: c.id,
+    name: c.name,
+    orgNumber: c.organizationNumber,
+    legalForm: c.legalForm,
+    accountingFramework: c.accountingFramework as "K2" | "K3",
+    fiscalYearStart: c.fiscalYearStart ?? "",
+    fiscalYearEnd: c.fiscalYearEnd ?? "",
+    address: c.address ?? undefined,
+    zipCode: c.postalCode ?? undefined,
+    city: c.city ?? undefined,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+  };
+}
+
 router.get("/companies", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
   const companies = await db
     .select()
     .from(companiesTable)
+    .where(eq(companiesTable.createdByProfileId, profileId))
     .orderBy(companiesTable.createdAt);
-  res.json(ListCompaniesResponse.parse(companies));
+
+  res.json(companies.map(toApiCompany));
 });
 
 router.post("/companies", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
   const parsed = CreateCompanyBody.safeParse(req.body);
   if (!parsed.success) {
     req.log.warn({ errors: parsed.error.message }, "Invalid company body");
@@ -29,11 +62,35 @@ router.post("/companies", async (req, res): Promise<void> => {
     return;
   }
 
-  const [company] = await db.insert(companiesTable).values(parsed.data).returning();
-  res.status(201).json(GetCompanyResponse.parse(company));
+  const { orgNumber, zipCode, ...rest } = parsed.data;
+
+  const [company] = await db
+    .insert(companiesTable)
+    .values({
+      ...rest,
+      organizationNumber: orgNumber,
+      postalCode: zipCode,
+      createdByProfileId: profileId,
+    })
+    .returning();
+
+  await logAuditEvent({
+    eventType: "company.created",
+    actorProfileId: profileId,
+    companyId: company.id,
+    payload: { name: company.name },
+  });
+
+  res.status(201).json(toApiCompany(company));
 });
 
 router.get("/companies/:companyId", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
   const params = GetCompanyParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "invalid_params", message: params.error.message });
@@ -43,17 +100,28 @@ router.get("/companies/:companyId", async (req, res): Promise<void> => {
   const [company] = await db
     .select()
     .from(companiesTable)
-    .where(eq(companiesTable.id, params.data.companyId));
+    .where(
+      and(
+        eq(companiesTable.id, params.data.companyId),
+        eq(companiesTable.createdByProfileId, profileId),
+      ),
+    );
 
   if (!company) {
     res.status(404).json({ error: "not_found", message: "Company not found" });
     return;
   }
 
-  res.json(GetCompanyResponse.parse(company));
+  res.json(toApiCompany(company));
 });
 
 router.patch("/companies/:companyId", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
   const params = UpdateCompanyParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "invalid_params", message: params.error.message });
@@ -66,10 +134,21 @@ router.patch("/companies/:companyId", async (req, res): Promise<void> => {
     return;
   }
 
+  const { zipCode, ...rest } = parsed.data;
+
   const [company] = await db
     .update(companiesTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
-    .where(eq(companiesTable.id, params.data.companyId))
+    .set({
+      ...rest,
+      ...(zipCode !== undefined && { postalCode: zipCode }),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(companiesTable.id, params.data.companyId),
+        eq(companiesTable.createdByProfileId, profileId),
+      ),
+    )
     .returning();
 
   if (!company) {
@@ -77,7 +156,8 @@ router.patch("/companies/:companyId", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(UpdateCompanyResponse.parse(company));
+  res.json(toApiCompany(company));
 });
 
+export { toApiCompany };
 export default router;

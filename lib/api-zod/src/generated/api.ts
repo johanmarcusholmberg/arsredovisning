@@ -16,18 +16,87 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * @summary List all companies
+ * Returns the authenticated user's access tier and capabilities. Phase 2: all authenticated users receive "paid" tier. Stripe-gated entitlement is added in Phase 4.
+
+ * @summary Get the current user's entitlement tier
+ */
+export const GetEntitlementResponse = zod.object({
+  tier: zod
+    .enum(["demo_only", "paid", "subscription"])
+    .describe(
+      "demo_only: no real projects; paid: per-report; subscription: unlimited",
+    ),
+  canCreateCompany: zod.boolean(),
+  canCreateProject: zod.boolean(),
+  companyCount: zod.number(),
+});
+
+/**
+ * @summary List annual report projects for the authenticated user
+ */
+export const ListProjectsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  companyId: zod.string().uuid(),
+  companyName: zod.string(),
+  fiscalYearStart: zod.string(),
+  fiscalYearEnd: zod.string(),
+  accountingFramework: zod.enum(["K2", "K3"]),
+  status: zod.enum(["draft", "in_review", "approved", "exported"]),
+  noteNumberingScheme: zod.string(),
+  importedSieFileName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListProjectsResponse = zod.array(ListProjectsResponseItem);
+
+/**
+ * @summary Create a new annual report project
+ */
+export const createProjectBodyAccountingFrameworkDefault = `K3`;
+
+export const CreateProjectBody = zod.object({
+  companyId: zod.string().uuid(),
+  fiscalYearStart: zod.string(),
+  fiscalYearEnd: zod.string(),
+  accountingFramework: zod
+    .enum(["K2", "K3"])
+    .default(createProjectBodyAccountingFrameworkDefault),
+});
+
+/**
+ * @summary Get a single annual report project
+ */
+export const GetProjectParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+});
+
+export const GetProjectResponse = zod.object({
+  id: zod.string().uuid(),
+  companyId: zod.string().uuid(),
+  companyName: zod.string(),
+  fiscalYearStart: zod.string(),
+  fiscalYearEnd: zod.string(),
+  accountingFramework: zod.enum(["K2", "K3"]),
+  status: zod.enum(["draft", "in_review", "approved", "exported"]),
+  noteNumberingScheme: zod.string(),
+  importedSieFileName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List the authenticated user's companies
  */
 export const ListCompaniesResponseItem = zod.object({
-  id: zod.string(),
+  id: zod.string().uuid(),
   name: zod.string().describe("Company name (företagsnamn)"),
   orgNumber: zod
     .string()
     .describe("Swedish organization number (organisationsnummer)"),
   legalForm: zod.string().describe("Legal form (AB, HB, KB, EF, etc.)"),
-  address: zod.string().optional(),
-  zipCode: zod.string().optional(),
-  city: zod.string().optional(),
+  address: zod.string().nullish(),
+  zipCode: zod.string().nullish(),
+  city: zod.string().nullish(),
   accountingFramework: zod.enum(["K2", "K3"]).describe("K2 or K3"),
   fiscalYearStart: zod
     .string()
@@ -41,14 +110,21 @@ export const ListCompaniesResponse = zod.array(ListCompaniesResponseItem);
 /**
  * @summary Create a new company
  */
+export const createCompanyBodyLegalFormDefault = `AB`;
+export const createCompanyBodyAccountingFrameworkDefault = `K3`;
+
 export const CreateCompanyBody = zod.object({
   name: zod.string(),
   orgNumber: zod.string(),
-  legalForm: zod.enum(["AB", "HB", "KB", "EF", "Ideell", "Stiftelse"]),
+  legalForm: zod
+    .enum(["AB", "HB", "KB", "EF", "Ideell", "Stiftelse"])
+    .default(createCompanyBodyLegalFormDefault),
   address: zod.string().optional(),
   zipCode: zod.string().optional(),
   city: zod.string().optional(),
-  accountingFramework: zod.enum(["K2", "K3"]),
+  accountingFramework: zod
+    .enum(["K2", "K3"])
+    .default(createCompanyBodyAccountingFrameworkDefault),
   fiscalYearStart: zod.string(),
   fiscalYearEnd: zod.string(),
 });
@@ -61,15 +137,15 @@ export const GetCompanyParams = zod.object({
 });
 
 export const GetCompanyResponse = zod.object({
-  id: zod.string(),
+  id: zod.string().uuid(),
   name: zod.string().describe("Company name (företagsnamn)"),
   orgNumber: zod
     .string()
     .describe("Swedish organization number (organisationsnummer)"),
   legalForm: zod.string().describe("Legal form (AB, HB, KB, EF, etc.)"),
-  address: zod.string().optional(),
-  zipCode: zod.string().optional(),
-  city: zod.string().optional(),
+  address: zod.string().nullish(),
+  zipCode: zod.string().nullish(),
+  city: zod.string().nullish(),
   accountingFramework: zod.enum(["K2", "K3"]).describe("K2 or K3"),
   fiscalYearStart: zod
     .string()
@@ -95,15 +171,15 @@ export const UpdateCompanyBody = zod.object({
 });
 
 export const UpdateCompanyResponse = zod.object({
-  id: zod.string(),
+  id: zod.string().uuid(),
   name: zod.string().describe("Company name (företagsnamn)"),
   orgNumber: zod
     .string()
     .describe("Swedish organization number (organisationsnummer)"),
   legalForm: zod.string().describe("Legal form (AB, HB, KB, EF, etc.)"),
-  address: zod.string().optional(),
-  zipCode: zod.string().optional(),
-  city: zod.string().optional(),
+  address: zod.string().nullish(),
+  zipCode: zod.string().nullish(),
+  city: zod.string().nullish(),
   accountingFramework: zod.enum(["K2", "K3"]).describe("K2 or K3"),
   fiscalYearStart: zod
     .string()
@@ -124,8 +200,8 @@ export const ListReportsResponseItem = zod.object({
   id: zod.string(),
   companyId: zod.string(),
   companyName: zod.string(),
-  fiscalYearStart: zod.coerce.date(),
-  fiscalYearEnd: zod.coerce.date(),
+  fiscalYearStart: zod.string(),
+  fiscalYearEnd: zod.string(),
   status: zod.enum(["draft", "in_progress", "complete", "exported"]),
   accountingFramework: zod.enum(["K2", "K3"]),
   completionPercent: zod.number().describe("Overall completion 0-100"),
@@ -144,8 +220,8 @@ export const CreateReportParams = zod.object({
 });
 
 export const CreateReportBody = zod.object({
-  fiscalYearStart: zod.coerce.date(),
-  fiscalYearEnd: zod.coerce.date(),
+  fiscalYearStart: zod.string(),
+  fiscalYearEnd: zod.string(),
   accountingFramework: zod.enum(["K2", "K3"]),
 });
 
@@ -160,8 +236,8 @@ export const GetReportResponse = zod.object({
   id: zod.string(),
   companyId: zod.string(),
   companyName: zod.string(),
-  fiscalYearStart: zod.coerce.date(),
-  fiscalYearEnd: zod.coerce.date(),
+  fiscalYearStart: zod.string(),
+  fiscalYearEnd: zod.string(),
   status: zod.enum(["draft", "in_progress", "complete", "exported"]),
   accountingFramework: zod.enum(["K2", "K3"]),
   completionPercent: zod.number().describe("Overall completion 0-100"),
@@ -186,8 +262,8 @@ export const UpdateReportResponse = zod.object({
   id: zod.string(),
   companyId: zod.string(),
   companyName: zod.string(),
-  fiscalYearStart: zod.coerce.date(),
-  fiscalYearEnd: zod.coerce.date(),
+  fiscalYearStart: zod.string(),
+  fiscalYearEnd: zod.string(),
   status: zod.enum(["draft", "in_progress", "complete", "exported"]),
   accountingFramework: zod.enum(["K2", "K3"]),
   completionPercent: zod.number().describe("Overall completion 0-100"),
@@ -207,8 +283,8 @@ export const GetReportSummaryParams = zod.object({
 export const GetReportSummaryResponse = zod.object({
   reportId: zod.string(),
   companyName: zod.string(),
-  fiscalYearStart: zod.coerce.date(),
-  fiscalYearEnd: zod.coerce.date(),
+  fiscalYearStart: zod.string(),
+  fiscalYearEnd: zod.string(),
   status: zod.enum(["draft", "in_progress", "complete", "exported"]),
   completionPercent: zod.number(),
   sections: zod.array(
@@ -227,6 +303,20 @@ export const GetReportSummaryResponse = zod.object({
 });
 
 /**
+ * @summary List snapshots for a report (Phase 7 stub)
+ */
+export const ListSnapshotsParams = zod.object({
+  reportId: zod.coerce.string(),
+});
+
+/**
+ * @summary Create a snapshot of the current report state (Phase 7 stub)
+ */
+export const CreateSnapshotParams = zod.object({
+  reportId: zod.coerce.string(),
+});
+
+/**
  * @summary Get dashboard overview
  */
 export const GetDashboardSummaryResponse = zod.object({
@@ -239,8 +329,8 @@ export const GetDashboardSummaryResponse = zod.object({
       id: zod.string(),
       companyId: zod.string(),
       companyName: zod.string(),
-      fiscalYearStart: zod.coerce.date(),
-      fiscalYearEnd: zod.coerce.date(),
+      fiscalYearStart: zod.string(),
+      fiscalYearEnd: zod.string(),
       status: zod.enum(["draft", "in_progress", "complete", "exported"]),
       accountingFramework: zod.enum(["K2", "K3"]),
       completionPercent: zod.number().describe("Overall completion 0-100"),

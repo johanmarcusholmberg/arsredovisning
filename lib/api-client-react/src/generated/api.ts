@@ -18,10 +18,13 @@ import type {
 
 import type {
   AnnualReport,
+  AnnualReportProject,
   Company,
   CreateCompanyBody,
+  CreateProjectBody,
   CreateReportBody,
   DashboardSummary,
+  EntitlementInfo,
   ErrorResponse,
   HealthStatus,
   ReportSummary,
@@ -115,7 +118,332 @@ export function useHealthCheck<
 }
 
 /**
- * @summary List all companies
+ * Returns the authenticated user's access tier and capabilities. Phase 2: all authenticated users receive "paid" tier. Stripe-gated entitlement is added in Phase 4.
+
+ * @summary Get the current user's entitlement tier
+ */
+export const getGetEntitlementUrl = () => {
+  return `/api/entitlement`;
+};
+
+export const getEntitlement = async (
+  options?: RequestInit,
+): Promise<EntitlementInfo> => {
+  return customFetch<EntitlementInfo>(getGetEntitlementUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetEntitlementQueryKey = () => {
+  return [`/api/entitlement`] as const;
+};
+
+export const getGetEntitlementQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEntitlement>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getEntitlement>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetEntitlementQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getEntitlement>>> = ({
+    signal,
+  }) => getEntitlement({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getEntitlement>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetEntitlementQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEntitlement>>
+>;
+export type GetEntitlementQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the current user's entitlement tier
+ */
+
+export function useGetEntitlement<
+  TData = Awaited<ReturnType<typeof getEntitlement>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getEntitlement>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEntitlementQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List annual report projects for the authenticated user
+ */
+export const getListProjectsUrl = () => {
+  return `/api/projects`;
+};
+
+export const listProjects = async (
+  options?: RequestInit,
+): Promise<AnnualReportProject[]> => {
+  return customFetch<AnnualReportProject[]>(getListProjectsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListProjectsQueryKey = () => {
+  return [`/api/projects`] as const;
+};
+
+export const getListProjectsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListProjectsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listProjects>>> = ({
+    signal,
+  }) => listProjects({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProjects>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProjectsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProjects>>
+>;
+export type ListProjectsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List annual report projects for the authenticated user
+ */
+
+export function useListProjects<
+  TData = Awaited<ReturnType<typeof listProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProjectsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new annual report project
+ */
+export const getCreateProjectUrl = () => {
+  return `/api/projects`;
+};
+
+export const createProject = async (
+  createProjectBody: CreateProjectBody,
+  options?: RequestInit,
+): Promise<AnnualReportProject> => {
+  return customFetch<AnnualReportProject>(getCreateProjectUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createProjectBody),
+  });
+};
+
+export const getCreateProjectMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProject>>,
+    TError,
+    { data: BodyType<CreateProjectBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProject>>,
+  TError,
+  { data: BodyType<CreateProjectBody> },
+  TContext
+> => {
+  const mutationKey = ["createProject"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProject>>,
+    { data: BodyType<CreateProjectBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createProject(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateProjectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProject>>
+>;
+export type CreateProjectMutationBody = BodyType<CreateProjectBody>;
+export type CreateProjectMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new annual report project
+ */
+export const useCreateProject = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProject>>,
+    TError,
+    { data: BodyType<CreateProjectBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createProject>>,
+  TError,
+  { data: BodyType<CreateProjectBody> },
+  TContext
+> => {
+  return useMutation(getCreateProjectMutationOptions(options));
+};
+
+/**
+ * @summary Get a single annual report project
+ */
+export const getGetProjectUrl = (projectId: string) => {
+  return `/api/projects/${projectId}`;
+};
+
+export const getProject = async (
+  projectId: string,
+  options?: RequestInit,
+): Promise<AnnualReportProject> => {
+  return customFetch<AnnualReportProject>(getGetProjectUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetProjectQueryKey = (projectId: string) => {
+  return [`/api/projects/${projectId}`] as const;
+};
+
+export const getGetProjectQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProject>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetProjectQueryKey(projectId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getProject>>> = ({
+    signal,
+  }) => getProject(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProject>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProjectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProject>>
+>;
+export type GetProjectQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a single annual report project
+ */
+
+export function useGetProject<
+  TData = Awaited<ReturnType<typeof getProject>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List the authenticated user's companies
  */
 export const getListCompaniesUrl = () => {
   return `/api/companies`;
@@ -166,7 +494,7 @@ export type ListCompaniesQueryResult = NonNullable<
 export type ListCompaniesQueryError = ErrorType<unknown>;
 
 /**
- * @summary List all companies
+ * @summary List the authenticated user's companies
  */
 
 export function useListCompanies<
@@ -882,6 +1210,177 @@ export function useGetReportSummary<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List snapshots for a report (Phase 7 stub)
+ */
+export const getListSnapshotsUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/snapshots`;
+};
+
+export const listSnapshots = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getListSnapshotsUrl(reportId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSnapshotsQueryKey = (reportId: string) => {
+  return [`/api/reports/${reportId}/snapshots`] as const;
+};
+
+export const getListSnapshotsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSnapshots>>,
+  TError = ErrorType<void>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSnapshots>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListSnapshotsQueryKey(reportId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listSnapshots>>> = ({
+    signal,
+  }) => listSnapshots(reportId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSnapshots>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSnapshotsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSnapshots>>
+>;
+export type ListSnapshotsQueryError = ErrorType<void>;
+
+/**
+ * @summary List snapshots for a report (Phase 7 stub)
+ */
+
+export function useListSnapshots<
+  TData = Awaited<ReturnType<typeof listSnapshots>>,
+  TError = ErrorType<void>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSnapshots>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSnapshotsQueryOptions(reportId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a snapshot of the current report state (Phase 7 stub)
+ */
+export const getCreateSnapshotUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/snapshots`;
+};
+
+export const createSnapshot = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getCreateSnapshotUrl(reportId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCreateSnapshotMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSnapshot>>,
+    TError,
+    { reportId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSnapshot>>,
+  TError,
+  { reportId: string },
+  TContext
+> => {
+  const mutationKey = ["createSnapshot"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSnapshot>>,
+    { reportId: string }
+  > = (props) => {
+    const { reportId } = props ?? {};
+
+    return createSnapshot(reportId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSnapshotMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSnapshot>>
+>;
+
+export type CreateSnapshotMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a snapshot of the current report state (Phase 7 stub)
+ */
+export const useCreateSnapshot = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSnapshot>>,
+    TError,
+    { reportId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSnapshot>>,
+  TError,
+  { reportId: string },
+  TContext
+> => {
+  return useMutation(getCreateSnapshotMutationOptions(options));
+};
 
 /**
  * @summary Get dashboard overview

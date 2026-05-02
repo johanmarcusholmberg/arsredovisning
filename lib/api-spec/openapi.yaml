@@ -11,13 +11,15 @@ tags:
   - name: health
     description: Health operations
   - name: projects
-    description: Annual report project operations (Phase 2)
+    description: Annual report project operations
   - name: companies
     description: Company management
   - name: reports
     description: Annual report management
   - name: dashboard
     description: Dashboard and summary data
+  - name: entitlement
+    description: User entitlement and access tier
 
 paths:
   /healthz:
@@ -34,17 +36,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
-  # ─── Projects (Phase 2 — not yet implemented) ──────────────────────────────
-  # These endpoints will be fully implemented in Phase 2 once Supabase Auth
-  # and the database are wired up. They currently return HTTP 501.
+  # ─── Entitlement ─────────────────────────────────────────────────────────────
+  /entitlement:
+    get:
+      operationId: getEntitlement
+      tags: [entitlement]
+      summary: Get the current user's entitlement tier
+      description: >
+        Returns the authenticated user's access tier and capabilities.
+        Phase 2: all authenticated users receive "paid" tier.
+        Stripe-gated entitlement is added in Phase 4.
+      responses:
+        "200":
+          description: Entitlement info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntitlementInfo"
+
+  # ─── Projects ────────────────────────────────────────────────────────────────
   /projects:
     get:
       operationId: listProjects
       tags: [projects]
       summary: List annual report projects for the authenticated user
-      description: >
-        Returns all projects the authenticated user has access to.
-        Phase 2 only — returns 501 until Supabase Auth is configured.
       responses:
         "200":
           description: List of projects
@@ -54,19 +69,10 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/AnnualReportProject"
-        "501":
-          description: Not implemented (Phase 2)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NotImplemented"
     post:
       operationId: createProject
       tags: [projects]
       summary: Create a new annual report project
-      description: >
-        Creates a new project for an authenticated, paying user.
-        Phase 2 only — returns 501 until Supabase Auth and Stripe are configured.
       requestBody:
         required: true
         content:
@@ -80,12 +86,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AnnualReportProject"
-        "501":
-          description: Not implemented (Phase 2)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NotImplemented"
 
   /projects/{projectId}:
     get:
@@ -106,20 +106,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AnnualReportProject"
-        "501":
-          description: Not implemented (Phase 2)
+        "404":
+          description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/NotImplemented"
+                $ref: "#/components/schemas/ErrorResponse"
 
-  # ─── Companies ──────────────────────────────────────────────────────────────
+  # ─── Companies ───────────────────────────────────────────────────────────────
   /companies:
     get:
       operationId: listCompanies
       tags: [companies]
-      summary: List all companies
-      description: Phase 2 only — returns 501 until Supabase Auth is configured.
+      summary: List the authenticated user's companies
       responses:
         "200":
           description: List of companies
@@ -129,17 +128,10 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Company"
-        "501":
-          description: Not implemented (Phase 2)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NotImplemented"
     post:
       operationId: createCompany
       tags: [companies]
       summary: Create a new company
-      description: Phase 2 only — returns 501 until Supabase Auth is configured.
       requestBody:
         required: true
         content:
@@ -153,12 +145,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Company"
-        "501":
-          description: Not implemented (Phase 2)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NotImplemented"
 
   /companies/{companyId}:
     get:
@@ -319,6 +305,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReportSummary"
 
+  /reports/{reportId}/snapshots:
+    get:
+      operationId: listSnapshots
+      tags: [reports]
+      summary: List snapshots for a report (Phase 7 stub)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "501":
+          description: Not yet implemented
+    post:
+      operationId: createSnapshot
+      tags: [reports]
+      summary: Create a snapshot of the current report state (Phase 7 stub)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "501":
+          description: Not yet implemented
+
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -362,6 +376,25 @@ components:
           type: string
       required:
         - error
+
+    EntitlementInfo:
+      type: object
+      properties:
+        tier:
+          type: string
+          enum: [demo_only, paid, subscription]
+          description: "demo_only: no real projects; paid: per-report; subscription: unlimited"
+        canCreateCompany:
+          type: boolean
+        canCreateProject:
+          type: boolean
+        companyCount:
+          type: integer
+      required:
+        - tier
+        - canCreateCompany
+        - canCreateProject
+        - companyCount
 
     Company:
       type: object
@@ -471,12 +504,12 @@ components:
         companyId:
           type: string
           format: uuid
+        companyName:
+          type: string
         fiscalYearStart:
           type: string
-          format: date
         fiscalYearEnd:
           type: string
-          format: date
         accountingFramework:
           type: string
           enum: [K2, K3]
@@ -497,10 +530,12 @@ components:
       required:
         - id
         - companyId
+        - companyName
         - fiscalYearStart
         - fiscalYearEnd
         - accountingFramework
         - status
+        - noteNumberingScheme
         - createdAt
         - updatedAt
 
@@ -512,10 +547,8 @@ components:
           format: uuid
         fiscalYearStart:
           type: string
-          format: date
         fiscalYearEnd:
           type: string
-          format: date
         accountingFramework:
           type: string
           enum: [K2, K3]
@@ -536,10 +569,8 @@ components:
           type: string
         fiscalYearStart:
           type: string
-          format: date
         fiscalYearEnd:
           type: string
-          format: date
         status:
           type: string
           enum: [draft, in_progress, complete, exported]
@@ -578,10 +609,8 @@ components:
       properties:
         fiscalYearStart:
           type: string
-          format: date
         fiscalYearEnd:
           type: string
-          format: date
         accountingFramework:
           type: string
           enum: [K2, K3]
@@ -606,10 +635,8 @@ components:
           type: string
         fiscalYearStart:
           type: string
-          format: date
         fiscalYearEnd:
           type: string
-          format: date
         status:
           type: string
           enum: [draft, in_progress, complete, exported]

@@ -14,6 +14,7 @@ import {
   ListReportsResponse,
   GetReportSummaryResponse,
 } from "@workspace/api-zod";
+import { logAuditEvent } from "../lib/auditLog.js";
 
 const REPORT_SECTIONS = [
   { key: "forvaltningsberattelse", label: "Förvaltningsberättelse", requiredFields: 5 },
@@ -27,6 +28,12 @@ const REPORT_SECTIONS = [
 const router: IRouter = Router();
 
 router.get("/companies/:companyId/reports", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
   const params = ListReportsParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "invalid_params", message: params.error.message });
@@ -50,13 +57,24 @@ router.get("/companies/:companyId/reports", async (req, res): Promise<void> => {
     })
     .from(reportsTable)
     .innerJoin(companiesTable, eq(reportsTable.companyId, companiesTable.id))
-    .where(eq(reportsTable.companyId, params.data.companyId))
+    .where(
+      and(
+        eq(reportsTable.companyId, params.data.companyId),
+        eq(companiesTable.createdByProfileId, profileId),
+      ),
+    )
     .orderBy(reportsTable.createdAt);
 
   res.json(ListReportsResponse.parse(reports));
 });
 
 router.post("/companies/:companyId/reports", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
   const params = CreateReportParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "invalid_params", message: params.error.message });
@@ -72,7 +90,12 @@ router.post("/companies/:companyId/reports", async (req, res): Promise<void> => 
   const [company] = await db
     .select()
     .from(companiesTable)
-    .where(eq(companiesTable.id, params.data.companyId));
+    .where(
+      and(
+        eq(companiesTable.id, params.data.companyId),
+        eq(companiesTable.createdByProfileId, profileId),
+      ),
+    );
 
   if (!company) {
     res.status(404).json({ error: "not_found", message: "Company not found" });
@@ -93,15 +116,27 @@ router.post("/companies/:companyId/reports", async (req, res): Promise<void> => 
     })
     .returning();
 
-  const result = {
-    ...report,
-    companyName: company.name,
-  };
+  await logAuditEvent({
+    eventType: "report.created",
+    actorProfileId: profileId,
+    companyId: company.id,
+    payload: {
+      reportId: report.id,
+      fiscalYearStart: report.fiscalYearStart,
+      fiscalYearEnd: report.fiscalYearEnd,
+    },
+  });
 
-  res.status(201).json(GetReportResponse.parse(result));
+  res.status(201).json(GetReportResponse.parse({ ...report, companyName: company.name }));
 });
 
 router.get("/reports/:reportId", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
   const params = GetReportParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "invalid_params", message: params.error.message });
@@ -125,7 +160,12 @@ router.get("/reports/:reportId", async (req, res): Promise<void> => {
     })
     .from(reportsTable)
     .innerJoin(companiesTable, eq(reportsTable.companyId, companiesTable.id))
-    .where(eq(reportsTable.id, params.data.reportId));
+    .where(
+      and(
+        eq(reportsTable.id, params.data.reportId),
+        eq(companiesTable.createdByProfileId, profileId),
+      ),
+    );
 
   if (!row) {
     res.status(404).json({ error: "not_found", message: "Report not found" });
@@ -136,6 +176,12 @@ router.get("/reports/:reportId", async (req, res): Promise<void> => {
 });
 
 router.patch("/reports/:reportId", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
   const params = UpdateReportParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "invalid_params", message: params.error.message });
@@ -148,27 +194,43 @@ router.patch("/reports/:reportId", async (req, res): Promise<void> => {
     return;
   }
 
+  const [existing] = await db
+    .select({ companyId: reportsTable.companyId })
+    .from(reportsTable)
+    .innerJoin(companiesTable, eq(reportsTable.companyId, companiesTable.id))
+    .where(
+      and(
+        eq(reportsTable.id, params.data.reportId),
+        eq(companiesTable.createdByProfileId, profileId),
+      ),
+    );
+
+  if (!existing) {
+    res.status(404).json({ error: "not_found", message: "Report not found" });
+    return;
+  }
+
   const [row] = await db
     .update(reportsTable)
     .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(reportsTable.id, params.data.reportId))
     .returning();
 
-  if (!row) {
-    res.status(404).json({ error: "not_found", message: "Report not found" });
-    return;
-  }
-
   const [company] = await db
     .select()
     .from(companiesTable)
     .where(eq(companiesTable.id, row.companyId));
 
-  const result = { ...row, companyName: company?.name ?? "" };
-  res.json(UpdateReportResponse.parse(result));
+  res.json(UpdateReportResponse.parse({ ...row, companyName: company?.name ?? "" }));
 });
 
 router.get("/reports/:reportId/summary", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
   const params = GetReportSummaryParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "invalid_params", message: params.error.message });
@@ -189,7 +251,12 @@ router.get("/reports/:reportId/summary", async (req, res): Promise<void> => {
     })
     .from(reportsTable)
     .innerJoin(companiesTable, eq(reportsTable.companyId, companiesTable.id))
-    .where(eq(reportsTable.id, params.data.reportId));
+    .where(
+      and(
+        eq(reportsTable.id, params.data.reportId),
+        eq(companiesTable.createdByProfileId, profileId),
+      ),
+    );
 
   if (!row) {
     res.status(404).json({ error: "not_found", message: "Report not found" });
@@ -204,17 +271,27 @@ router.get("/reports/:reportId/summary", async (req, res): Promise<void> => {
     completedFields: i < row.sectionsCompleted ? s.requiredFields : 0,
   }));
 
-  const summary = {
-    reportId: row.id,
-    companyName: row.companyName,
-    fiscalYearStart: row.fiscalYearStart,
-    fiscalYearEnd: row.fiscalYearEnd,
-    status: row.status,
-    completionPercent: row.completionPercent,
-    sections,
-  };
+  res.json(
+    GetReportSummaryResponse.parse({
+      reportId: row.id,
+      companyName: row.companyName,
+      fiscalYearStart: row.fiscalYearStart,
+      fiscalYearEnd: row.fiscalYearEnd,
+      status: row.status,
+      completionPercent: row.completionPercent,
+      sections,
+    }),
+  );
+});
 
-  res.json(GetReportSummaryResponse.parse(summary));
+// ─── Snapshot stubs (Phase 7) ────────────────────────────────────────────────
+
+router.get("/reports/:reportId/snapshots", (_req, res): void => {
+  res.status(501).json({ message: "Snapshot listing coming in a later phase" });
+});
+
+router.post("/reports/:reportId/snapshots", (_req, res): void => {
+  res.status(501).json({ message: "Snapshot creation coming in a later phase" });
 });
 
 export default router;

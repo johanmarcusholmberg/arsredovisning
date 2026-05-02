@@ -14,6 +14,31 @@ export interface ErrorResponse {
   message: string;
 }
 
+export interface NotImplemented {
+  error: string;
+  phase?: string;
+}
+
+/**
+ * demo_only: no real projects; paid: per-report; subscription: unlimited
+ */
+export type EntitlementInfoTier =
+  (typeof EntitlementInfoTier)[keyof typeof EntitlementInfoTier];
+
+export const EntitlementInfoTier = {
+  demo_only: "demo_only",
+  paid: "paid",
+  subscription: "subscription",
+} as const;
+
+export interface EntitlementInfo {
+  /** demo_only: no real projects; paid: per-report; subscription: unlimited */
+  tier: EntitlementInfoTier;
+  canCreateCompany: boolean;
+  canCreateProject: boolean;
+  companyCount: number;
+}
+
 /**
  * K2 or K3
  */
@@ -33,9 +58,9 @@ export interface Company {
   orgNumber: string;
   /** Legal form (AB, HB, KB, EF, etc.) */
   legalForm: string;
-  address?: string;
-  zipCode?: string;
-  city?: string;
+  address?: string | null;
+  zipCode?: string | null;
+  city?: string | null;
   /** K2 or K3 */
   accountingFramework: CompanyAccountingFramework;
   /** Fiscal year start (MM-DD, e.g. 01-01) */
@@ -92,6 +117,53 @@ export interface UpdateCompanyBody {
   zipCode?: string;
   city?: string;
   accountingFramework?: UpdateCompanyBodyAccountingFramework;
+}
+
+export type AnnualReportProjectAccountingFramework =
+  (typeof AnnualReportProjectAccountingFramework)[keyof typeof AnnualReportProjectAccountingFramework];
+
+export const AnnualReportProjectAccountingFramework = {
+  K2: "K2",
+  K3: "K3",
+} as const;
+
+export type AnnualReportProjectStatus =
+  (typeof AnnualReportProjectStatus)[keyof typeof AnnualReportProjectStatus];
+
+export const AnnualReportProjectStatus = {
+  draft: "draft",
+  in_review: "in_review",
+  approved: "approved",
+  exported: "exported",
+} as const;
+
+export interface AnnualReportProject {
+  id: string;
+  companyId: string;
+  companyName: string;
+  fiscalYearStart: string;
+  fiscalYearEnd: string;
+  accountingFramework: AnnualReportProjectAccountingFramework;
+  status: AnnualReportProjectStatus;
+  noteNumberingScheme: string;
+  importedSieFileName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateProjectBodyAccountingFramework =
+  (typeof CreateProjectBodyAccountingFramework)[keyof typeof CreateProjectBodyAccountingFramework];
+
+export const CreateProjectBodyAccountingFramework = {
+  K2: "K2",
+  K3: "K3",
+} as const;
+
+export interface CreateProjectBody {
+  companyId: string;
+  fiscalYearStart: string;
+  fiscalYearEnd: string;
+  accountingFramework?: CreateProjectBodyAccountingFramework;
 }
 
 export type AnnualReportStatus =
