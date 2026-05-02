@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   db,
   reportsTable,
@@ -97,8 +97,12 @@ async function validateReclassification(opts: {
   aggregates?: Map<string, RowAggregates>;
   excludeReclassId?: string;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
-  if (!Number.isFinite(opts.amount) || opts.amount === 0) {
-    return { ok: false, message: "amount must be a non-zero number" };
+  if (!Number.isFinite(opts.amount) || opts.amount <= 0) {
+    return {
+      ok: false,
+      message:
+        "Beloppet måste vara ett positivt tal. Riktningen anges via källrad och målrad — använd inte minustecken.",
+    };
   }
   if (opts.targetCtx.noteStatus === "not_applicable") {
     return {
@@ -202,12 +206,21 @@ function parseUpdateSuggestionStatusBody(
       : typeof b.reviewerComment === "string"
         ? b.reviewerComment
         : null;
-  const editedAmount =
-    b.editedAmount === undefined || b.editedAmount === null
-      ? null
-      : typeof b.editedAmount === "string"
-        ? b.editedAmount
-        : null;
+  let editedAmount: string | null = null;
+  if (b.editedAmount !== undefined && b.editedAmount !== null) {
+    if (typeof b.editedAmount !== "string") {
+      return { ok: false, message: "editedAmount must be a string or null" };
+    }
+    const n = Number(b.editedAmount);
+    if (Number.isNaN(n) || n <= 0) {
+      return {
+        ok: false,
+        message:
+          "editedAmount must be a positive number (riktning sätts via käll-/målrad)",
+      };
+    }
+    editedAmount = b.editedAmount;
+  }
   return {
     ok: true,
     data: {
@@ -235,8 +248,16 @@ function parseCreateReclassBody(
   ) {
     return { ok: false, message: "sourceNoteRowId must be a UUID or null" };
   }
-  if (typeof b.amount !== "string" || Number.isNaN(Number(b.amount)) || Number(b.amount) === 0) {
-    return { ok: false, message: "amount must be a non-zero numeric string" };
+  if (
+    typeof b.amount !== "string" ||
+    Number.isNaN(Number(b.amount)) ||
+    Number(b.amount) <= 0
+  ) {
+    return {
+      ok: false,
+      message:
+        "amount must be a positive numeric string (use source/target to express direction, never a minus sign)",
+    };
   }
   const effectType =
     typeof b.effectType === "string" && EFFECT_TYPES.includes(b.effectType as EffectType)
@@ -418,12 +439,29 @@ router.patch(
     let targetCtx: NoteRowContext | null = null;
 
     if (parsed.data.status === "accepted") {
+      // Idempotency: only allow accept from a non-final state. This blocks
+      // double-accept (which would otherwise insert a second active reclass
+      // for the same suggestion) and also catches accepting after reject.
+      if (
+        existing.status !== "suggested" &&
+        existing.status !== "edited"
+      ) {
+        res.status(409).json({
+          error: "invalid_state_transition",
+          message: `Förslaget är redan i status "${existing.status}" och kan inte accepteras igen. Återställ det först om det behövs.`,
+        });
+        return;
+      }
       acceptedAmountStr = existing.suggestedAmount;
       acceptedAmountNum = Number(acceptedAmountStr);
-      if (!Number.isFinite(acceptedAmountNum) || acceptedAmountNum === 0) {
+      if (
+        !Number.isFinite(acceptedAmountNum) ||
+        acceptedAmountNum <= 0
+      ) {
         res.status(400).json({
           error: "invalid_input",
-          message: "Suggestion amount is missing or zero — cannot accept.",
+          message:
+            "Förslagets belopp är saknat, noll eller negativt — redigera förslaget först.",
         });
         return;
       }
@@ -471,6 +509,10 @@ router.patch(
 
     // Apply update (and create reclass if accepting) atomically.
     const txResult = await db.transaction(async (tx) => {
+      // Re-check inside the transaction to close the race window between
+      // pre-validation and the update: another concurrent request might
+      // have already accepted this suggestion. We do a SELECT … FOR UPDATE
+      // by using a conditional UPDATE with a where-clause on status.
       const [updated] = await tx
         .update(annualReportReclassificationSuggestionsTable)
         .set({
@@ -484,14 +526,51 @@ router.patch(
               : existing.suggestedAmount,
           updatedAt: new Date(),
         })
-        .where(eq(annualReportReclassificationSuggestionsTable.id, suggestionId))
+        .where(
+          and(
+            eq(annualReportReclassificationSuggestionsTable.id, suggestionId),
+            // Only allow accept if the row is still in a non-final state.
+            // For other transitions there's no such constraint.
+            parsed.data.status === "accepted"
+              ? inArray(
+                  annualReportReclassificationSuggestionsTable.status,
+                  ["suggested", "edited"],
+                )
+              : undefined,
+          ),
+        )
         .returning();
+
+      if (!updated) {
+        // Another writer beat us to it — abort.
+        throw new Error("CONCURRENT_ACCEPT");
+      }
 
       let createdReclass:
         | typeof annualReportReclassificationsTable.$inferSelect
         | null = null;
 
       if (parsed.data.status === "accepted" && targetCtx) {
+        // Defence-in-depth: refuse to create a second active reclass for
+        // the same suggestion. The status guard above should already
+        // prevent this, but we double-check here in case a previous active
+        // reclass exists from an earlier accept→undo→accept cycle.
+        const existingActive = await tx
+          .select({ id: annualReportReclassificationsTable.id })
+          .from(annualReportReclassificationsTable)
+          .where(
+            and(
+              eq(
+                annualReportReclassificationsTable.sourceSuggestionId,
+                suggestionId,
+              ),
+              eq(annualReportReclassificationsTable.status, "active"),
+            ),
+          );
+        if (existingActive.length > 0) {
+          throw new Error("DUPLICATE_ACTIVE_RECLASS");
+        }
+
         const [inserted] = await tx
           .insert(annualReportReclassificationsTable)
           .values({
@@ -512,7 +591,30 @@ router.patch(
       }
 
       return { updated, createdReclass };
+    }).catch((err: unknown) => {
+      if (err instanceof Error && err.message === "CONCURRENT_ACCEPT") {
+        return { conflict: "concurrent" as const };
+      }
+      if (
+        err instanceof Error &&
+        err.message === "DUPLICATE_ACTIVE_RECLASS"
+      ) {
+        return { conflict: "duplicate" as const };
+      }
+      throw err;
     });
+
+    if ("conflict" in txResult) {
+      const message =
+        txResult.conflict === "concurrent"
+          ? "Förslaget hanterades av en annan användare medan din begäran behandlades."
+          : "En aktiv omklassificering finns redan för det här förslaget.";
+      res.status(409).json({
+        error: "invalid_state_transition",
+        message,
+      });
+      return;
+    }
 
     const eventType =
       parsed.data.status === "accepted"

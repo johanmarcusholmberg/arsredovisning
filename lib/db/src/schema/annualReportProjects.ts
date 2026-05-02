@@ -14,7 +14,10 @@ import { accountingFrameworkEnum, projectStatusEnum, annualReportLanguageEnum } 
  *   Demo projects always produce watermarked exports. Identified by DEMO_PROJECT_ID constant
  *   OR by this flag for future user-created demo sandboxes.
  * sectionStatusJson: JSONB tracking per-section completion:
- *   { import, mapping, statements, notes, validation, export } each with a status string.
+ *   { import, mapping, statements, notes, reclassification, validation, export }
+ *   each with a status string ("not-started" | "in-progress" | "completed").
+ *   The "reclassification" key (Phase 6.5) tracks the suggestion-based netting
+ *   step that runs between notes editing and final validation.
  * RLS: access controlled via project_access table — users only see projects they are on.
  *   Service role bypasses for system operations and audit writes.
  */

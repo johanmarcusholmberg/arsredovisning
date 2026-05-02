@@ -129,6 +129,9 @@ export function ReclassificationReview() {
   const [manualTargetRowId, setManualTargetRowId] = useState<string>("");
   const [manualAmount, setManualAmount] = useState("");
   const [manualReason, setManualReason] = useState("");
+  const [manualEffectType, setManualEffectType] = useState<
+    "note_only" | "report_node_only" | "note_and_report_node"
+  >("note_only");
 
   const { data: report } = useGetReport(reportId, {
     query: { enabled: !!reportId, queryKey: getGetReportQueryKey(reportId) },
@@ -271,6 +274,15 @@ export function ReclassificationReview() {
 
   const handleSaveEdit = () => {
     if (!editing) return;
+    if (editAmount && Number(editAmount) <= 0) {
+      toast({
+        title: "Ogiltigt belopp",
+        description:
+          "Beloppet måste vara positivt. Riktningen styrs av käll-/målrad.",
+        variant: "destructive",
+      });
+      return;
+    }
     updateSuggestion.mutate(
       {
         reportId,
@@ -307,6 +319,15 @@ export function ReclassificationReview() {
       : null;
     const tgtLabel =
       targetRows.find((r) => r.id === manualTargetRowId)?.label ?? null;
+    if (Number(manualAmount) <= 0) {
+      toast({
+        title: "Ogiltigt belopp",
+        description:
+          "Ange ett positivt belopp. Riktningen styrs av käll- och målrad.",
+        variant: "destructive",
+      });
+      return;
+    }
     createReclass.mutate(
       {
         reportId,
@@ -316,7 +337,7 @@ export function ReclassificationReview() {
           sourceLabel: srcLabel,
           targetLabel: tgtLabel,
           amount: manualAmount,
-          effectType: "note_only",
+          effectType: manualEffectType,
           reason: manualReason || null,
         },
       },
@@ -330,6 +351,7 @@ export function ReclassificationReview() {
           setManualTargetRowId("");
           setManualAmount("");
           setManualReason("");
+          setManualEffectType("note_only");
           toast({ title: "Omklassificering tillämpad" });
         },
         onError: (err) =>
@@ -786,13 +808,49 @@ export function ReclassificationReview() {
               </div>
             </div>
             <div>
-              <Label htmlFor="manual-amount">Belopp</Label>
+              <Label htmlFor="manual-amount">Belopp (positivt)</Label>
               <Input
                 id="manual-amount"
                 value={manualAmount}
                 onChange={(e) => setManualAmount(e.target.value)}
                 placeholder="0"
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Riktningen sätts av käll- och målrad — ange aldrig minustecken.
+              </p>
+            </div>
+            <div>
+              <Label>Effekt</Label>
+              <Select
+                value={manualEffectType}
+                onValueChange={(v) =>
+                  setManualEffectType(
+                    v as
+                      | "note_only"
+                      | "report_node_only"
+                      | "note_and_report_node",
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="note_only">
+                    Endast not (BR/RR oförändrad)
+                  </SelectItem>
+                  <SelectItem value="report_node_only">
+                    Endast rapportpost (BR/RR-omklassning)
+                  </SelectItem>
+                  <SelectItem value="note_and_report_node">
+                    Både not och rapportpost
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Välj hur omklassificeringen ska påverka rapporten — bara noten,
+                bara rapportposten, eller båda.
+              </p>
             </div>
             <div>
               <Label htmlFor="manual-reason">Motivering</Label>
