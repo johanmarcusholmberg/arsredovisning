@@ -1306,3 +1306,482 @@ export const ListAuditEventsResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Upload an accounting file (SIE, CSV, Excel) for import
+ */
+export const UploadImportFileParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+});
+
+export const UploadImportFileBody = zod.object({
+  originalFilename: zod.string(),
+  fileType: zod.enum(["sie", "csv", "excel"]),
+  fileSizeBytes: zod.number().nullish(),
+  storageBucket: zod.string().nullish(),
+  storagePath: zod.string().nullish(),
+});
+
+/**
+ * @summary List all import batches for a project
+ */
+export const ListImportBatchesParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+});
+
+export const ListImportBatchesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  projectId: zod.string().uuid(),
+  originalFilename: zod.string(),
+  fileType: zod.enum(["sie", "csv", "excel"]),
+  fileSizeBytes: zod.number().nullish(),
+  status: zod.enum([
+    "pending",
+    "parsing",
+    "partial",
+    "parsed",
+    "failed",
+    "confirmed",
+    "cancelled",
+  ]),
+  fiscalYearDetected: zod.string().nullish(),
+  accountsFound: zod.number(),
+  balancesFound: zod.number(),
+  transactionsFound: zod.number(),
+  parsingErrors: zod.array(
+    zod.object({
+      section: zod
+        .string()
+        .describe("SIE section label or CSV\/Excel row range"),
+      message: zod.string().describe("Human-readable error description"),
+      severity: zod.enum(["warning", "error"]),
+    }),
+  ),
+  isDemo: zod.boolean(),
+  confirmedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListImportBatchesResponse = zod.array(
+  ListImportBatchesResponseItem,
+);
+
+/**
+ * @summary Get import batch status including parsing errors and staging summary
+ */
+export const GetImportBatchParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+  batchId: zod.coerce.string().uuid(),
+});
+
+export const GetImportBatchResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    projectId: zod.string().uuid(),
+    originalFilename: zod.string(),
+    fileType: zod.enum(["sie", "csv", "excel"]),
+    fileSizeBytes: zod.number().nullish(),
+    status: zod.enum([
+      "pending",
+      "parsing",
+      "partial",
+      "parsed",
+      "failed",
+      "confirmed",
+      "cancelled",
+    ]),
+    fiscalYearDetected: zod.string().nullish(),
+    accountsFound: zod.number(),
+    balancesFound: zod.number(),
+    transactionsFound: zod.number(),
+    parsingErrors: zod.array(
+      zod.object({
+        section: zod
+          .string()
+          .describe("SIE section label or CSV\/Excel row range"),
+        message: zod.string().describe("Human-readable error description"),
+        severity: zod.enum(["warning", "error"]),
+      }),
+    ),
+    isDemo: zod.boolean(),
+    confirmedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      summaryJson: zod.object({}).passthrough().nullish(),
+      uploadUrl: zod
+        .string()
+        .nullish()
+        .describe("Signed upload URL stub (TODO Supabase Storage)"),
+    }),
+  );
+
+/**
+ * @summary Confirm a staging batch and promote it to project data
+ */
+export const ConfirmImportBatchParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+  batchId: zod.coerce.string().uuid(),
+});
+
+export const ConfirmImportBatchResponse = zod.object({
+  id: zod.string().uuid(),
+  projectId: zod.string().uuid(),
+  originalFilename: zod.string(),
+  fileType: zod.enum(["sie", "csv", "excel"]),
+  fileSizeBytes: zod.number().nullish(),
+  status: zod.enum([
+    "pending",
+    "parsing",
+    "partial",
+    "parsed",
+    "failed",
+    "confirmed",
+    "cancelled",
+  ]),
+  fiscalYearDetected: zod.string().nullish(),
+  accountsFound: zod.number(),
+  balancesFound: zod.number(),
+  transactionsFound: zod.number(),
+  parsingErrors: zod.array(
+    zod.object({
+      section: zod
+        .string()
+        .describe("SIE section label or CSV\/Excel row range"),
+      message: zod.string().describe("Human-readable error description"),
+      severity: zod.enum(["warning", "error"]),
+    }),
+  ),
+  isDemo: zod.boolean(),
+  confirmedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Cancel a staging batch (staging data remains but is never used)
+ */
+export const CancelImportBatchParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+  batchId: zod.coerce.string().uuid(),
+});
+
+export const CancelImportBatchResponse = zod.object({
+  id: zod.string().uuid(),
+  projectId: zod.string().uuid(),
+  originalFilename: zod.string(),
+  fileType: zod.enum(["sie", "csv", "excel"]),
+  fileSizeBytes: zod.number().nullish(),
+  status: zod.enum([
+    "pending",
+    "parsing",
+    "partial",
+    "parsed",
+    "failed",
+    "confirmed",
+    "cancelled",
+  ]),
+  fiscalYearDetected: zod.string().nullish(),
+  accountsFound: zod.number(),
+  balancesFound: zod.number(),
+  transactionsFound: zod.number(),
+  parsingErrors: zod.array(
+    zod.object({
+      section: zod
+        .string()
+        .describe("SIE section label or CSV\/Excel row range"),
+      message: zod.string().describe("Human-readable error description"),
+      severity: zod.enum(["warning", "error"]),
+    }),
+  ),
+  isDemo: zod.boolean(),
+  confirmedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Submit column mapping for CSV/Excel imports and trigger parsing
+ */
+export const SubmitColumnMappingParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+  batchId: zod.coerce.string().uuid(),
+});
+
+export const SubmitColumnMappingBody = zod
+  .object({
+    accountNumberColumn: zod
+      .string()
+      .describe("Column header mapped to account number (required)"),
+    accountNameColumn: zod
+      .string()
+      .nullish()
+      .describe("Column header mapped to account name (optional)"),
+    openingBalanceColumn: zod
+      .string()
+      .nullish()
+      .describe("Column header mapped to opening balance"),
+    closingBalanceColumn: zod
+      .string()
+      .nullish()
+      .describe("Column header mapped to closing balance"),
+    amountColumn: zod
+      .string()
+      .nullish()
+      .describe("Column header mapped to transaction amount"),
+    dateColumn: zod
+      .string()
+      .nullish()
+      .describe("Column header mapped to transaction date"),
+    descriptionColumn: zod
+      .string()
+      .nullish()
+      .describe("Column header mapped to description"),
+    fileContent: zod
+      .string()
+      .describe("Base64-encoded file content for server-side parsing"),
+  })
+  .describe("Column mapping for CSV\/Excel imports");
+
+export const SubmitColumnMappingResponse = zod.object({
+  id: zod.string().uuid(),
+  projectId: zod.string().uuid(),
+  originalFilename: zod.string(),
+  fileType: zod.enum(["sie", "csv", "excel"]),
+  fileSizeBytes: zod.number().nullish(),
+  status: zod.enum([
+    "pending",
+    "parsing",
+    "partial",
+    "parsed",
+    "failed",
+    "confirmed",
+    "cancelled",
+  ]),
+  fiscalYearDetected: zod.string().nullish(),
+  accountsFound: zod.number(),
+  balancesFound: zod.number(),
+  transactionsFound: zod.number(),
+  parsingErrors: zod.array(
+    zod.object({
+      section: zod
+        .string()
+        .describe("SIE section label or CSV\/Excel row range"),
+      message: zod.string().describe("Human-readable error description"),
+      severity: zod.enum(["warning", "error"]),
+    }),
+  ),
+  isDemo: zod.boolean(),
+  confirmedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get staging data preview for a parsed batch
+ */
+export const GetStagingPreviewParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+  batchId: zod.coerce.string().uuid(),
+});
+
+export const GetStagingPreviewResponse = zod.object({
+  batchId: zod.string().uuid(),
+  status: zod.enum([
+    "pending",
+    "parsing",
+    "partial",
+    "parsed",
+    "failed",
+    "confirmed",
+    "cancelled",
+  ]),
+  fiscalYearDetected: zod.string().nullish(),
+  accountsFound: zod.number(),
+  balancesFound: zod.number(),
+  transactionsFound: zod.number(),
+  missingNameAccounts: zod.number().describe("Count of accounts with no name"),
+  parsingErrors: zod.array(
+    zod.object({
+      section: zod
+        .string()
+        .describe("SIE section label or CSV\/Excel row range"),
+      message: zod.string().describe("Human-readable error description"),
+      severity: zod.enum(["warning", "error"]),
+    }),
+  ),
+  accounts: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      accountNumber: zod.string(),
+      accountName: zod.string().nullish(),
+      hasMissingName: zod.boolean(),
+      openingBalance: zod.string().nullish(),
+      closingBalance: zod.string().nullish(),
+      currency: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary List all account mappings for the active confirmed batch
+ */
+export const ListAccountMappingsParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+});
+
+export const ListAccountMappingsQueryParams = zod.object({
+  filter: zod
+    .enum(["all", "unmapped", "low_confidence", "needs_review"])
+    .optional(),
+  search: zod.coerce.string().optional(),
+});
+
+export const ListAccountMappingsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  projectId: zod.string().uuid(),
+  batchId: zod.string().uuid(),
+  accountNumber: zod.string(),
+  accountName: zod.string().nullish(),
+  reportLine: zod
+    .string()
+    .nullish()
+    .describe("K2\/K3 balance sheet or income statement line key"),
+  reportLineLabel: zod
+    .string()
+    .nullish()
+    .describe("Swedish human-readable report line label"),
+  basRange: zod
+    .string()
+    .nullish()
+    .describe('BAS range used for auto-mapping (e.g. \"1000-1099\")'),
+  confidence: zod.enum(["high", "medium", "low", "unmapped"]),
+  status: zod.enum([
+    "auto_mapped",
+    "suggested",
+    "needs_review",
+    "manually_mapped",
+    "unmapped",
+  ]),
+  noteImpactFlag: zod
+    .boolean()
+    .describe("True if this account implies a mandatory annual report note"),
+  noteImpactMetadata: zod.object({}).passthrough().nullish(),
+  isManualOverride: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListAccountMappingsResponse = zod.array(
+  ListAccountMappingsResponseItem,
+);
+
+/**
+ * @summary Save a manual mapping override for an account
+ */
+export const SaveMappingOverrideParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+  mappingId: zod.coerce.string().uuid(),
+});
+
+export const SaveMappingOverrideBody = zod.object({
+  reportLine: zod.string().describe("New report line key to assign"),
+  reportLineLabel: zod.string().describe("Swedish label for the report line"),
+  reason: zod
+    .string()
+    .nullish()
+    .describe("Optional explanation for the override"),
+});
+
+export const SaveMappingOverrideResponse = zod.object({
+  id: zod.string().uuid(),
+  projectId: zod.string().uuid(),
+  batchId: zod.string().uuid(),
+  accountNumber: zod.string(),
+  accountName: zod.string().nullish(),
+  reportLine: zod
+    .string()
+    .nullish()
+    .describe("K2\/K3 balance sheet or income statement line key"),
+  reportLineLabel: zod
+    .string()
+    .nullish()
+    .describe("Swedish human-readable report line label"),
+  basRange: zod
+    .string()
+    .nullish()
+    .describe('BAS range used for auto-mapping (e.g. \"1000-1099\")'),
+  confidence: zod.enum(["high", "medium", "low", "unmapped"]),
+  status: zod.enum([
+    "auto_mapped",
+    "suggested",
+    "needs_review",
+    "manually_mapped",
+    "unmapped",
+  ]),
+  noteImpactFlag: zod
+    .boolean()
+    .describe("True if this account implies a mandatory annual report note"),
+  noteImpactMetadata: zod.object({}).passthrough().nullish(),
+  isManualOverride: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List reusable mapping templates for the authenticated user
+ */
+export const ListMappingTemplatesParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+});
+
+export const ListMappingTemplatesResponseItem = zod.object({
+  id: zod.string().uuid(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  mappingsJson: zod.array(
+    zod.object({
+      accountNumber: zod.string(),
+      reportLine: zod.string(),
+      reportLineLabel: zod.string(),
+    }),
+  ),
+  createdByProfileId: zod.string().uuid(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListMappingTemplatesResponse = zod.array(
+  ListMappingTemplatesResponseItem,
+);
+
+/**
+ * @summary Save current manual overrides as a reusable template
+ */
+export const SaveMappingTemplateParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+});
+
+export const SaveMappingTemplateBody = zod.object({
+  name: zod.string(),
+  description: zod.string().nullish(),
+  mappings: zod.array(
+    zod.object({
+      accountNumber: zod.string(),
+      reportLine: zod.string(),
+      reportLineLabel: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Apply a saved template to the current batch's account mappings
+ */
+export const ApplyMappingTemplateParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+  templateId: zod.coerce.string().uuid(),
+});
+
+export const ApplyMappingTemplateResponse = zod.object({
+  appliedCount: zod.number(),
+});

@@ -118,3 +118,30 @@ export const reportRoleEnum = pgEnum("report_role", [
   "auditor",
   "read_only",
 ]);
+
+export const importFileTypeEnum = pgEnum("import_file_type", ["sie", "csv", "excel"]);
+
+export const batchStatusEnum = pgEnum("batch_status", [
+  "pending",
+  "parsing",
+  "partial",
+  "parsed",
+  "failed",
+  "confirmed",
+  "cancelled",
+]);
+
+export const mappingConfidenceEnum = pgEnum("mapping_confidence", [
+  "high",
+  "medium",
+  "low",
+  "unmapped",
+]);
+
+export const mappingStatusEnum = pgEnum("mapping_status", [
+  "auto_mapped",
+  "suggested",
+  "needs_review",
+  "manually_mapped",
+  "unmapped",
+]);

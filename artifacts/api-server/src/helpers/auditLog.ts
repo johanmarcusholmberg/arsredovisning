@@ -33,6 +33,16 @@ export const AUDIT_EVENTS = {
   SIE_PARSED: "sie.parsed",
   ACCOUNTS_MAPPED: "accounts.mapped",
 
+  // Phase 3 import & mapping events
+  IMPORT_FILE_UPLOADED: "import_file_uploaded",
+  IMPORT_PARSE_STARTED: "import_parse_started",
+  IMPORT_PARSE_COMPLETED: "import_parse_completed",
+  IMPORT_PARSE_FAILED: "import_parse_failed",
+  IMPORT_CONFIRMED: "import_confirmed",
+  MAPPING_AUTO_APPLIED: "mapping_auto_applied",
+  MAPPING_OVERRIDE_CREATED: "mapping_override_created",
+  MAPPING_TEMPLATE_SAVED: "mapping_template_saved",
+
   // Financial statements
   STATEMENTS_GENERATED: "statements.generated",
 

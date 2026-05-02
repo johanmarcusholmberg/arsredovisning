@@ -18,10 +18,13 @@ import type {
 
 import type {
   AcceptTextBody,
+  AccountMapping,
   AiDraftResponse,
   AnnualReport,
   AnnualReportProject,
+  ApplyMappingTemplate200,
   Collaborator,
+  ColumnMappingBody,
   Company,
   CreateCompanyBody,
   CreateNoteBody,
@@ -40,7 +43,10 @@ import type {
   GenerateStatementsResponse,
   GetFinancialStatementsParams,
   HealthStatus,
+  ImportBatch,
+  ImportBatchDetail,
   InviteCollaboratorBody,
+  ListAccountMappingsParams,
   ListAuditEvents200,
   ListAuditEventsParams,
   ListCollaborators200,
@@ -49,6 +55,7 @@ import type {
   ListSectionCommentsParams,
   ListSectionReviews200,
   ListValidationDismissals200,
+  MappingTemplate,
   Note,
   NoteListResponse,
   ProjectSnapshot,
@@ -56,10 +63,13 @@ import type {
   ReportSection,
   ReportStructureResponse,
   ReportSummary,
+  SaveMappingOverrideBody,
+  SaveMappingTemplateBody,
   SavePreviousYearBody,
   SavePreviousYearValues200,
   SectionComment,
   SectionReview,
+  StagingPreview,
   StatementLineDrilldown,
   SuggestNotesResponse,
   UpdateCompanyBody,
@@ -69,6 +79,7 @@ import type {
   UpdateSectionCommentBody,
   UpdateSectionReviewBody,
   UpdateStatementLineBody,
+  UploadImportFileBody,
   ValidationDismissal,
   ValidationRun,
 } from "./api.schemas";
@@ -4171,3 +4182,1153 @@ export function useListAuditEvents<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Upload an accounting file (SIE, CSV, Excel) for import
+ */
+export const getUploadImportFileUrl = (projectId: string) => {
+  return `/api/projects/${projectId}/imports/upload`;
+};
+
+export const uploadImportFile = async (
+  projectId: string,
+  uploadImportFileBody: UploadImportFileBody,
+  options?: RequestInit,
+): Promise<ImportBatch> => {
+  return customFetch<ImportBatch>(getUploadImportFileUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(uploadImportFileBody),
+  });
+};
+
+export const getUploadImportFileMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadImportFile>>,
+    TError,
+    { projectId: string; data: BodyType<UploadImportFileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadImportFile>>,
+  TError,
+  { projectId: string; data: BodyType<UploadImportFileBody> },
+  TContext
+> => {
+  const mutationKey = ["uploadImportFile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadImportFile>>,
+    { projectId: string; data: BodyType<UploadImportFileBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return uploadImportFile(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadImportFileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadImportFile>>
+>;
+export type UploadImportFileMutationBody = BodyType<UploadImportFileBody>;
+export type UploadImportFileMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Upload an accounting file (SIE, CSV, Excel) for import
+ */
+export const useUploadImportFile = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadImportFile>>,
+    TError,
+    { projectId: string; data: BodyType<UploadImportFileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadImportFile>>,
+  TError,
+  { projectId: string; data: BodyType<UploadImportFileBody> },
+  TContext
+> => {
+  return useMutation(getUploadImportFileMutationOptions(options));
+};
+
+/**
+ * @summary List all import batches for a project
+ */
+export const getListImportBatchesUrl = (projectId: string) => {
+  return `/api/projects/${projectId}/imports`;
+};
+
+export const listImportBatches = async (
+  projectId: string,
+  options?: RequestInit,
+): Promise<ImportBatch[]> => {
+  return customFetch<ImportBatch[]>(getListImportBatchesUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListImportBatchesQueryKey = (projectId: string) => {
+  return [`/api/projects/${projectId}/imports`] as const;
+};
+
+export const getListImportBatchesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listImportBatches>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listImportBatches>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListImportBatchesQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listImportBatches>>
+  > = ({ signal }) =>
+    listImportBatches(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listImportBatches>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListImportBatchesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listImportBatches>>
+>;
+export type ListImportBatchesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all import batches for a project
+ */
+
+export function useListImportBatches<
+  TData = Awaited<ReturnType<typeof listImportBatches>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listImportBatches>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListImportBatchesQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get import batch status including parsing errors and staging summary
+ */
+export const getGetImportBatchUrl = (projectId: string, batchId: string) => {
+  return `/api/projects/${projectId}/imports/${batchId}`;
+};
+
+export const getImportBatch = async (
+  projectId: string,
+  batchId: string,
+  options?: RequestInit,
+): Promise<ImportBatchDetail> => {
+  return customFetch<ImportBatchDetail>(
+    getGetImportBatchUrl(projectId, batchId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetImportBatchQueryKey = (
+  projectId: string,
+  batchId: string,
+) => {
+  return [`/api/projects/${projectId}/imports/${batchId}`] as const;
+};
+
+export const getGetImportBatchQueryOptions = <
+  TData = Awaited<ReturnType<typeof getImportBatch>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  projectId: string,
+  batchId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getImportBatch>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetImportBatchQueryKey(projectId, batchId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getImportBatch>>> = ({
+    signal,
+  }) => getImportBatch(projectId, batchId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(projectId && batchId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getImportBatch>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetImportBatchQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getImportBatch>>
+>;
+export type GetImportBatchQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get import batch status including parsing errors and staging summary
+ */
+
+export function useGetImportBatch<
+  TData = Awaited<ReturnType<typeof getImportBatch>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  projectId: string,
+  batchId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getImportBatch>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetImportBatchQueryOptions(
+    projectId,
+    batchId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Confirm a staging batch and promote it to project data
+ */
+export const getConfirmImportBatchUrl = (
+  projectId: string,
+  batchId: string,
+) => {
+  return `/api/projects/${projectId}/imports/${batchId}/confirm`;
+};
+
+export const confirmImportBatch = async (
+  projectId: string,
+  batchId: string,
+  options?: RequestInit,
+): Promise<ImportBatch> => {
+  return customFetch<ImportBatch>(
+    getConfirmImportBatchUrl(projectId, batchId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getConfirmImportBatchMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmImportBatch>>,
+    TError,
+    { projectId: string; batchId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmImportBatch>>,
+  TError,
+  { projectId: string; batchId: string },
+  TContext
+> => {
+  const mutationKey = ["confirmImportBatch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmImportBatch>>,
+    { projectId: string; batchId: string }
+  > = (props) => {
+    const { projectId, batchId } = props ?? {};
+
+    return confirmImportBatch(projectId, batchId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmImportBatchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmImportBatch>>
+>;
+
+export type ConfirmImportBatchMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Confirm a staging batch and promote it to project data
+ */
+export const useConfirmImportBatch = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmImportBatch>>,
+    TError,
+    { projectId: string; batchId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmImportBatch>>,
+  TError,
+  { projectId: string; batchId: string },
+  TContext
+> => {
+  return useMutation(getConfirmImportBatchMutationOptions(options));
+};
+
+/**
+ * @summary Cancel a staging batch (staging data remains but is never used)
+ */
+export const getCancelImportBatchUrl = (projectId: string, batchId: string) => {
+  return `/api/projects/${projectId}/imports/${batchId}/cancel`;
+};
+
+export const cancelImportBatch = async (
+  projectId: string,
+  batchId: string,
+  options?: RequestInit,
+): Promise<ImportBatch> => {
+  return customFetch<ImportBatch>(getCancelImportBatchUrl(projectId, batchId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCancelImportBatchMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelImportBatch>>,
+    TError,
+    { projectId: string; batchId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelImportBatch>>,
+  TError,
+  { projectId: string; batchId: string },
+  TContext
+> => {
+  const mutationKey = ["cancelImportBatch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelImportBatch>>,
+    { projectId: string; batchId: string }
+  > = (props) => {
+    const { projectId, batchId } = props ?? {};
+
+    return cancelImportBatch(projectId, batchId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelImportBatchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelImportBatch>>
+>;
+
+export type CancelImportBatchMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Cancel a staging batch (staging data remains but is never used)
+ */
+export const useCancelImportBatch = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelImportBatch>>,
+    TError,
+    { projectId: string; batchId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cancelImportBatch>>,
+  TError,
+  { projectId: string; batchId: string },
+  TContext
+> => {
+  return useMutation(getCancelImportBatchMutationOptions(options));
+};
+
+/**
+ * @summary Submit column mapping for CSV/Excel imports and trigger parsing
+ */
+export const getSubmitColumnMappingUrl = (
+  projectId: string,
+  batchId: string,
+) => {
+  return `/api/projects/${projectId}/imports/${batchId}/column-mapping`;
+};
+
+export const submitColumnMapping = async (
+  projectId: string,
+  batchId: string,
+  columnMappingBody: ColumnMappingBody,
+  options?: RequestInit,
+): Promise<ImportBatch> => {
+  return customFetch<ImportBatch>(
+    getSubmitColumnMappingUrl(projectId, batchId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(columnMappingBody),
+    },
+  );
+};
+
+export const getSubmitColumnMappingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitColumnMapping>>,
+    TError,
+    { projectId: string; batchId: string; data: BodyType<ColumnMappingBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitColumnMapping>>,
+  TError,
+  { projectId: string; batchId: string; data: BodyType<ColumnMappingBody> },
+  TContext
+> => {
+  const mutationKey = ["submitColumnMapping"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitColumnMapping>>,
+    { projectId: string; batchId: string; data: BodyType<ColumnMappingBody> }
+  > = (props) => {
+    const { projectId, batchId, data } = props ?? {};
+
+    return submitColumnMapping(projectId, batchId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitColumnMappingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitColumnMapping>>
+>;
+export type SubmitColumnMappingMutationBody = BodyType<ColumnMappingBody>;
+export type SubmitColumnMappingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Submit column mapping for CSV/Excel imports and trigger parsing
+ */
+export const useSubmitColumnMapping = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitColumnMapping>>,
+    TError,
+    { projectId: string; batchId: string; data: BodyType<ColumnMappingBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitColumnMapping>>,
+  TError,
+  { projectId: string; batchId: string; data: BodyType<ColumnMappingBody> },
+  TContext
+> => {
+  return useMutation(getSubmitColumnMappingMutationOptions(options));
+};
+
+/**
+ * @summary Get staging data preview for a parsed batch
+ */
+export const getGetStagingPreviewUrl = (projectId: string, batchId: string) => {
+  return `/api/projects/${projectId}/imports/${batchId}/staging`;
+};
+
+export const getStagingPreview = async (
+  projectId: string,
+  batchId: string,
+  options?: RequestInit,
+): Promise<StagingPreview> => {
+  return customFetch<StagingPreview>(
+    getGetStagingPreviewUrl(projectId, batchId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetStagingPreviewQueryKey = (
+  projectId: string,
+  batchId: string,
+) => {
+  return [`/api/projects/${projectId}/imports/${batchId}/staging`] as const;
+};
+
+export const getGetStagingPreviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStagingPreview>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  batchId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStagingPreview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStagingPreviewQueryKey(projectId, batchId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStagingPreview>>
+  > = ({ signal }) =>
+    getStagingPreview(projectId, batchId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(projectId && batchId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStagingPreview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStagingPreviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStagingPreview>>
+>;
+export type GetStagingPreviewQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get staging data preview for a parsed batch
+ */
+
+export function useGetStagingPreview<
+  TData = Awaited<ReturnType<typeof getStagingPreview>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  batchId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStagingPreview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStagingPreviewQueryOptions(
+    projectId,
+    batchId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all account mappings for the active confirmed batch
+ */
+export const getListAccountMappingsUrl = (
+  projectId: string,
+  params?: ListAccountMappingsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/projects/${projectId}/mappings?${stringifiedParams}`
+    : `/api/projects/${projectId}/mappings`;
+};
+
+export const listAccountMappings = async (
+  projectId: string,
+  params?: ListAccountMappingsParams,
+  options?: RequestInit,
+): Promise<AccountMapping[]> => {
+  return customFetch<AccountMapping[]>(
+    getListAccountMappingsUrl(projectId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAccountMappingsQueryKey = (
+  projectId: string,
+  params?: ListAccountMappingsParams,
+) => {
+  return [
+    `/api/projects/${projectId}/mappings`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListAccountMappingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAccountMappings>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  params?: ListAccountMappingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAccountMappings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAccountMappingsQueryKey(projectId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAccountMappings>>
+  > = ({ signal }) =>
+    listAccountMappings(projectId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAccountMappings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAccountMappingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAccountMappings>>
+>;
+export type ListAccountMappingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all account mappings for the active confirmed batch
+ */
+
+export function useListAccountMappings<
+  TData = Awaited<ReturnType<typeof listAccountMappings>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  params?: ListAccountMappingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAccountMappings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAccountMappingsQueryOptions(
+    projectId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save a manual mapping override for an account
+ */
+export const getSaveMappingOverrideUrl = (
+  projectId: string,
+  mappingId: string,
+) => {
+  return `/api/projects/${projectId}/mappings/${mappingId}/override`;
+};
+
+export const saveMappingOverride = async (
+  projectId: string,
+  mappingId: string,
+  saveMappingOverrideBody: SaveMappingOverrideBody,
+  options?: RequestInit,
+): Promise<AccountMapping> => {
+  return customFetch<AccountMapping>(
+    getSaveMappingOverrideUrl(projectId, mappingId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(saveMappingOverrideBody),
+    },
+  );
+};
+
+export const getSaveMappingOverrideMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveMappingOverride>>,
+    TError,
+    {
+      projectId: string;
+      mappingId: string;
+      data: BodyType<SaveMappingOverrideBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveMappingOverride>>,
+  TError,
+  {
+    projectId: string;
+    mappingId: string;
+    data: BodyType<SaveMappingOverrideBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["saveMappingOverride"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveMappingOverride>>,
+    {
+      projectId: string;
+      mappingId: string;
+      data: BodyType<SaveMappingOverrideBody>;
+    }
+  > = (props) => {
+    const { projectId, mappingId, data } = props ?? {};
+
+    return saveMappingOverride(projectId, mappingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveMappingOverrideMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveMappingOverride>>
+>;
+export type SaveMappingOverrideMutationBody = BodyType<SaveMappingOverrideBody>;
+export type SaveMappingOverrideMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save a manual mapping override for an account
+ */
+export const useSaveMappingOverride = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveMappingOverride>>,
+    TError,
+    {
+      projectId: string;
+      mappingId: string;
+      data: BodyType<SaveMappingOverrideBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveMappingOverride>>,
+  TError,
+  {
+    projectId: string;
+    mappingId: string;
+    data: BodyType<SaveMappingOverrideBody>;
+  },
+  TContext
+> => {
+  return useMutation(getSaveMappingOverrideMutationOptions(options));
+};
+
+/**
+ * @summary List reusable mapping templates for the authenticated user
+ */
+export const getListMappingTemplatesUrl = (projectId: string) => {
+  return `/api/projects/${projectId}/mapping-templates`;
+};
+
+export const listMappingTemplates = async (
+  projectId: string,
+  options?: RequestInit,
+): Promise<MappingTemplate[]> => {
+  return customFetch<MappingTemplate[]>(getListMappingTemplatesUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMappingTemplatesQueryKey = (projectId: string) => {
+  return [`/api/projects/${projectId}/mapping-templates`] as const;
+};
+
+export const getListMappingTemplatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMappingTemplates>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMappingTemplates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListMappingTemplatesQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMappingTemplates>>
+  > = ({ signal }) =>
+    listMappingTemplates(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMappingTemplates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMappingTemplatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMappingTemplates>>
+>;
+export type ListMappingTemplatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List reusable mapping templates for the authenticated user
+ */
+
+export function useListMappingTemplates<
+  TData = Awaited<ReturnType<typeof listMappingTemplates>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMappingTemplates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMappingTemplatesQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save current manual overrides as a reusable template
+ */
+export const getSaveMappingTemplateUrl = (projectId: string) => {
+  return `/api/projects/${projectId}/mapping-templates`;
+};
+
+export const saveMappingTemplate = async (
+  projectId: string,
+  saveMappingTemplateBody: SaveMappingTemplateBody,
+  options?: RequestInit,
+): Promise<MappingTemplate> => {
+  return customFetch<MappingTemplate>(getSaveMappingTemplateUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(saveMappingTemplateBody),
+  });
+};
+
+export const getSaveMappingTemplateMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveMappingTemplate>>,
+    TError,
+    { projectId: string; data: BodyType<SaveMappingTemplateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveMappingTemplate>>,
+  TError,
+  { projectId: string; data: BodyType<SaveMappingTemplateBody> },
+  TContext
+> => {
+  const mutationKey = ["saveMappingTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveMappingTemplate>>,
+    { projectId: string; data: BodyType<SaveMappingTemplateBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return saveMappingTemplate(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveMappingTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveMappingTemplate>>
+>;
+export type SaveMappingTemplateMutationBody = BodyType<SaveMappingTemplateBody>;
+export type SaveMappingTemplateMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save current manual overrides as a reusable template
+ */
+export const useSaveMappingTemplate = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveMappingTemplate>>,
+    TError,
+    { projectId: string; data: BodyType<SaveMappingTemplateBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveMappingTemplate>>,
+  TError,
+  { projectId: string; data: BodyType<SaveMappingTemplateBody> },
+  TContext
+> => {
+  return useMutation(getSaveMappingTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Apply a saved template to the current batch's account mappings
+ */
+export const getApplyMappingTemplateUrl = (
+  projectId: string,
+  templateId: string,
+) => {
+  return `/api/projects/${projectId}/mapping-templates/${templateId}/apply`;
+};
+
+export const applyMappingTemplate = async (
+  projectId: string,
+  templateId: string,
+  options?: RequestInit,
+): Promise<ApplyMappingTemplate200> => {
+  return customFetch<ApplyMappingTemplate200>(
+    getApplyMappingTemplateUrl(projectId, templateId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getApplyMappingTemplateMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyMappingTemplate>>,
+    TError,
+    { projectId: string; templateId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof applyMappingTemplate>>,
+  TError,
+  { projectId: string; templateId: string },
+  TContext
+> => {
+  const mutationKey = ["applyMappingTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof applyMappingTemplate>>,
+    { projectId: string; templateId: string }
+  > = (props) => {
+    const { projectId, templateId } = props ?? {};
+
+    return applyMappingTemplate(projectId, templateId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApplyMappingTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof applyMappingTemplate>>
+>;
+
+export type ApplyMappingTemplateMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Apply a saved template to the current batch's account mappings
+ */
+export const useApplyMappingTemplate = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyMappingTemplate>>,
+    TError,
+    { projectId: string; templateId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof applyMappingTemplate>>,
+  TError,
+  { projectId: string; templateId: string },
+  TContext
+> => {
+  return useMutation(getApplyMappingTemplateMutationOptions(options));
+};

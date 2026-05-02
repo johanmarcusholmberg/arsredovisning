@@ -6,7 +6,8 @@ import {
   Lock, ArrowRight
 } from "lucide-react";
 import { OverviewSection } from "./demo/OverviewSection";
-import { ImportSection } from "./demo/ImportSection";
+import { ImportSection } from "./workspace/ImportSection";
+import { MappingSection } from "./workspace/MappingSection";
 import { GuidancePanel } from "@/components/GuidancePanel";
 import { MobileWorkspaceDrawer, DrawerNavItem } from "@/components/MobileWorkspaceDrawer";
 import { Button } from "@/components/ui/button";
@@ -64,12 +65,16 @@ export default function PaidWorkspacePage() {
     isActive: currentSection === key,
   }));
 
+  const projectId = "demo-project";
+
   const renderSection = () => {
     switch (currentSection) {
       case "overview":
         return <OverviewSection />;
       case "import":
-        return <ImportSection />;
+        return <ImportSection projectId={projectId} />;
+      case "mapping":
+        return <MappingSection projectId={projectId} />;
       default:
         return (
           <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-border rounded-xl bg-muted/10 h-[400px]">

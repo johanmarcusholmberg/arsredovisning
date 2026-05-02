@@ -34,6 +34,10 @@ tags:
     description: Point-in-time project snapshots
   - name: audit
     description: Audit/activity feed
+  - name: imports
+    description: Accounting data import (SIE, CSV, Excel)
+  - name: mappings
+    description: Account mapping and templates
 
 paths:
   /healthz:
@@ -1124,6 +1128,362 @@ paths:
                     items: { $ref: "#/components/schemas/AuditEvent" }
                 required: [events]
 
+  # ─── Imports ─────────────────────────────────────────────────────────────────
+  /projects/{projectId}/imports/upload:
+    post:
+      operationId: uploadImportFile
+      tags: [imports]
+      summary: Upload an accounting file (SIE, CSV, Excel) for import
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadImportFileBody"
+      responses:
+        "201":
+          description: Upload accepted, batch created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportBatch"
+        "400":
+          description: Invalid file type or size
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "402":
+          description: Paid entitlement required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /projects/{projectId}/imports:
+    get:
+      operationId: listImportBatches
+      tags: [imports]
+      summary: List all import batches for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of import batches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ImportBatch"
+
+  /projects/{projectId}/imports/{batchId}:
+    get:
+      operationId: getImportBatch
+      tags: [imports]
+      summary: Get import batch status including parsing errors and staging summary
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Import batch details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportBatchDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /projects/{projectId}/imports/{batchId}/confirm:
+    post:
+      operationId: confirmImportBatch
+      tags: [imports]
+      summary: Confirm a staging batch and promote it to project data
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Batch confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportBatch"
+        "409":
+          description: Batch not in confirmable state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /projects/{projectId}/imports/{batchId}/cancel:
+    post:
+      operationId: cancelImportBatch
+      tags: [imports]
+      summary: Cancel a staging batch (staging data remains but is never used)
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Batch cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportBatch"
+
+  /projects/{projectId}/imports/{batchId}/column-mapping:
+    post:
+      operationId: submitColumnMapping
+      tags: [imports]
+      summary: Submit column mapping for CSV/Excel imports and trigger parsing
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ColumnMappingBody"
+      responses:
+        "200":
+          description: Column mapping accepted, parsing started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportBatch"
+
+  /projects/{projectId}/imports/{batchId}/staging:
+    get:
+      operationId: getStagingPreview
+      tags: [imports]
+      summary: Get staging data preview for a parsed batch
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Staging preview data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StagingPreview"
+
+  # ─── Mappings ─────────────────────────────────────────────────────────────────
+  /projects/{projectId}/mappings:
+    get:
+      operationId: listAccountMappings
+      tags: [mappings]
+      summary: List all account mappings for the active confirmed batch
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: filter
+          in: query
+          schema:
+            type: string
+            enum: [all, unmapped, low_confidence, needs_review]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of account mappings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccountMapping"
+
+  /projects/{projectId}/mappings/{mappingId}/override:
+    post:
+      operationId: saveMappingOverride
+      tags: [mappings]
+      summary: Save a manual mapping override for an account
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: mappingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveMappingOverrideBody"
+      responses:
+        "200":
+          description: Override saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountMapping"
+
+  /projects/{projectId}/mapping-templates:
+    get:
+      operationId: listMappingTemplates
+      tags: [mappings]
+      summary: List reusable mapping templates for the authenticated user
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of mapping templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MappingTemplate"
+    post:
+      operationId: saveMappingTemplate
+      tags: [mappings]
+      summary: Save current manual overrides as a reusable template
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveMappingTemplateBody"
+      responses:
+        "201":
+          description: Template saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MappingTemplate"
+
+  /projects/{projectId}/mapping-templates/{templateId}/apply:
+    post:
+      operationId: applyMappingTemplate
+      tags: [mappings]
+      summary: Apply a saved template to the current batch's account mappings
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Template applied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  appliedCount:
+                    type: integer
+                required:
+                  - appliedCount
+
 components:
   schemas:
     HealthStatus:
@@ -2151,3 +2511,361 @@ components:
           nullable: true
         createdAt: { type: string, format: date-time }
       required: [id, eventType, createdAt]
+
+    # ─── Import schemas ──────────────────────────────────────────────────────────
+
+    UploadImportFileBody:
+      type: object
+      properties:
+        originalFilename:
+          type: string
+        fileType:
+          type: string
+          enum: [sie, csv, excel]
+        fileSizeBytes:
+          type: integer
+          nullable: true
+        storageBucket:
+          type: string
+          nullable: true
+        storagePath:
+          type: string
+          nullable: true
+      required:
+        - originalFilename
+        - fileType
+
+    ParsingError:
+      type: object
+      properties:
+        section:
+          type: string
+          description: SIE section label or CSV/Excel row range
+        message:
+          type: string
+          description: Human-readable error description
+        severity:
+          type: string
+          enum: [warning, error]
+      required:
+        - section
+        - message
+        - severity
+
+    ImportBatch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        originalFilename:
+          type: string
+        fileType:
+          type: string
+          enum: [sie, csv, excel]
+        fileSizeBytes:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [pending, parsing, partial, parsed, failed, confirmed, cancelled]
+        fiscalYearDetected:
+          type: string
+          nullable: true
+        accountsFound:
+          type: integer
+        balancesFound:
+          type: integer
+        transactionsFound:
+          type: integer
+        parsingErrors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParsingError"
+        isDemo:
+          type: boolean
+        confirmedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - projectId
+        - originalFilename
+        - fileType
+        - status
+        - accountsFound
+        - balancesFound
+        - transactionsFound
+        - parsingErrors
+        - isDemo
+        - createdAt
+        - updatedAt
+
+    StagingAccountRow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountNumber:
+          type: string
+        accountName:
+          type: string
+          nullable: true
+        hasMissingName:
+          type: boolean
+        openingBalance:
+          type: string
+          nullable: true
+        closingBalance:
+          type: string
+          nullable: true
+        currency:
+          type: string
+      required:
+        - id
+        - accountNumber
+        - hasMissingName
+        - currency
+
+    StagingPreview:
+      type: object
+      properties:
+        batchId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, parsing, partial, parsed, failed, confirmed, cancelled]
+        fiscalYearDetected:
+          type: string
+          nullable: true
+        accountsFound:
+          type: integer
+        balancesFound:
+          type: integer
+        transactionsFound:
+          type: integer
+        missingNameAccounts:
+          type: integer
+          description: Count of accounts with no name
+        parsingErrors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParsingError"
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/StagingAccountRow"
+      required:
+        - batchId
+        - status
+        - accountsFound
+        - balancesFound
+        - transactionsFound
+        - missingNameAccounts
+        - parsingErrors
+        - accounts
+
+    ImportBatchDetail:
+      allOf:
+        - $ref: "#/components/schemas/ImportBatch"
+        - type: object
+          properties:
+            summaryJson:
+              type: object
+              nullable: true
+            uploadUrl:
+              type: string
+              nullable: true
+              description: Signed upload URL stub (TODO Supabase Storage)
+
+    ColumnMappingBody:
+      type: object
+      description: Column mapping for CSV/Excel imports
+      properties:
+        accountNumberColumn:
+          type: string
+          description: Column header mapped to account number (required)
+        accountNameColumn:
+          type: string
+          nullable: true
+          description: Column header mapped to account name (optional)
+        openingBalanceColumn:
+          type: string
+          nullable: true
+          description: Column header mapped to opening balance
+        closingBalanceColumn:
+          type: string
+          nullable: true
+          description: Column header mapped to closing balance
+        amountColumn:
+          type: string
+          nullable: true
+          description: Column header mapped to transaction amount
+        dateColumn:
+          type: string
+          nullable: true
+          description: Column header mapped to transaction date
+        descriptionColumn:
+          type: string
+          nullable: true
+          description: Column header mapped to description
+        fileContent:
+          type: string
+          description: Base64-encoded file content for server-side parsing
+      required:
+        - accountNumberColumn
+        - fileContent
+
+    # ─── Mapping schemas ─────────────────────────────────────────────────────────
+
+    AccountMapping:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        batchId:
+          type: string
+          format: uuid
+        accountNumber:
+          type: string
+        accountName:
+          type: string
+          nullable: true
+        reportLine:
+          type: string
+          nullable: true
+          description: K2/K3 balance sheet or income statement line key
+        reportLineLabel:
+          type: string
+          nullable: true
+          description: Swedish human-readable report line label
+        basRange:
+          type: string
+          nullable: true
+          description: BAS range used for auto-mapping (e.g. "1000-1099")
+        confidence:
+          type: string
+          enum: [high, medium, low, unmapped]
+        status:
+          type: string
+          enum: [auto_mapped, suggested, needs_review, manually_mapped, unmapped]
+        noteImpactFlag:
+          type: boolean
+          description: True if this account implies a mandatory annual report note
+        noteImpactMetadata:
+          type: object
+          nullable: true
+        isManualOverride:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - projectId
+        - batchId
+        - accountNumber
+        - confidence
+        - status
+        - noteImpactFlag
+        - isManualOverride
+        - createdAt
+        - updatedAt
+
+    SaveMappingOverrideBody:
+      type: object
+      properties:
+        reportLine:
+          type: string
+          description: New report line key to assign
+        reportLineLabel:
+          type: string
+          description: Swedish label for the report line
+        reason:
+          type: string
+          nullable: true
+          description: Optional explanation for the override
+      required:
+        - reportLine
+        - reportLineLabel
+
+    MappingTemplateEntry:
+      type: object
+      properties:
+        accountNumber:
+          type: string
+        reportLine:
+          type: string
+        reportLineLabel:
+          type: string
+      required:
+        - accountNumber
+        - reportLine
+        - reportLineLabel
+
+    MappingTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        mappingsJson:
+          type: array
+          items:
+            $ref: "#/components/schemas/MappingTemplateEntry"
+        createdByProfileId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - mappingsJson
+        - createdByProfileId
+        - createdAt
+        - updatedAt
+
+    SaveMappingTemplateBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        mappings:
+          type: array
+          items:
+            $ref: "#/components/schemas/MappingTemplateEntry"
+      required:
+        - name
+        - mappings

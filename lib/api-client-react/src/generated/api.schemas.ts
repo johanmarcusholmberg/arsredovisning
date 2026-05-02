@@ -767,6 +767,223 @@ export interface AuditEvent {
   createdAt: string;
 }
 
+export type UploadImportFileBodyFileType =
+  (typeof UploadImportFileBodyFileType)[keyof typeof UploadImportFileBodyFileType];
+
+export const UploadImportFileBodyFileType = {
+  sie: "sie",
+  csv: "csv",
+  excel: "excel",
+} as const;
+
+export interface UploadImportFileBody {
+  originalFilename: string;
+  fileType: UploadImportFileBodyFileType;
+  fileSizeBytes?: number | null;
+  storageBucket?: string | null;
+  storagePath?: string | null;
+}
+
+export type ParsingErrorSeverity =
+  (typeof ParsingErrorSeverity)[keyof typeof ParsingErrorSeverity];
+
+export const ParsingErrorSeverity = {
+  warning: "warning",
+  error: "error",
+} as const;
+
+export interface ParsingError {
+  /** SIE section label or CSV/Excel row range */
+  section: string;
+  /** Human-readable error description */
+  message: string;
+  severity: ParsingErrorSeverity;
+}
+
+export type ImportBatchFileType =
+  (typeof ImportBatchFileType)[keyof typeof ImportBatchFileType];
+
+export const ImportBatchFileType = {
+  sie: "sie",
+  csv: "csv",
+  excel: "excel",
+} as const;
+
+export type ImportBatchStatus =
+  (typeof ImportBatchStatus)[keyof typeof ImportBatchStatus];
+
+export const ImportBatchStatus = {
+  pending: "pending",
+  parsing: "parsing",
+  partial: "partial",
+  parsed: "parsed",
+  failed: "failed",
+  confirmed: "confirmed",
+  cancelled: "cancelled",
+} as const;
+
+export interface ImportBatch {
+  id: string;
+  projectId: string;
+  originalFilename: string;
+  fileType: ImportBatchFileType;
+  fileSizeBytes?: number | null;
+  status: ImportBatchStatus;
+  fiscalYearDetected?: string | null;
+  accountsFound: number;
+  balancesFound: number;
+  transactionsFound: number;
+  parsingErrors: ParsingError[];
+  isDemo: boolean;
+  confirmedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StagingAccountRow {
+  id: string;
+  accountNumber: string;
+  accountName?: string | null;
+  hasMissingName: boolean;
+  openingBalance?: string | null;
+  closingBalance?: string | null;
+  currency: string;
+}
+
+export type StagingPreviewStatus =
+  (typeof StagingPreviewStatus)[keyof typeof StagingPreviewStatus];
+
+export const StagingPreviewStatus = {
+  pending: "pending",
+  parsing: "parsing",
+  partial: "partial",
+  parsed: "parsed",
+  failed: "failed",
+  confirmed: "confirmed",
+  cancelled: "cancelled",
+} as const;
+
+export interface StagingPreview {
+  batchId: string;
+  status: StagingPreviewStatus;
+  fiscalYearDetected?: string | null;
+  accountsFound: number;
+  balancesFound: number;
+  transactionsFound: number;
+  /** Count of accounts with no name */
+  missingNameAccounts: number;
+  parsingErrors: ParsingError[];
+  accounts: StagingAccountRow[];
+}
+
+export type ImportBatchDetailSummaryJson = { [key: string]: unknown } | null;
+
+export type ImportBatchDetail = ImportBatch & {
+  summaryJson?: ImportBatchDetailSummaryJson;
+  /** Signed upload URL stub (TODO Supabase Storage) */
+  uploadUrl?: string | null;
+};
+
+/**
+ * Column mapping for CSV/Excel imports
+ */
+export interface ColumnMappingBody {
+  /** Column header mapped to account number (required) */
+  accountNumberColumn: string;
+  /** Column header mapped to account name (optional) */
+  accountNameColumn?: string | null;
+  /** Column header mapped to opening balance */
+  openingBalanceColumn?: string | null;
+  /** Column header mapped to closing balance */
+  closingBalanceColumn?: string | null;
+  /** Column header mapped to transaction amount */
+  amountColumn?: string | null;
+  /** Column header mapped to transaction date */
+  dateColumn?: string | null;
+  /** Column header mapped to description */
+  descriptionColumn?: string | null;
+  /** Base64-encoded file content for server-side parsing */
+  fileContent: string;
+}
+
+export type AccountMappingConfidence =
+  (typeof AccountMappingConfidence)[keyof typeof AccountMappingConfidence];
+
+export const AccountMappingConfidence = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+  unmapped: "unmapped",
+} as const;
+
+export type AccountMappingStatus =
+  (typeof AccountMappingStatus)[keyof typeof AccountMappingStatus];
+
+export const AccountMappingStatus = {
+  auto_mapped: "auto_mapped",
+  suggested: "suggested",
+  needs_review: "needs_review",
+  manually_mapped: "manually_mapped",
+  unmapped: "unmapped",
+} as const;
+
+export type AccountMappingNoteImpactMetadata = {
+  [key: string]: unknown;
+} | null;
+
+export interface AccountMapping {
+  id: string;
+  projectId: string;
+  batchId: string;
+  accountNumber: string;
+  accountName?: string | null;
+  /** K2/K3 balance sheet or income statement line key */
+  reportLine?: string | null;
+  /** Swedish human-readable report line label */
+  reportLineLabel?: string | null;
+  /** BAS range used for auto-mapping (e.g. "1000-1099") */
+  basRange?: string | null;
+  confidence: AccountMappingConfidence;
+  status: AccountMappingStatus;
+  /** True if this account implies a mandatory annual report note */
+  noteImpactFlag: boolean;
+  noteImpactMetadata?: AccountMappingNoteImpactMetadata;
+  isManualOverride: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveMappingOverrideBody {
+  /** New report line key to assign */
+  reportLine: string;
+  /** Swedish label for the report line */
+  reportLineLabel: string;
+  /** Optional explanation for the override */
+  reason?: string | null;
+}
+
+export interface MappingTemplateEntry {
+  accountNumber: string;
+  reportLine: string;
+  reportLineLabel: string;
+}
+
+export interface MappingTemplate {
+  id: string;
+  name: string;
+  description?: string | null;
+  mappingsJson: MappingTemplateEntry[];
+  createdByProfileId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaveMappingTemplateBody {
+  name: string;
+  description?: string | null;
+  mappings: MappingTemplateEntry[];
+}
+
 export type GetFinancialStatementsParams = {
   statementType?: GetFinancialStatementsStatementType;
 };
@@ -829,4 +1046,23 @@ export type ListAuditEventsParams = {
 
 export type ListAuditEvents200 = {
   events: AuditEvent[];
+};
+
+export type ListAccountMappingsParams = {
+  filter?: ListAccountMappingsFilter;
+  search?: string;
+};
+
+export type ListAccountMappingsFilter =
+  (typeof ListAccountMappingsFilter)[keyof typeof ListAccountMappingsFilter];
+
+export const ListAccountMappingsFilter = {
+  all: "all",
+  unmapped: "unmapped",
+  low_confidence: "low_confidence",
+  needs_review: "needs_review",
+} as const;
+
+export type ApplyMappingTemplate200 = {
+  appliedCount: number;
 };

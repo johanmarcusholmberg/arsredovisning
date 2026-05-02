@@ -13,6 +13,8 @@ import notesRouter from "./notes";
 import validationRouter from "./validation";
 import reviewsRouter from "./reviews";
 import collaboratorsRouter from "./collaborators";
+import importsRouter from "./imports";
+import mappingsRouter from "./mappings";
 
 const router: IRouter = Router();
 
@@ -32,5 +34,7 @@ router.use(notesRouter);
 router.use(validationRouter);
 router.use(reviewsRouter);
 router.use(collaboratorsRouter);
+router.use(importsRouter);
+router.use(mappingsRouter);
 
 export default router;

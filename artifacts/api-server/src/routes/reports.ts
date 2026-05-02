@@ -106,8 +106,12 @@ router.post("/companies/:companyId/reports", async (req, res): Promise<void> => 
     .insert(reportsTable)
     .values({
       companyId: params.data.companyId,
-      fiscalYearStart: String(parsed.data.fiscalYearStart),
-      fiscalYearEnd: String(parsed.data.fiscalYearEnd),
+      fiscalYearStart: (parsed.data.fiscalYearStart as unknown) instanceof Date
+        ? (parsed.data.fiscalYearStart as unknown as Date).toISOString().slice(0, 10)
+        : String(parsed.data.fiscalYearStart),
+      fiscalYearEnd: (parsed.data.fiscalYearEnd as unknown) instanceof Date
+        ? (parsed.data.fiscalYearEnd as unknown as Date).toISOString().slice(0, 10)
+        : String(parsed.data.fiscalYearEnd),
       accountingFramework: parsed.data.accountingFramework,
       status: "draft",
       completionPercent: 0,
