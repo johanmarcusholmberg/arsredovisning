@@ -42,6 +42,15 @@ The application is built as a pnpm monorepo using Node.js 24 and TypeScript 5.9.
 - **File Management**: Secure upload and download of project files (e.g., SIE, PDF) with permission and entitlement gating.
 - **Export**: Generation and download of PDF/Word exports with watermark enforcement for demo projects. Phase 6.6/7 introduces a single source-of-truth `AnnualReportExportData` contract (`lib/export-contract`) that powers Preview = PDF = Word, with consistency checks, readiness gating, cover-sheet settings, signed-URL downloads, audit logging, and an export history list at `/reports/:reportId/preview`.
 
+### Phase 7.5 — Kassaflödesanalys (Cash Flow Statement)
+- **Legal-requirement assessment** at `/reports/:reportId/cash-flow` (`pages/CashFlowPage.tsx`) — assesses whether kassaflödesanalys is mandatory under ÅRL using size thresholds (50 employees / 40 MSEK balansomslutning / 80 MSEK nettoomsättning, 2 of 3 met for two consecutive years), listed-company status, and BRF flag. Centralized constants in `lib/complianceConfig.ts`.
+- **Indirect-method generator** in `lib/cashFlowStatementService.ts` — builds 22 canonical lines (operating / investing / financing / reconciliation) from `financial_statement_lines`, marks placeholder lines as `needsReview` for user confirmation, supports manual line edits and audited adjustments.
+- **Validation** integrated into the main `validationEngine` — emits blocking issues when CF is mandatory but missing/invalid, when reconciliation fails (1 SEK tolerance), or when calculated closing cash differs from balance-sheet cash. Surface alongside other report-readiness rules.
+- **Export injection** in `exportDataBuilder.buildStatements()` — emits the cash flow as a `FinancialStatement{ type: "cash_flow" }` ONLY when both (a) the assessment indicates inclusion and (b) the statement status is `validated`. Any line edit / adjustment automatically reverts status to `needs_review` to force re-validation before re-export.
+- **DB**: 4 new tables (`cash_flow_requirement_assessments`, `cash_flow_statements`, `cash_flow_line_items`, `cash_flow_adjustments`) plus 5 enums.
+- **API**: 8 endpoints under `/api/reports/:reportId/cash-flow/*`, fully audit-logged via `helpers/auditLog`.
+- **Workflow integration**: new "Kassaflödesanalys" workspace section + workflow step between reclassifications and validation.
+
 ### Phase 8 — Launch Polish
 - **Launch Checklist** at `/launch-checklist` (`pages/LaunchChecklist.tsx`) — internal/admin readiness page covering env vars, Supabase tables/RLS, auth, payment, export, AI, storage, note numbering, manual QA, and Known Limitations (Swedish-only output, K2/K3 only, no Fortnox/Visma, no Bolagsverket fetch, no multi-step approvals, no version branching, no template management).
 - **Compliance wording** standardized to: *"Inga blockerande valideringsfel hittades. Granska noggrant innan inlämning. Verktyget är en complianceassistent — du som upprättare ansvarar..."* (NotesPage). The product is positioned as a compliance assistant, never a guarantee.

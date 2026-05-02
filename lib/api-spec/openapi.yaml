@@ -1805,6 +1805,166 @@ paths:
               schema:
                 $ref: "#/components/schemas/Reclassification"
 
+  /reports/{reportId}/cash-flow/assessment:
+    get:
+      operationId: getCashFlowAssessment
+      tags: [cashFlow]
+      summary: Read (or seed) the cash flow requirement assessment for a report's project
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The current assessment + computed verdict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashFlowAssessmentResponse"
+    patch:
+      operationId: updateCashFlowAssessment
+      tags: [cashFlow]
+      summary: Update assessment inputs and recompute the verdict
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCashFlowAssessmentBody"
+      responses:
+        "200":
+          description: Updated assessment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashFlowAssessmentResponse"
+
+  /reports/{reportId}/cash-flow/statement:
+    get:
+      operationId: getCashFlowStatement
+      tags: [cashFlow]
+      summary: Get the cash flow statement (with line items) for a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The statement and lines (may be null if not generated)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashFlowStatementResponse"
+    post:
+      operationId: generateCashFlowStatement
+      tags: [cashFlow]
+      summary: Generate (or regenerate) the cash flow statement
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Newly generated statement and lines
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashFlowStatementResponse"
+
+  /reports/{reportId}/cash-flow/lines/{lineId}:
+    patch:
+      operationId: updateCashFlowLine
+      tags: [cashFlow]
+      summary: Update a single cash flow line item
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: lineId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCashFlowLineBody"
+      responses:
+        "200":
+          description: Updated statement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashFlowStatementResponse"
+
+  /reports/{reportId}/cash-flow/adjustments:
+    get:
+      operationId: listCashFlowAdjustments
+      tags: [cashFlow]
+      summary: List manual adjustments for the cash flow statement (audit trail)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Adjustment audit log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashFlowAdjustmentListResponse"
+    post:
+      operationId: addCashFlowAdjustment
+      tags: [cashFlow]
+      summary: Apply a manual adjustment to a cash flow line (audit-logged)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddCashFlowAdjustmentBody"
+      responses:
+        "200":
+          description: Updated statement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashFlowStatementResponse"
+
+  /reports/{reportId}/cash-flow/validate:
+    post:
+      operationId: validateCashFlow
+      tags: [cashFlow]
+      summary: Re-run cash flow validation and update statement status
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Validation result + updated statement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashFlowValidationResponse"
+
   /reports/{reportId}/reclassifications/audit-log:
     get:
       operationId: listReclassificationAuditLog
@@ -3627,6 +3787,245 @@ components:
           nullable: true
         createdAt: { type: string, format: date-time }
       required: [id, reportId, eventType, createdAt]
+
+    CashFlowAssessmentResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        financialYear: { type: string }
+        legalForm: { type: string }
+        reportingFramework: { type: string }
+        reportType:
+          type: string
+          enum: [annual_report, group_report]
+        isListedCompany: { type: boolean }
+        isHousingAssociation: { type: boolean }
+        voluntaryEnabled: { type: boolean }
+        employeesCurrentYear: { type: integer, nullable: true }
+        employeesPreviousYear: { type: integer, nullable: true }
+        balanceTotalCurrentYear: { type: number, nullable: true }
+        balanceTotalPreviousYear: { type: number, nullable: true }
+        netRevenueCurrentYear: { type: number, nullable: true }
+        netRevenuePreviousYear: { type: number, nullable: true }
+        thresholdEmployeesMet: { type: boolean, nullable: true }
+        thresholdBalanceTotalMet: { type: boolean, nullable: true }
+        thresholdNetRevenueMet: { type: boolean, nullable: true }
+        largerCompanyAssessment:
+          type: string
+          enum: [true, false, unknown]
+        cashFlowRequirement:
+          type: string
+          enum: [mandatory, optional, not_supported, unknown]
+        assessmentStatus:
+          type: string
+          enum: [calculated, needs_user_confirmation, manually_overridden]
+        userOverrideReason:
+          type: string
+          nullable: true
+        explanationSv: { type: string }
+        missingInputs:
+          type: array
+          items: { type: string }
+        shouldIncludeInExport: { type: boolean }
+      required:
+        - id
+        - projectId
+        - companyId
+        - financialYear
+        - legalForm
+        - reportingFramework
+        - reportType
+        - isListedCompany
+        - isHousingAssociation
+        - voluntaryEnabled
+        - largerCompanyAssessment
+        - cashFlowRequirement
+        - assessmentStatus
+        - explanationSv
+        - missingInputs
+        - shouldIncludeInExport
+
+    UpdateCashFlowAssessmentBody:
+      type: object
+      properties:
+        legalForm: { type: string }
+        reportType:
+          type: string
+          enum: [annual_report, group_report]
+        isListedCompany: { type: boolean }
+        isHousingAssociation: { type: boolean }
+        voluntaryEnabled: { type: boolean }
+        employeesCurrentYear: { type: integer, nullable: true }
+        employeesPreviousYear: { type: integer, nullable: true }
+        balanceTotalCurrentYear: { type: number, nullable: true }
+        balanceTotalPreviousYear: { type: number, nullable: true }
+        netRevenueCurrentYear: { type: number, nullable: true }
+        netRevenuePreviousYear: { type: number, nullable: true }
+        userOverrideRequirement:
+          type: string
+          enum: [mandatory, optional, not_supported, unknown]
+          nullable: true
+        userOverrideReason:
+          type: string
+          nullable: true
+
+    CashFlowLineItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        section:
+          type: string
+          enum: [operating, investing, financing, reconciliation]
+        lineCode: { type: string }
+        labelSv: { type: string }
+        amountCurrentYear: { type: number, nullable: true }
+        amountPreviousYear: { type: number, nullable: true }
+        sourceType:
+          type: string
+          enum: [mapped_accounts, calculated, manual_adjustment, imported_value]
+        calculationExplanationSv:
+          type: string
+          nullable: true
+        isEditable: { type: boolean }
+        isRequired: { type: boolean }
+        isSubtotal: { type: boolean }
+        needsReview: { type: boolean }
+        sortOrder: { type: integer }
+      required:
+        - id
+        - section
+        - lineCode
+        - labelSv
+        - sourceType
+        - isEditable
+        - isRequired
+        - isSubtotal
+        - needsReview
+        - sortOrder
+
+    CashFlowStatementSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+        reportId:
+          type: string
+          format: uuid
+          nullable: true
+        financialYear: { type: string }
+        method: { type: string }
+        status:
+          type: string
+          enum: [draft, needs_review, validated, blocked]
+        openingCashAndCashEquivalents: { type: number, nullable: true }
+        cashFlowFromOperatingActivities: { type: number, nullable: true }
+        cashFlowFromInvestingActivities: { type: number, nullable: true }
+        cashFlowFromFinancingActivities: { type: number, nullable: true }
+        totalCashFlowForYear: { type: number, nullable: true }
+        closingCashAndCashEquivalents: { type: number, nullable: true }
+        calculatedClosingCashAndCashEquivalents: { type: number, nullable: true }
+        reconciliationDifference: { type: number, nullable: true }
+        hasManualAdjustments: { type: boolean }
+        validationStatus: { type: string }
+      required:
+        - id
+        - projectId
+        - financialYear
+        - method
+        - status
+        - hasManualAdjustments
+        - validationStatus
+
+    CashFlowStatementResponse:
+      type: object
+      properties:
+        statement:
+          oneOf:
+            - $ref: "#/components/schemas/CashFlowStatementSummary"
+            - type: "null"
+          nullable: true
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/CashFlowLineItem" }
+      required:
+        - lines
+
+    UpdateCashFlowLineBody:
+      type: object
+      properties:
+        amountCurrentYear: { type: number, nullable: true }
+        amountPreviousYear: { type: number, nullable: true }
+        needsReview: { type: boolean }
+        calculationExplanationSv: { type: string, nullable: true }
+
+    AddCashFlowAdjustmentBody:
+      type: object
+      properties:
+        lineId: { type: string, format: uuid }
+        newAmount: { type: number }
+        reason: { type: string, minLength: 3 }
+      required: [lineId, newAmount, reason]
+
+    CashFlowAdjustment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        cashFlowStatementId: { type: string, format: uuid }
+        lineItemId: { type: string, format: uuid }
+        adjustmentAmount: { type: number }
+        adjustmentReason: { type: string }
+        previousAmount: { type: number, nullable: true }
+        newAmount: { type: number }
+        createdByProfileId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt: { type: string, format: date-time }
+      required:
+        - id
+        - cashFlowStatementId
+        - lineItemId
+        - adjustmentAmount
+        - adjustmentReason
+        - newAmount
+        - createdAt
+
+    CashFlowAdjustmentListResponse:
+      type: object
+      properties:
+        adjustments:
+          type: array
+          items: { $ref: "#/components/schemas/CashFlowAdjustment" }
+      required: [adjustments]
+
+    CashFlowValidationIssue:
+      type: object
+      properties:
+        level:
+          type: string
+          enum: [blocking, warning, info]
+        code: { type: string }
+        message: { type: string }
+      required: [level, code, message]
+
+    CashFlowValidationResponse:
+      type: object
+      properties:
+        reconciled: { type: boolean }
+        matchesBalanceSheet:
+          type: boolean
+          nullable: true
+        issues:
+          type: array
+          items: { $ref: "#/components/schemas/CashFlowValidationIssue" }
+        statement:
+          oneOf:
+            - $ref: "#/components/schemas/CashFlowStatementSummary"
+            - type: "null"
+          nullable: true
+      required: [reconciled, issues]
 
     ReclassificationAuditLogResponse:
       type: object

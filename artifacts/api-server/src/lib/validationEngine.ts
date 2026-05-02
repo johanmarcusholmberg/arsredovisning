@@ -586,6 +586,105 @@ export async function runValidation(
     }
   }
 
+  // ── Cash flow statement (Kassaflödesanalys) ──────────────────────────────
+  // Pulled in from the dedicated cash flow services so the validation engine
+  // remains the single entry point for "is this report ready?".
+  try {
+    const { resolveProjectForReport } = await import(
+      "../helpers/projectReportLink.js"
+    );
+    const link = await resolveProjectForReport(report.id);
+    if (link?.projectId) {
+      const { getOrCreateAssessment, deriveAssessmentResult, shouldIncludeCashFlow } =
+        await import("./cashFlowAssessmentService.js");
+      const { loadCashFlowStatement, validateCashFlowStatement } = await import(
+        "./cashFlowStatementService.js"
+      );
+
+      const assessment = await getOrCreateAssessment(link.projectId);
+      const verdict = deriveAssessmentResult(assessment);
+      const requirement =
+        assessment.assessmentStatus === "manually_overridden"
+          ? assessment.cashFlowRequirement
+          : verdict.cashFlowRequirement;
+
+      // Requirement decision must be settled.
+      if (requirement === "unknown") {
+        issues.push({
+          ruleKey: "cash_flow:requirement_unknown",
+          level: "blocking",
+          section: "validation",
+          message:
+            "Kassaflödesanalysens lagkrav är inte fastställt. Bekräfta uppgifterna i kassaflödessteget.",
+          entityRef: assessment.id,
+          isHighRisk: true,
+          quickLinkPath: `/reports/${report.id}/cash-flow`,
+        });
+      }
+
+      const includeInExport = shouldIncludeCashFlow({
+        ...assessment,
+        cashFlowRequirement: requirement,
+      });
+
+      if (includeInExport) {
+        const stmt = await loadCashFlowStatement(link.projectId);
+        if (!stmt) {
+          issues.push({
+            ruleKey: "cash_flow:statement_missing",
+            level: "blocking",
+            section: "validation",
+            message:
+              "Kassaflödesanalys krävs men har inte genererats. Generera och granska kassaflödet.",
+            entityRef: assessment.id,
+            isHighRisk: true,
+            quickLinkPath: `/reports/${report.id}/cash-flow`,
+          });
+        } else {
+          const cfResult = await validateCashFlowStatement(stmt.statement.id);
+          for (const i of cfResult.issues) {
+            issues.push({
+              ruleKey: i.code,
+              level: i.level,
+              section: "validation",
+              message: i.message,
+              entityRef: stmt.statement.id,
+              isHighRisk: i.level === "blocking",
+              quickLinkPath: `/reports/${report.id}/cash-flow`,
+            });
+          }
+        }
+      } else if (
+        requirement === "optional" &&
+        !assessment.voluntaryEnabled
+      ) {
+        issues.push({
+          ruleKey: "cash_flow:optional_disabled",
+          level: "info",
+          section: "validation",
+          message:
+            "Kassaflödesanalys är frivillig för detta företag och är inte aktiverad — den ingår inte i exporten.",
+          entityRef: assessment.id,
+          isHighRisk: false,
+          quickLinkPath: `/reports/${report.id}/cash-flow`,
+        });
+      }
+    }
+  } catch (cfErr) {
+    // Don't let cash flow checks crash the entire validation run.
+    issues.push({
+      ruleKey: "cash_flow:engine_error",
+      level: "warning",
+      section: "validation",
+      message:
+        "Kassaflödeskontrollen kunde inte köras automatiskt — kontrollera manuellt på kassaflödessidan.",
+      entityRef: null,
+      isHighRisk: false,
+      quickLinkPath: `/reports/${report.id}/cash-flow`,
+    });
+    void cfErr;
+  }
+
   // ── Apply dismissals ─────────────────────────────────────────────────────
   // Dismissed warnings/info are still returned, but the route layer can
   // surface them differently. We don't filter here — the caller decides.

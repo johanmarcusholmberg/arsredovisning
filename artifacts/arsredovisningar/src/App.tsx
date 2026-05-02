@@ -16,6 +16,7 @@ import { FinancialStatements } from "./pages/FinancialStatements";
 import { NotesPage } from "./pages/NotesPage";
 import { ReclassificationReview } from "./pages/ReclassificationReview";
 import { ValidationView } from "./pages/ValidationView";
+import { CashFlowPage } from "./pages/CashFlowPage";
 import { ReviewView } from "./pages/ReviewView";
 import { AuditView } from "./pages/AuditView";
 import { Settings } from "./pages/Settings";
@@ -48,6 +49,7 @@ function AppRoutes() {
             path="/reports/:reportId/reclassifications"
             component={ReclassificationReview}
           />
+          <Route path="/reports/:reportId/cash-flow" component={CashFlowPage} />
           <Route path="/reports/:reportId/validation" component={ValidationView} />
           <Route path="/reports/:reportId/review" component={ReviewView} />
           <Route path="/reports/:reportId/audit" component={AuditView} />

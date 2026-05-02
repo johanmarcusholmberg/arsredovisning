@@ -18,6 +18,7 @@ import importsRouter from "./imports";
 import mappingsRouter from "./mappings";
 import mappingRulesRouter from "./mappingRules";
 import reclassificationsRouter from "./reclassifications";
+import cashFlowRouter from "./cashFlow";
 import annualReportExportRouter from "./annualReportExport";
 
 const router: IRouter = Router();
@@ -43,6 +44,7 @@ router.use(importsRouter);
 router.use(mappingsRouter);
 router.use(mappingRulesRouter);
 router.use(reclassificationsRouter);
+router.use(cashFlowRouter);
 router.use(annualReportExportRouter);
 
 export default router;

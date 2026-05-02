@@ -19,10 +19,15 @@ import type {
 import type {
   AcceptTextBody,
   AccountMapping,
+  AddCashFlowAdjustmentBody,
   AiDraftResponse,
   AnnualReport,
   AnnualReportProject,
   ApplyMappingTemplate200,
+  CashFlowAdjustmentListResponse,
+  CashFlowAssessmentResponse,
+  CashFlowStatementResponse,
+  CashFlowValidationResponse,
   Collaborator,
   ColumnMappingBody,
   Company,
@@ -88,6 +93,8 @@ import type {
   StagingPreview,
   StatementLineDrilldown,
   SuggestNotesResponse,
+  UpdateCashFlowAssessmentBody,
+  UpdateCashFlowLineBody,
   UpdateCompanyBody,
   UpdateFrameworkBody,
   UpdateNoteBody,
@@ -6643,6 +6650,740 @@ export const useUndoReclassification = <
   TContext
 > => {
   return useMutation(getUndoReclassificationMutationOptions(options));
+};
+
+/**
+ * @summary Read (or seed) the cash flow requirement assessment for a report's project
+ */
+export const getGetCashFlowAssessmentUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/cash-flow/assessment`;
+};
+
+export const getCashFlowAssessment = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<CashFlowAssessmentResponse> => {
+  return customFetch<CashFlowAssessmentResponse>(
+    getGetCashFlowAssessmentUrl(reportId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCashFlowAssessmentQueryKey = (reportId: string) => {
+  return [`/api/reports/${reportId}/cash-flow/assessment`] as const;
+};
+
+export const getGetCashFlowAssessmentQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCashFlowAssessment>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCashFlowAssessment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCashFlowAssessmentQueryKey(reportId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCashFlowAssessment>>
+  > = ({ signal }) =>
+    getCashFlowAssessment(reportId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCashFlowAssessment>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCashFlowAssessmentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCashFlowAssessment>>
+>;
+export type GetCashFlowAssessmentQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Read (or seed) the cash flow requirement assessment for a report's project
+ */
+
+export function useGetCashFlowAssessment<
+  TData = Awaited<ReturnType<typeof getCashFlowAssessment>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCashFlowAssessment>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCashFlowAssessmentQueryOptions(reportId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update assessment inputs and recompute the verdict
+ */
+export const getUpdateCashFlowAssessmentUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/cash-flow/assessment`;
+};
+
+export const updateCashFlowAssessment = async (
+  reportId: string,
+  updateCashFlowAssessmentBody: UpdateCashFlowAssessmentBody,
+  options?: RequestInit,
+): Promise<CashFlowAssessmentResponse> => {
+  return customFetch<CashFlowAssessmentResponse>(
+    getUpdateCashFlowAssessmentUrl(reportId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateCashFlowAssessmentBody),
+    },
+  );
+};
+
+export const getUpdateCashFlowAssessmentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCashFlowAssessment>>,
+    TError,
+    { reportId: string; data: BodyType<UpdateCashFlowAssessmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCashFlowAssessment>>,
+  TError,
+  { reportId: string; data: BodyType<UpdateCashFlowAssessmentBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCashFlowAssessment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCashFlowAssessment>>,
+    { reportId: string; data: BodyType<UpdateCashFlowAssessmentBody> }
+  > = (props) => {
+    const { reportId, data } = props ?? {};
+
+    return updateCashFlowAssessment(reportId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCashFlowAssessmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCashFlowAssessment>>
+>;
+export type UpdateCashFlowAssessmentMutationBody =
+  BodyType<UpdateCashFlowAssessmentBody>;
+export type UpdateCashFlowAssessmentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update assessment inputs and recompute the verdict
+ */
+export const useUpdateCashFlowAssessment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCashFlowAssessment>>,
+    TError,
+    { reportId: string; data: BodyType<UpdateCashFlowAssessmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCashFlowAssessment>>,
+  TError,
+  { reportId: string; data: BodyType<UpdateCashFlowAssessmentBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCashFlowAssessmentMutationOptions(options));
+};
+
+/**
+ * @summary Get the cash flow statement (with line items) for a report
+ */
+export const getGetCashFlowStatementUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/cash-flow/statement`;
+};
+
+export const getCashFlowStatement = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<CashFlowStatementResponse> => {
+  return customFetch<CashFlowStatementResponse>(
+    getGetCashFlowStatementUrl(reportId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCashFlowStatementQueryKey = (reportId: string) => {
+  return [`/api/reports/${reportId}/cash-flow/statement`] as const;
+};
+
+export const getGetCashFlowStatementQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCashFlowStatement>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCashFlowStatement>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCashFlowStatementQueryKey(reportId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCashFlowStatement>>
+  > = ({ signal }) =>
+    getCashFlowStatement(reportId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCashFlowStatement>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCashFlowStatementQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCashFlowStatement>>
+>;
+export type GetCashFlowStatementQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the cash flow statement (with line items) for a report
+ */
+
+export function useGetCashFlowStatement<
+  TData = Awaited<ReturnType<typeof getCashFlowStatement>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCashFlowStatement>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCashFlowStatementQueryOptions(reportId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Generate (or regenerate) the cash flow statement
+ */
+export const getGenerateCashFlowStatementUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/cash-flow/statement`;
+};
+
+export const generateCashFlowStatement = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<CashFlowStatementResponse> => {
+  return customFetch<CashFlowStatementResponse>(
+    getGenerateCashFlowStatementUrl(reportId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getGenerateCashFlowStatementMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateCashFlowStatement>>,
+    TError,
+    { reportId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateCashFlowStatement>>,
+  TError,
+  { reportId: string },
+  TContext
+> => {
+  const mutationKey = ["generateCashFlowStatement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateCashFlowStatement>>,
+    { reportId: string }
+  > = (props) => {
+    const { reportId } = props ?? {};
+
+    return generateCashFlowStatement(reportId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateCashFlowStatementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateCashFlowStatement>>
+>;
+
+export type GenerateCashFlowStatementMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Generate (or regenerate) the cash flow statement
+ */
+export const useGenerateCashFlowStatement = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateCashFlowStatement>>,
+    TError,
+    { reportId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateCashFlowStatement>>,
+  TError,
+  { reportId: string },
+  TContext
+> => {
+  return useMutation(getGenerateCashFlowStatementMutationOptions(options));
+};
+
+/**
+ * @summary Update a single cash flow line item
+ */
+export const getUpdateCashFlowLineUrl = (reportId: string, lineId: string) => {
+  return `/api/reports/${reportId}/cash-flow/lines/${lineId}`;
+};
+
+export const updateCashFlowLine = async (
+  reportId: string,
+  lineId: string,
+  updateCashFlowLineBody: UpdateCashFlowLineBody,
+  options?: RequestInit,
+): Promise<CashFlowStatementResponse> => {
+  return customFetch<CashFlowStatementResponse>(
+    getUpdateCashFlowLineUrl(reportId, lineId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateCashFlowLineBody),
+    },
+  );
+};
+
+export const getUpdateCashFlowLineMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCashFlowLine>>,
+    TError,
+    {
+      reportId: string;
+      lineId: string;
+      data: BodyType<UpdateCashFlowLineBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCashFlowLine>>,
+  TError,
+  { reportId: string; lineId: string; data: BodyType<UpdateCashFlowLineBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCashFlowLine"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCashFlowLine>>,
+    { reportId: string; lineId: string; data: BodyType<UpdateCashFlowLineBody> }
+  > = (props) => {
+    const { reportId, lineId, data } = props ?? {};
+
+    return updateCashFlowLine(reportId, lineId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCashFlowLineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCashFlowLine>>
+>;
+export type UpdateCashFlowLineMutationBody = BodyType<UpdateCashFlowLineBody>;
+export type UpdateCashFlowLineMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a single cash flow line item
+ */
+export const useUpdateCashFlowLine = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCashFlowLine>>,
+    TError,
+    {
+      reportId: string;
+      lineId: string;
+      data: BodyType<UpdateCashFlowLineBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCashFlowLine>>,
+  TError,
+  { reportId: string; lineId: string; data: BodyType<UpdateCashFlowLineBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCashFlowLineMutationOptions(options));
+};
+
+/**
+ * @summary List manual adjustments for the cash flow statement (audit trail)
+ */
+export const getListCashFlowAdjustmentsUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/cash-flow/adjustments`;
+};
+
+export const listCashFlowAdjustments = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<CashFlowAdjustmentListResponse> => {
+  return customFetch<CashFlowAdjustmentListResponse>(
+    getListCashFlowAdjustmentsUrl(reportId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListCashFlowAdjustmentsQueryKey = (reportId: string) => {
+  return [`/api/reports/${reportId}/cash-flow/adjustments`] as const;
+};
+
+export const getListCashFlowAdjustmentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCashFlowAdjustments>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCashFlowAdjustments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCashFlowAdjustmentsQueryKey(reportId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCashFlowAdjustments>>
+  > = ({ signal }) =>
+    listCashFlowAdjustments(reportId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCashFlowAdjustments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCashFlowAdjustmentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCashFlowAdjustments>>
+>;
+export type ListCashFlowAdjustmentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List manual adjustments for the cash flow statement (audit trail)
+ */
+
+export function useListCashFlowAdjustments<
+  TData = Awaited<ReturnType<typeof listCashFlowAdjustments>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCashFlowAdjustments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCashFlowAdjustmentsQueryOptions(
+    reportId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Apply a manual adjustment to a cash flow line (audit-logged)
+ */
+export const getAddCashFlowAdjustmentUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/cash-flow/adjustments`;
+};
+
+export const addCashFlowAdjustment = async (
+  reportId: string,
+  addCashFlowAdjustmentBody: AddCashFlowAdjustmentBody,
+  options?: RequestInit,
+): Promise<CashFlowStatementResponse> => {
+  return customFetch<CashFlowStatementResponse>(
+    getAddCashFlowAdjustmentUrl(reportId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(addCashFlowAdjustmentBody),
+    },
+  );
+};
+
+export const getAddCashFlowAdjustmentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addCashFlowAdjustment>>,
+    TError,
+    { reportId: string; data: BodyType<AddCashFlowAdjustmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addCashFlowAdjustment>>,
+  TError,
+  { reportId: string; data: BodyType<AddCashFlowAdjustmentBody> },
+  TContext
+> => {
+  const mutationKey = ["addCashFlowAdjustment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addCashFlowAdjustment>>,
+    { reportId: string; data: BodyType<AddCashFlowAdjustmentBody> }
+  > = (props) => {
+    const { reportId, data } = props ?? {};
+
+    return addCashFlowAdjustment(reportId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddCashFlowAdjustmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addCashFlowAdjustment>>
+>;
+export type AddCashFlowAdjustmentMutationBody =
+  BodyType<AddCashFlowAdjustmentBody>;
+export type AddCashFlowAdjustmentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Apply a manual adjustment to a cash flow line (audit-logged)
+ */
+export const useAddCashFlowAdjustment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addCashFlowAdjustment>>,
+    TError,
+    { reportId: string; data: BodyType<AddCashFlowAdjustmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addCashFlowAdjustment>>,
+  TError,
+  { reportId: string; data: BodyType<AddCashFlowAdjustmentBody> },
+  TContext
+> => {
+  return useMutation(getAddCashFlowAdjustmentMutationOptions(options));
+};
+
+/**
+ * @summary Re-run cash flow validation and update statement status
+ */
+export const getValidateCashFlowUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/cash-flow/validate`;
+};
+
+export const validateCashFlow = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<CashFlowValidationResponse> => {
+  return customFetch<CashFlowValidationResponse>(
+    getValidateCashFlowUrl(reportId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getValidateCashFlowMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof validateCashFlow>>,
+    TError,
+    { reportId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof validateCashFlow>>,
+  TError,
+  { reportId: string },
+  TContext
+> => {
+  const mutationKey = ["validateCashFlow"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof validateCashFlow>>,
+    { reportId: string }
+  > = (props) => {
+    const { reportId } = props ?? {};
+
+    return validateCashFlow(reportId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ValidateCashFlowMutationResult = NonNullable<
+  Awaited<ReturnType<typeof validateCashFlow>>
+>;
+
+export type ValidateCashFlowMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Re-run cash flow validation and update statement status
+ */
+export const useValidateCashFlow = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof validateCashFlow>>,
+    TError,
+    { reportId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof validateCashFlow>>,
+  TError,
+  { reportId: string },
+  TContext
+> => {
+  return useMutation(getValidateCashFlowMutationOptions(options));
 };
 
 /**

@@ -168,3 +168,49 @@ export const reclassificationEffectTypeEnum = pgEnum("reclassification_effect_ty
   "report_node_only",
   "note_and_report_node",
 ]);
+
+// ── Phase 7+: Cash flow statement (Kassaflödesanalys) ──────────────────────
+export const cashFlowRequirementEnum = pgEnum("cash_flow_requirement", [
+  "mandatory",
+  "optional",
+  "not_supported",
+  "unknown",
+]);
+
+export const cashFlowAssessmentStatusEnum = pgEnum("cash_flow_assessment_status", [
+  "calculated",
+  "needs_user_confirmation",
+  "manually_overridden",
+]);
+
+export const cashFlowLargerCompanyEnum = pgEnum("cash_flow_larger_company", [
+  "true",
+  "false",
+  "unknown",
+]);
+
+export const cashFlowReportTypeEnum = pgEnum("cash_flow_report_type", [
+  "annual_report",
+  "group_report",
+]);
+
+export const cashFlowStatementStatusEnum = pgEnum("cash_flow_statement_status", [
+  "draft",
+  "needs_review",
+  "validated",
+  "blocked",
+]);
+
+export const cashFlowSectionEnum = pgEnum("cash_flow_section", [
+  "operating",
+  "investing",
+  "financing",
+  "reconciliation",
+]);
+
+export const cashFlowSourceTypeEnum = pgEnum("cash_flow_source_type", [
+  "mapped_accounts",
+  "calculated",
+  "manual_adjustment",
+  "imported_value",
+]);

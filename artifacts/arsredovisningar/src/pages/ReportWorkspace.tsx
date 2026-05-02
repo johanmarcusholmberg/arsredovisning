@@ -54,6 +54,13 @@ const SECTIONS = [
     href: "reclassifications",
   },
   {
+    id: "kassaflode",
+    title: "Kassaflödesanalys",
+    icon: TrendingUp,
+    desc: "Bedöm laglig skyldighet och bygg kassaflödesanalysen (indirekt metod)",
+    href: "cash-flow",
+  },
+  {
     id: "validering",
     title: "Validering",
     icon: ShieldAlert,

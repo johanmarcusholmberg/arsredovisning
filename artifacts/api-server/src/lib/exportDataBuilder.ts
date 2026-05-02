@@ -177,6 +177,66 @@ export async function buildAnnualReportExportData(
 // Statements
 // ---------------------------------------------------------------------------
 
+/**
+ * Build the cash flow statement section if (and only if) the project's
+ * requirement assessment indicates the statement must (or should) be
+ * included AND the statement has been validated. Returns null when the
+ * cash flow statement should be omitted.
+ */
+async function buildCashFlowStatement(
+  reportId: string,
+): Promise<FinancialStatement | null> {
+  try {
+    const link = await resolveProjectForReport(reportId);
+    if (!link?.projectId) return null;
+    const { getOrCreateAssessment, deriveAssessmentResult, shouldIncludeCashFlow } =
+      await import("./cashFlowAssessmentService.js");
+    const { loadCashFlowStatement } = await import("./cashFlowStatementService.js");
+
+    const assessment = await getOrCreateAssessment(link.projectId);
+    const verdict = deriveAssessmentResult(assessment);
+    const requirement =
+      assessment.assessmentStatus === "manually_overridden"
+        ? assessment.cashFlowRequirement
+        : verdict.cashFlowRequirement;
+    const include = shouldIncludeCashFlow({
+      ...assessment,
+      cashFlowRequirement: requirement,
+    });
+    if (!include) return null;
+
+    const stmt = await loadCashFlowStatement(link.projectId);
+    if (!stmt) return null;
+
+    // Hard gate: only include a cash flow statement that has been validated.
+    // Anything else (draft / needs_review / blocked) must be excluded so the
+    // validation engine remains the single chokepoint that blocks export.
+    if (stmt.statement.status !== "validated") return null;
+
+    const lines: StatementLine[] = stmt.lines.map((l, idx) => ({
+      id: l.id,
+      lineKey: l.lineCode,
+      label: l.labelSv,
+      currentYearAmount:
+        l.amountCurrentYear === null ? null : Number(l.amountCurrentYear),
+      previousYearAmount:
+        l.amountPreviousYear === null ? null : Number(l.amountPreviousYear),
+      isHeading: false,
+      isSubtotal: l.isSubtotal,
+      isTotal: l.lineCode === "rec_closing_cash",
+      noteReferenceText: null,
+      sortOrder: l.sortOrder ?? idx,
+    }));
+    return {
+      type: "cash_flow",
+      heading: "Kassaflödesanalys",
+      lines,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function buildStatements(reportId: string): Promise<FinancialStatement[]> {
   const lines = await db
     .select()
@@ -243,11 +303,20 @@ async function buildStatements(reportId: string): Promise<FinancialStatement[]> 
     });
   }
 
-  return STATEMENT_ORDER.filter((t) => buckets[t].length > 0).map((type) => ({
+  const baseStatements = STATEMENT_ORDER.filter(
+    (t) => buckets[t].length > 0,
+  ).map((type) => ({
     type,
     heading: STATEMENT_HEADINGS[type],
     lines: buckets[type],
   }));
+
+  // Inject the cash flow statement (if applicable) — replaces any cash_flow
+  // entry that may have been seeded from financial_statement_lines (which
+  // legacy data does not populate but is defensively handled).
+  const cf = await buildCashFlowStatement(reportId);
+  const without = baseStatements.filter((s) => s.type !== "cash_flow");
+  return cf ? [...without, cf] : without;
 }
 
 // ---------------------------------------------------------------------------

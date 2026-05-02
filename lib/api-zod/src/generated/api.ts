@@ -2377,6 +2377,443 @@ export const UndoReclassificationResponse = zod.object({
 });
 
 /**
+ * @summary Read (or seed) the cash flow requirement assessment for a report's project
+ */
+export const GetCashFlowAssessmentParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const GetCashFlowAssessmentResponse = zod.object({
+  id: zod.string().uuid(),
+  projectId: zod.string().uuid(),
+  companyId: zod.string().uuid(),
+  financialYear: zod.string(),
+  legalForm: zod.string(),
+  reportingFramework: zod.string(),
+  reportType: zod.enum(["annual_report", "group_report"]),
+  isListedCompany: zod.boolean(),
+  isHousingAssociation: zod.boolean(),
+  voluntaryEnabled: zod.boolean(),
+  employeesCurrentYear: zod.number().nullish(),
+  employeesPreviousYear: zod.number().nullish(),
+  balanceTotalCurrentYear: zod.number().nullish(),
+  balanceTotalPreviousYear: zod.number().nullish(),
+  netRevenueCurrentYear: zod.number().nullish(),
+  netRevenuePreviousYear: zod.number().nullish(),
+  thresholdEmployeesMet: zod.boolean().nullish(),
+  thresholdBalanceTotalMet: zod.boolean().nullish(),
+  thresholdNetRevenueMet: zod.boolean().nullish(),
+  largerCompanyAssessment: zod.union([
+    zod.literal(true),
+    zod.literal(false),
+    zod.literal("unknown"),
+  ]),
+  cashFlowRequirement: zod.enum([
+    "mandatory",
+    "optional",
+    "not_supported",
+    "unknown",
+  ]),
+  assessmentStatus: zod.enum([
+    "calculated",
+    "needs_user_confirmation",
+    "manually_overridden",
+  ]),
+  userOverrideReason: zod.string().nullish(),
+  explanationSv: zod.string(),
+  missingInputs: zod.array(zod.string()),
+  shouldIncludeInExport: zod.boolean(),
+});
+
+/**
+ * @summary Update assessment inputs and recompute the verdict
+ */
+export const UpdateCashFlowAssessmentParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const UpdateCashFlowAssessmentBody = zod.object({
+  legalForm: zod.string().optional(),
+  reportType: zod.enum(["annual_report", "group_report"]).optional(),
+  isListedCompany: zod.boolean().optional(),
+  isHousingAssociation: zod.boolean().optional(),
+  voluntaryEnabled: zod.boolean().optional(),
+  employeesCurrentYear: zod.number().nullish(),
+  employeesPreviousYear: zod.number().nullish(),
+  balanceTotalCurrentYear: zod.number().nullish(),
+  balanceTotalPreviousYear: zod.number().nullish(),
+  netRevenueCurrentYear: zod.number().nullish(),
+  netRevenuePreviousYear: zod.number().nullish(),
+  userOverrideRequirement: zod
+    .enum(["mandatory", "optional", "not_supported", "unknown"])
+    .nullish(),
+  userOverrideReason: zod.string().nullish(),
+});
+
+export const UpdateCashFlowAssessmentResponse = zod.object({
+  id: zod.string().uuid(),
+  projectId: zod.string().uuid(),
+  companyId: zod.string().uuid(),
+  financialYear: zod.string(),
+  legalForm: zod.string(),
+  reportingFramework: zod.string(),
+  reportType: zod.enum(["annual_report", "group_report"]),
+  isListedCompany: zod.boolean(),
+  isHousingAssociation: zod.boolean(),
+  voluntaryEnabled: zod.boolean(),
+  employeesCurrentYear: zod.number().nullish(),
+  employeesPreviousYear: zod.number().nullish(),
+  balanceTotalCurrentYear: zod.number().nullish(),
+  balanceTotalPreviousYear: zod.number().nullish(),
+  netRevenueCurrentYear: zod.number().nullish(),
+  netRevenuePreviousYear: zod.number().nullish(),
+  thresholdEmployeesMet: zod.boolean().nullish(),
+  thresholdBalanceTotalMet: zod.boolean().nullish(),
+  thresholdNetRevenueMet: zod.boolean().nullish(),
+  largerCompanyAssessment: zod.union([
+    zod.literal(true),
+    zod.literal(false),
+    zod.literal("unknown"),
+  ]),
+  cashFlowRequirement: zod.enum([
+    "mandatory",
+    "optional",
+    "not_supported",
+    "unknown",
+  ]),
+  assessmentStatus: zod.enum([
+    "calculated",
+    "needs_user_confirmation",
+    "manually_overridden",
+  ]),
+  userOverrideReason: zod.string().nullish(),
+  explanationSv: zod.string(),
+  missingInputs: zod.array(zod.string()),
+  shouldIncludeInExport: zod.boolean(),
+});
+
+/**
+ * @summary Get the cash flow statement (with line items) for a report
+ */
+export const GetCashFlowStatementParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const GetCashFlowStatementResponse = zod.object({
+  statement: zod
+    .union([
+      zod.object({
+        id: zod.string().uuid(),
+        projectId: zod.string().uuid(),
+        reportId: zod.string().uuid().nullish(),
+        financialYear: zod.string(),
+        method: zod.string(),
+        status: zod.enum(["draft", "needs_review", "validated", "blocked"]),
+        openingCashAndCashEquivalents: zod.number().nullish(),
+        cashFlowFromOperatingActivities: zod.number().nullish(),
+        cashFlowFromInvestingActivities: zod.number().nullish(),
+        cashFlowFromFinancingActivities: zod.number().nullish(),
+        totalCashFlowForYear: zod.number().nullish(),
+        closingCashAndCashEquivalents: zod.number().nullish(),
+        calculatedClosingCashAndCashEquivalents: zod.number().nullish(),
+        reconciliationDifference: zod.number().nullish(),
+        hasManualAdjustments: zod.boolean(),
+        validationStatus: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
+  lines: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      section: zod.enum([
+        "operating",
+        "investing",
+        "financing",
+        "reconciliation",
+      ]),
+      lineCode: zod.string(),
+      labelSv: zod.string(),
+      amountCurrentYear: zod.number().nullish(),
+      amountPreviousYear: zod.number().nullish(),
+      sourceType: zod.enum([
+        "mapped_accounts",
+        "calculated",
+        "manual_adjustment",
+        "imported_value",
+      ]),
+      calculationExplanationSv: zod.string().nullish(),
+      isEditable: zod.boolean(),
+      isRequired: zod.boolean(),
+      isSubtotal: zod.boolean(),
+      needsReview: zod.boolean(),
+      sortOrder: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Generate (or regenerate) the cash flow statement
+ */
+export const GenerateCashFlowStatementParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const GenerateCashFlowStatementResponse = zod.object({
+  statement: zod
+    .union([
+      zod.object({
+        id: zod.string().uuid(),
+        projectId: zod.string().uuid(),
+        reportId: zod.string().uuid().nullish(),
+        financialYear: zod.string(),
+        method: zod.string(),
+        status: zod.enum(["draft", "needs_review", "validated", "blocked"]),
+        openingCashAndCashEquivalents: zod.number().nullish(),
+        cashFlowFromOperatingActivities: zod.number().nullish(),
+        cashFlowFromInvestingActivities: zod.number().nullish(),
+        cashFlowFromFinancingActivities: zod.number().nullish(),
+        totalCashFlowForYear: zod.number().nullish(),
+        closingCashAndCashEquivalents: zod.number().nullish(),
+        calculatedClosingCashAndCashEquivalents: zod.number().nullish(),
+        reconciliationDifference: zod.number().nullish(),
+        hasManualAdjustments: zod.boolean(),
+        validationStatus: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
+  lines: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      section: zod.enum([
+        "operating",
+        "investing",
+        "financing",
+        "reconciliation",
+      ]),
+      lineCode: zod.string(),
+      labelSv: zod.string(),
+      amountCurrentYear: zod.number().nullish(),
+      amountPreviousYear: zod.number().nullish(),
+      sourceType: zod.enum([
+        "mapped_accounts",
+        "calculated",
+        "manual_adjustment",
+        "imported_value",
+      ]),
+      calculationExplanationSv: zod.string().nullish(),
+      isEditable: zod.boolean(),
+      isRequired: zod.boolean(),
+      isSubtotal: zod.boolean(),
+      needsReview: zod.boolean(),
+      sortOrder: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update a single cash flow line item
+ */
+export const UpdateCashFlowLineParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  lineId: zod.coerce.string().uuid(),
+});
+
+export const UpdateCashFlowLineBody = zod.object({
+  amountCurrentYear: zod.number().nullish(),
+  amountPreviousYear: zod.number().nullish(),
+  needsReview: zod.boolean().optional(),
+  calculationExplanationSv: zod.string().nullish(),
+});
+
+export const UpdateCashFlowLineResponse = zod.object({
+  statement: zod
+    .union([
+      zod.object({
+        id: zod.string().uuid(),
+        projectId: zod.string().uuid(),
+        reportId: zod.string().uuid().nullish(),
+        financialYear: zod.string(),
+        method: zod.string(),
+        status: zod.enum(["draft", "needs_review", "validated", "blocked"]),
+        openingCashAndCashEquivalents: zod.number().nullish(),
+        cashFlowFromOperatingActivities: zod.number().nullish(),
+        cashFlowFromInvestingActivities: zod.number().nullish(),
+        cashFlowFromFinancingActivities: zod.number().nullish(),
+        totalCashFlowForYear: zod.number().nullish(),
+        closingCashAndCashEquivalents: zod.number().nullish(),
+        calculatedClosingCashAndCashEquivalents: zod.number().nullish(),
+        reconciliationDifference: zod.number().nullish(),
+        hasManualAdjustments: zod.boolean(),
+        validationStatus: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
+  lines: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      section: zod.enum([
+        "operating",
+        "investing",
+        "financing",
+        "reconciliation",
+      ]),
+      lineCode: zod.string(),
+      labelSv: zod.string(),
+      amountCurrentYear: zod.number().nullish(),
+      amountPreviousYear: zod.number().nullish(),
+      sourceType: zod.enum([
+        "mapped_accounts",
+        "calculated",
+        "manual_adjustment",
+        "imported_value",
+      ]),
+      calculationExplanationSv: zod.string().nullish(),
+      isEditable: zod.boolean(),
+      isRequired: zod.boolean(),
+      isSubtotal: zod.boolean(),
+      needsReview: zod.boolean(),
+      sortOrder: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary List manual adjustments for the cash flow statement (audit trail)
+ */
+export const ListCashFlowAdjustmentsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const ListCashFlowAdjustmentsResponse = zod.object({
+  adjustments: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      cashFlowStatementId: zod.string().uuid(),
+      lineItemId: zod.string().uuid(),
+      adjustmentAmount: zod.number(),
+      adjustmentReason: zod.string(),
+      previousAmount: zod.number().nullish(),
+      newAmount: zod.number(),
+      createdByProfileId: zod.string().uuid().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Apply a manual adjustment to a cash flow line (audit-logged)
+ */
+export const AddCashFlowAdjustmentParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const addCashFlowAdjustmentBodyReasonMin = 3;
+
+export const AddCashFlowAdjustmentBody = zod.object({
+  lineId: zod.string().uuid(),
+  newAmount: zod.number(),
+  reason: zod.string().min(addCashFlowAdjustmentBodyReasonMin),
+});
+
+export const AddCashFlowAdjustmentResponse = zod.object({
+  statement: zod
+    .union([
+      zod.object({
+        id: zod.string().uuid(),
+        projectId: zod.string().uuid(),
+        reportId: zod.string().uuid().nullish(),
+        financialYear: zod.string(),
+        method: zod.string(),
+        status: zod.enum(["draft", "needs_review", "validated", "blocked"]),
+        openingCashAndCashEquivalents: zod.number().nullish(),
+        cashFlowFromOperatingActivities: zod.number().nullish(),
+        cashFlowFromInvestingActivities: zod.number().nullish(),
+        cashFlowFromFinancingActivities: zod.number().nullish(),
+        totalCashFlowForYear: zod.number().nullish(),
+        closingCashAndCashEquivalents: zod.number().nullish(),
+        calculatedClosingCashAndCashEquivalents: zod.number().nullish(),
+        reconciliationDifference: zod.number().nullish(),
+        hasManualAdjustments: zod.boolean(),
+        validationStatus: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
+  lines: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      section: zod.enum([
+        "operating",
+        "investing",
+        "financing",
+        "reconciliation",
+      ]),
+      lineCode: zod.string(),
+      labelSv: zod.string(),
+      amountCurrentYear: zod.number().nullish(),
+      amountPreviousYear: zod.number().nullish(),
+      sourceType: zod.enum([
+        "mapped_accounts",
+        "calculated",
+        "manual_adjustment",
+        "imported_value",
+      ]),
+      calculationExplanationSv: zod.string().nullish(),
+      isEditable: zod.boolean(),
+      isRequired: zod.boolean(),
+      isSubtotal: zod.boolean(),
+      needsReview: zod.boolean(),
+      sortOrder: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Re-run cash flow validation and update statement status
+ */
+export const ValidateCashFlowParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const ValidateCashFlowResponse = zod.object({
+  reconciled: zod.boolean(),
+  matchesBalanceSheet: zod.boolean().nullish(),
+  issues: zod.array(
+    zod.object({
+      level: zod.enum(["blocking", "warning", "info"]),
+      code: zod.string(),
+      message: zod.string(),
+    }),
+  ),
+  statement: zod
+    .union([
+      zod.object({
+        id: zod.string().uuid(),
+        projectId: zod.string().uuid(),
+        reportId: zod.string().uuid().nullish(),
+        financialYear: zod.string(),
+        method: zod.string(),
+        status: zod.enum(["draft", "needs_review", "validated", "blocked"]),
+        openingCashAndCashEquivalents: zod.number().nullish(),
+        cashFlowFromOperatingActivities: zod.number().nullish(),
+        cashFlowFromInvestingActivities: zod.number().nullish(),
+        cashFlowFromFinancingActivities: zod.number().nullish(),
+        totalCashFlowForYear: zod.number().nullish(),
+        closingCashAndCashEquivalents: zod.number().nullish(),
+        calculatedClosingCashAndCashEquivalents: zod.number().nullish(),
+        reconciliationDifference: zod.number().nullish(),
+        hasManualAdjustments: zod.boolean(),
+        validationStatus: zod.string(),
+      }),
+      zod.null(),
+    ])
+    .nullish(),
+});
+
+/**
  * @summary List the full audit trail of reclassification activity for a report
  */
 export const ListReclassificationAuditLogParams = zod.object({

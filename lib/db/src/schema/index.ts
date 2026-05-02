@@ -31,3 +31,7 @@ export * from "./mappingTemplates";
 export * from "./annualReportReclassificationSuggestions";
 export * from "./annualReportReclassifications";
 export * from "./annualReportReclassificationAuditLog";
+export * from "./cashFlowRequirementAssessments";
+export * from "./cashFlowStatements";
+export * from "./cashFlowLineItems";
+export * from "./cashFlowAdjustments";

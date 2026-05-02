@@ -1277,6 +1277,228 @@ export interface ReclassificationAuditEntry {
   createdAt: string;
 }
 
+export type CashFlowAssessmentResponseReportType =
+  (typeof CashFlowAssessmentResponseReportType)[keyof typeof CashFlowAssessmentResponseReportType];
+
+export const CashFlowAssessmentResponseReportType = {
+  annual_report: "annual_report",
+  group_report: "group_report",
+} as const;
+
+export type CashFlowAssessmentResponseLargerCompanyAssessment =
+  (typeof CashFlowAssessmentResponseLargerCompanyAssessment)[keyof typeof CashFlowAssessmentResponseLargerCompanyAssessment];
+
+export const CashFlowAssessmentResponseLargerCompanyAssessment = {
+  true: true,
+  false: false,
+  unknown: "unknown",
+} as const;
+
+export type CashFlowAssessmentResponseCashFlowRequirement =
+  (typeof CashFlowAssessmentResponseCashFlowRequirement)[keyof typeof CashFlowAssessmentResponseCashFlowRequirement];
+
+export const CashFlowAssessmentResponseCashFlowRequirement = {
+  mandatory: "mandatory",
+  optional: "optional",
+  not_supported: "not_supported",
+  unknown: "unknown",
+} as const;
+
+export type CashFlowAssessmentResponseAssessmentStatus =
+  (typeof CashFlowAssessmentResponseAssessmentStatus)[keyof typeof CashFlowAssessmentResponseAssessmentStatus];
+
+export const CashFlowAssessmentResponseAssessmentStatus = {
+  calculated: "calculated",
+  needs_user_confirmation: "needs_user_confirmation",
+  manually_overridden: "manually_overridden",
+} as const;
+
+export interface CashFlowAssessmentResponse {
+  id: string;
+  projectId: string;
+  companyId: string;
+  financialYear: string;
+  legalForm: string;
+  reportingFramework: string;
+  reportType: CashFlowAssessmentResponseReportType;
+  isListedCompany: boolean;
+  isHousingAssociation: boolean;
+  voluntaryEnabled: boolean;
+  employeesCurrentYear?: number | null;
+  employeesPreviousYear?: number | null;
+  balanceTotalCurrentYear?: number | null;
+  balanceTotalPreviousYear?: number | null;
+  netRevenueCurrentYear?: number | null;
+  netRevenuePreviousYear?: number | null;
+  thresholdEmployeesMet?: boolean | null;
+  thresholdBalanceTotalMet?: boolean | null;
+  thresholdNetRevenueMet?: boolean | null;
+  largerCompanyAssessment: CashFlowAssessmentResponseLargerCompanyAssessment;
+  cashFlowRequirement: CashFlowAssessmentResponseCashFlowRequirement;
+  assessmentStatus: CashFlowAssessmentResponseAssessmentStatus;
+  userOverrideReason?: string | null;
+  explanationSv: string;
+  missingInputs: string[];
+  shouldIncludeInExport: boolean;
+}
+
+export type UpdateCashFlowAssessmentBodyReportType =
+  (typeof UpdateCashFlowAssessmentBodyReportType)[keyof typeof UpdateCashFlowAssessmentBodyReportType];
+
+export const UpdateCashFlowAssessmentBodyReportType = {
+  annual_report: "annual_report",
+  group_report: "group_report",
+} as const;
+
+export type UpdateCashFlowAssessmentBodyUserOverrideRequirement =
+  | (typeof UpdateCashFlowAssessmentBodyUserOverrideRequirement)[keyof typeof UpdateCashFlowAssessmentBodyUserOverrideRequirement]
+  | null;
+
+export const UpdateCashFlowAssessmentBodyUserOverrideRequirement = {
+  mandatory: "mandatory",
+  optional: "optional",
+  not_supported: "not_supported",
+  unknown: "unknown",
+} as const;
+
+export interface UpdateCashFlowAssessmentBody {
+  legalForm?: string;
+  reportType?: UpdateCashFlowAssessmentBodyReportType;
+  isListedCompany?: boolean;
+  isHousingAssociation?: boolean;
+  voluntaryEnabled?: boolean;
+  employeesCurrentYear?: number | null;
+  employeesPreviousYear?: number | null;
+  balanceTotalCurrentYear?: number | null;
+  balanceTotalPreviousYear?: number | null;
+  netRevenueCurrentYear?: number | null;
+  netRevenuePreviousYear?: number | null;
+  userOverrideRequirement?: UpdateCashFlowAssessmentBodyUserOverrideRequirement;
+  userOverrideReason?: string | null;
+}
+
+export type CashFlowLineItemSection =
+  (typeof CashFlowLineItemSection)[keyof typeof CashFlowLineItemSection];
+
+export const CashFlowLineItemSection = {
+  operating: "operating",
+  investing: "investing",
+  financing: "financing",
+  reconciliation: "reconciliation",
+} as const;
+
+export type CashFlowLineItemSourceType =
+  (typeof CashFlowLineItemSourceType)[keyof typeof CashFlowLineItemSourceType];
+
+export const CashFlowLineItemSourceType = {
+  mapped_accounts: "mapped_accounts",
+  calculated: "calculated",
+  manual_adjustment: "manual_adjustment",
+  imported_value: "imported_value",
+} as const;
+
+export interface CashFlowLineItem {
+  id: string;
+  section: CashFlowLineItemSection;
+  lineCode: string;
+  labelSv: string;
+  amountCurrentYear?: number | null;
+  amountPreviousYear?: number | null;
+  sourceType: CashFlowLineItemSourceType;
+  calculationExplanationSv?: string | null;
+  isEditable: boolean;
+  isRequired: boolean;
+  isSubtotal: boolean;
+  needsReview: boolean;
+  sortOrder: number;
+}
+
+export type CashFlowStatementSummaryStatus =
+  (typeof CashFlowStatementSummaryStatus)[keyof typeof CashFlowStatementSummaryStatus];
+
+export const CashFlowStatementSummaryStatus = {
+  draft: "draft",
+  needs_review: "needs_review",
+  validated: "validated",
+  blocked: "blocked",
+} as const;
+
+export interface CashFlowStatementSummary {
+  id: string;
+  projectId: string;
+  reportId?: string | null;
+  financialYear: string;
+  method: string;
+  status: CashFlowStatementSummaryStatus;
+  openingCashAndCashEquivalents?: number | null;
+  cashFlowFromOperatingActivities?: number | null;
+  cashFlowFromInvestingActivities?: number | null;
+  cashFlowFromFinancingActivities?: number | null;
+  totalCashFlowForYear?: number | null;
+  closingCashAndCashEquivalents?: number | null;
+  calculatedClosingCashAndCashEquivalents?: number | null;
+  reconciliationDifference?: number | null;
+  hasManualAdjustments: boolean;
+  validationStatus: string;
+}
+
+export interface CashFlowStatementResponse {
+  statement?: CashFlowStatementSummary | null;
+  lines: CashFlowLineItem[];
+}
+
+export interface UpdateCashFlowLineBody {
+  amountCurrentYear?: number | null;
+  amountPreviousYear?: number | null;
+  needsReview?: boolean;
+  calculationExplanationSv?: string | null;
+}
+
+export interface AddCashFlowAdjustmentBody {
+  lineId: string;
+  newAmount: number;
+  /** @minLength 3 */
+  reason: string;
+}
+
+export interface CashFlowAdjustment {
+  id: string;
+  cashFlowStatementId: string;
+  lineItemId: string;
+  adjustmentAmount: number;
+  adjustmentReason: string;
+  previousAmount?: number | null;
+  newAmount: number;
+  createdByProfileId?: string | null;
+  createdAt: string;
+}
+
+export interface CashFlowAdjustmentListResponse {
+  adjustments: CashFlowAdjustment[];
+}
+
+export type CashFlowValidationIssueLevel =
+  (typeof CashFlowValidationIssueLevel)[keyof typeof CashFlowValidationIssueLevel];
+
+export const CashFlowValidationIssueLevel = {
+  blocking: "blocking",
+  warning: "warning",
+  info: "info",
+} as const;
+
+export interface CashFlowValidationIssue {
+  level: CashFlowValidationIssueLevel;
+  code: string;
+  message: string;
+}
+
+export interface CashFlowValidationResponse {
+  reconciled: boolean;
+  matchesBalanceSheet?: boolean | null;
+  issues: CashFlowValidationIssue[];
+  statement?: CashFlowStatementSummary | null;
+}
+
 export interface ReclassificationAuditLogResponse {
   entries: ReclassificationAuditEntry[];
 }
