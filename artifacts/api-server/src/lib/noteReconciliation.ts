@@ -6,7 +6,10 @@ import {
   noteStatementReferencesTable,
   financialStatementLinesTable,
 } from "@workspace/db";
-import { getPresentedNoteRowAmounts } from "./presentationAmounts.js";
+import {
+  getPresentedNoteRowAmounts,
+  getPresentedStatementLineAdjustments,
+} from "./presentationAmounts.js";
 
 /**
  * noteReconciliation — verify that the totals shown in each note match the
@@ -14,9 +17,18 @@ import { getPresentedNoteRowAmounts } from "./presentationAmounts.js";
  *
  * Reconciliation logic:
  *   noteTotal       = currentYearValue on the note (or sum of non-subtotal
- *                     row currentYearAmounts if rows exist)
- *   statementTotal  = sum of currentYearAmount on every statement line linked
- *                     to the note via note_statement_references
+ *                     row currentYearAmounts if rows exist) — using the
+ *                     *presented* note-row amounts so accepted
+ *                     reclassifications net against each other.
+ *   statementTotal  = sum of the *presented* currentYearAmount on every
+ *                     statement line linked to the note via
+ *                     note_statement_references — i.e. mapped amount plus
+ *                     the active reclassification netDelta from
+ *                     getPresentedStatementLineAdjustments. Without this
+ *                     step a `report_node_only` or `note_and_report_node`
+ *                     reclassification would inflate one side of the
+ *                     comparison and the report would falsely flag itself
+ *                     as out-of-balance after a valid accept.
  *   difference      = |noteTotal - statementTotal|
  *
  * A tolerance of 1 SEK is applied to absorb rounding noise.
@@ -101,8 +113,15 @@ export async function reconcileNotes(reportId: string): Promise<ReconciliationRe
 
   // Presented amounts (post-reclassification). Reconciliation must compare
   // the post-netting note totals against statement lines so that approved
-  // reclassifications are reflected in the green/yellow/red status.
+  // reclassifications are reflected in the green/yellow/red status. Both
+  // sides of the equation use presented values:
+  //   - note rows via `getPresentedNoteRowAmounts` (mapped + reclass deltas)
+  //   - statement lines via `getPresentedStatementLineAdjustments`
+  //     (per-lineKey net delta we then add to the raw mapped amount)
+  // Mixing presented vs raw between the two sides would create false
+  // mismatches whenever an accepted reclass touches a BR/RR line.
   const presented = await getPresentedNoteRowAmounts(reportId);
+  const stmtAdjustments = await getPresentedStatementLineAdjustments(reportId);
 
   // Pull all references for these notes
   const refs = noteIds.length > 0
@@ -163,17 +182,25 @@ export async function reconcileNotes(reportId: string): Promise<ReconciliationRe
     if (noteTotalCurrent === null) noteTotalCurrent = toNum(note.currentYearValue);
     if (noteTotalPrevious === null) noteTotalPrevious = toNum(note.previousYearValue);
 
-    // Sum the linked statement lines.
+    // Sum the linked statement lines using *presented* current-year
+    // amounts (raw mapped + active reclassification netDelta keyed by
+    // lineKey). Previous-year amounts are not affected by
+    // reclassifications and are summed straight from the mapped column.
     let statementTotalCurrent: number | null = null;
     let statementTotalPrevious: number | null = null;
     for (const ref of noteRefs) {
       const key = `${ref.statementType}::${ref.lineKey}`;
       const matched = lineByKey.get(key) ?? [];
+      const adj = stmtAdjustments.get(ref.lineKey);
       for (const l of matched) {
         const c = toNum(l.currentYearAmount);
         const p = toNum(l.previousYearAmount);
         if (c !== null) statementTotalCurrent = (statementTotalCurrent ?? 0) + c;
         if (p !== null) statementTotalPrevious = (statementTotalPrevious ?? 0) + p;
+      }
+      if (adj) {
+        statementTotalCurrent =
+          (statementTotalCurrent ?? 0) + adj.netDelta;
       }
     }
 

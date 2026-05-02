@@ -100,8 +100,9 @@ const TOLERANCE_SEK = 1;
  *     notes
  *   - the source row's total active outflows after this entry cannot exceed
  *     |mappedAmount| + existing inflows (no value disappearance / no
- *     double-counting). When source is null (an external reclassification),
- *     no source-side check is performed.
+ *     double-counting). A source row is now mandatory for every
+ *     reclassification regardless of effect type — see the conservation
+ *     comment below — so this check always runs.
  *
  * Pass `excludeReclassId` to ignore an existing reclassification when
  * recomputing — used to validate replacements/edits in the future.

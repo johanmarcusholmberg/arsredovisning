@@ -531,12 +531,11 @@ export function ReclassificationReview() {
       });
       return;
     }
-    // For source-driven reclassifications, the moved amount must not
-    // exceed the source row's current value (ignoring sign). Without
-    // this the user can break the source-note total with a single
-    // click. We allow source-less moves (target-only top-ups) without
-    // this check — those reflect re-categorisation of an unmapped
-    // amount and are bounded server-side instead.
+    // The moved amount must not exceed the source row's current value
+    // (ignoring sign). Without this the user can break the source-note
+    // total with a single click. The server enforces a richer
+    // capacity check (|mapped| + existing inflows) — this UI guard is
+    // a fast-fail to avoid round-tripping a 400 with the dialog open.
     if (sourceRow && sourceRow.currentYearAmount !== null && sourceRow.currentYearAmount !== undefined) {
       const available = Math.abs(Number(sourceRow.currentYearAmount));
       const requested = Number(manualAmount);
