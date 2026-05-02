@@ -1,10 +1,17 @@
 import { Link, useLocation } from "wouter";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Building, FileText, Home, Settings, LogOut, Briefcase } from "lucide-react";
+import { Building, Home, Settings, LogOut, Briefcase } from "lucide-react";
 import { ReactNode } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function SidebarLayout({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
+  const { user, signOut } = useAuth();
+
+  async function handleLogout() {
+    await signOut();
+    navigate("/login");
+  }
 
   return (
     <SidebarProvider>
@@ -41,7 +48,12 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-          <SidebarFooter className="p-4 border-t border-sidebar-border/50">
+          <SidebarFooter className="p-4 border-t border-sidebar-border/50 space-y-1">
+            {user && (
+              <div className="px-2 py-1.5 mb-1">
+                <p className="text-xs text-sidebar-foreground/50 truncate">{user.email}</p>
+              </div>
+            )}
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={location === "/settings"}>
@@ -52,11 +64,9 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="/login">
-                    <LogOut className="h-4 w-4" />
-                    <span>Logout</span>
-                  </Link>
+                <SidebarMenuButton onClick={handleLogout} className="cursor-pointer">
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
