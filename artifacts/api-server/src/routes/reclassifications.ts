@@ -92,6 +92,7 @@ const TOLERANCE_SEK = 1;
 async function validateReclassification(opts: {
   reportId: string;
   amount: number;
+  effectType: "note_only" | "report_node_only" | "note_and_report_node";
   sourceCtx: NoteRowContext | null;
   targetCtx: NoteRowContext;
   aggregates?: Map<string, RowAggregates>;
@@ -108,6 +109,21 @@ async function validateReclassification(opts: {
     return {
       ok: false,
       message: "Målnoten är markerad som ej tillämplig.",
+    };
+  }
+  // Conservation invariant — enforced at WRITE time, not just surfaced as a
+  // warning. A reclass that affects note presentation MUST move value from a
+  // source row to a target row; without a source, value would materialize
+  // out of nowhere on the note. Pure report_node_only reclasses are
+  // exempt — they don't change note totals.
+  const affectsNote =
+    opts.effectType === "note_only" ||
+    opts.effectType === "note_and_report_node";
+  if (affectsNote && !opts.sourceCtx) {
+    return {
+      ok: false,
+      message:
+        "En omklassificering som påverkar noten måste ha både en källrad och en målrad så att summan bevaras. Lägg till källraden eller välj effekttypen 'endast rapportpost' om du bara vill flytta värde mellan rapportrader.",
     };
   }
   if (opts.sourceCtx) {
@@ -496,6 +512,12 @@ router.patch(
       const validation = await validateReclassification({
         reportId,
         amount: acceptedAmountNum,
+        effectType:
+          (existing.effectType as
+            | "note_only"
+            | "report_node_only"
+            | "note_and_report_node"
+            | undefined) ?? "note_only",
         sourceCtx,
         targetCtx,
       });
@@ -750,6 +772,7 @@ router.post(
     const validation = await validateReclassification({
       reportId,
       amount: Number(parsed.data.amount),
+      effectType: parsed.data.effectType,
       sourceCtx,
       targetCtx,
     });

@@ -4,6 +4,7 @@ import {
   annualReportReclassificationsTable,
   reportNoteRowsTable,
   reportNotesTable,
+  noteStatementReferencesTable,
 } from "@workspace/db";
 
 export interface RowAggregates {
@@ -12,9 +13,31 @@ export interface RowAggregates {
 }
 
 /**
+ * Effect-type semantics:
+ *   - note_only            → adjusts the note presentation only.
+ *   - report_node_only     → adjusts the financial-statement (BR/RR) line only.
+ *   - note_and_report_node → adjusts BOTH.
+ *
+ * The note-row helpers below honour the first and the third; the report-node
+ * helper below honours the second and the third. This keeps presentation
+ * consistent with the user's intent at write time.
+ */
+const NOTE_AFFECTING_EFFECT_TYPES = [
+  "note_only",
+  "note_and_report_node",
+] as const;
+const REPORT_NODE_AFFECTING_EFFECT_TYPES = [
+  "report_node_only",
+  "note_and_report_node",
+] as const;
+
+/**
  * Compute the inflows/outflows aggregates per row id from active
  * reclassifications. Used both by the presented-amount calculation and by
  * the safeguards in routes/reclassifications when validating new entries.
+ *
+ * Only effect types that touch note rows are considered here — pure
+ * report-node reclassifications never alter note-row capacity.
  */
 export async function computeRowAggregates(
   reportId: string,
@@ -24,11 +47,19 @@ export async function computeRowAggregates(
     ? and(
         eq(annualReportReclassificationsTable.reportId, reportId),
         eq(annualReportReclassificationsTable.status, "active"),
+        inArray(
+          annualReportReclassificationsTable.effectType,
+          [...NOTE_AFFECTING_EFFECT_TYPES],
+        ),
         ne(annualReportReclassificationsTable.id, opts.excludeReclassId),
       )
     : and(
         eq(annualReportReclassificationsTable.reportId, reportId),
         eq(annualReportReclassificationsTable.status, "active"),
+        inArray(
+          annualReportReclassificationsTable.effectType,
+          [...NOTE_AFFECTING_EFFECT_TYPES],
+        ),
       );
 
   const reclasses = await db
@@ -91,7 +122,8 @@ function toNum(v: string | null | undefined): number | null {
 export async function getPresentedNoteRowAmounts(
   reportId: string,
 ): Promise<Map<string, PresentedNoteRowAmount>> {
-  // Pull active reclassifications for this report.
+  // Pull active reclassifications that touch note presentation. Pure
+  // report-node reclassifications never affect note-row presented amounts.
   const reclasses = await db
     .select()
     .from(annualReportReclassificationsTable)
@@ -99,6 +131,10 @@ export async function getPresentedNoteRowAmounts(
       and(
         eq(annualReportReclassificationsTable.reportId, reportId),
         eq(annualReportReclassificationsTable.status, "active"),
+        inArray(
+          annualReportReclassificationsTable.effectType,
+          [...NOTE_AFFECTING_EFFECT_TYPES],
+        ),
       ),
     );
 
@@ -179,7 +215,10 @@ export async function getPresentedAmountForRow(
     .where(
       and(
         eq(annualReportReclassificationsTable.status, "active"),
-        // No FK on report_id here — restrict by row references instead.
+        inArray(
+          annualReportReclassificationsTable.effectType,
+          [...NOTE_AFFECTING_EFFECT_TYPES],
+        ),
       ),
     );
 
@@ -206,4 +245,127 @@ export async function getPresentedAmountForRow(
     outflowsCurrentYear: outflow.toFixed(2),
     hasReclassifications: inflow !== 0 || outflow !== 0,
   };
+}
+
+// ─── Report-node (financial-statement line) presentation ────────────────────
+
+export interface ReportNodeAdjustment {
+  lineKey: string;
+  inflowsCurrentYear: number;
+  outflowsCurrentYear: number;
+  netDelta: number;
+}
+
+/**
+ * Compute the per-`lineKey` adjustment that active reclassifications apply
+ * to financial-statement lines. Honours `report_node_only` and
+ * `note_and_report_node` effect types only.
+ *
+ * Each reclassification's source note row → its note → linked statement
+ * lines (via note_statement_references.lineKey) accrues an OUTFLOW; the
+ * target's linked lines accrue an INFLOW. A reclass that flows between two
+ * notes that map to the SAME statement line nets to zero on that line —
+ * which is exactly what users expect from a between-notes reclassification
+ * on a single BR/RR row.
+ *
+ * Returns a Map keyed by lineKey. Statement lines that no active reclass
+ * touches are simply absent from the map (callers should treat absent as
+ * "no adjustment").
+ */
+export async function getPresentedStatementLineAdjustments(
+  reportId: string,
+): Promise<Map<string, ReportNodeAdjustment>> {
+  const reclasses = await db
+    .select()
+    .from(annualReportReclassificationsTable)
+    .where(
+      and(
+        eq(annualReportReclassificationsTable.reportId, reportId),
+        eq(annualReportReclassificationsTable.status, "active"),
+        inArray(
+          annualReportReclassificationsTable.effectType,
+          [...REPORT_NODE_AFFECTING_EFFECT_TYPES],
+        ),
+      ),
+    );
+  if (reclasses.length === 0) return new Map();
+
+  // Resolve note id for every involved row.
+  const rowIds = new Set<string>();
+  for (const r of reclasses) {
+    if (r.sourceNoteRowId) rowIds.add(r.sourceNoteRowId);
+    if (r.targetNoteRowId) rowIds.add(r.targetNoteRowId);
+  }
+  const rows =
+    rowIds.size === 0
+      ? []
+      : await db
+          .select({
+            rowId: reportNoteRowsTable.id,
+            noteId: reportNoteRowsTable.noteId,
+          })
+          .from(reportNoteRowsTable)
+          .where(inArray(reportNoteRowsTable.id, [...rowIds]));
+  const noteIdByRow = new Map(rows.map((r) => [r.rowId, r.noteId]));
+
+  // Resolve linked statement-line keys per note.
+  const noteIds = new Set(rows.map((r) => r.noteId));
+  const refs =
+    noteIds.size === 0
+      ? []
+      : await db
+          .select({
+            noteId: noteStatementReferencesTable.noteId,
+            lineKey: noteStatementReferencesTable.lineKey,
+          })
+          .from(noteStatementReferencesTable)
+          .where(
+            inArray(noteStatementReferencesTable.noteId, [...noteIds]),
+          );
+  const lineKeysByNote = new Map<string, string[]>();
+  for (const ref of refs) {
+    const arr = lineKeysByNote.get(ref.noteId) ?? [];
+    arr.push(ref.lineKey);
+    lineKeysByNote.set(ref.noteId, arr);
+  }
+
+  function ensure(lineKey: string): ReportNodeAdjustment {
+    let v = adjustments.get(lineKey);
+    if (!v) {
+      v = {
+        lineKey,
+        inflowsCurrentYear: 0,
+        outflowsCurrentYear: 0,
+        netDelta: 0,
+      };
+      adjustments.set(lineKey, v);
+    }
+    return v;
+  }
+
+  const adjustments = new Map<string, ReportNodeAdjustment>();
+  for (const r of reclasses) {
+    const amt = Math.abs(Number(r.amount));
+    if (!Number.isFinite(amt) || amt === 0) continue;
+
+    if (r.sourceNoteRowId) {
+      const noteId = noteIdByRow.get(r.sourceNoteRowId);
+      const keys = noteId ? lineKeysByNote.get(noteId) ?? [] : [];
+      for (const k of keys) {
+        const a = ensure(k);
+        a.outflowsCurrentYear += amt;
+        a.netDelta -= amt;
+      }
+    }
+    if (r.targetNoteRowId) {
+      const noteId = noteIdByRow.get(r.targetNoteRowId);
+      const keys = noteId ? lineKeysByNote.get(noteId) ?? [] : [];
+      for (const k of keys) {
+        const a = ensure(k);
+        a.inflowsCurrentYear += amt;
+        a.netDelta += amt;
+      }
+    }
+  }
+  return adjustments;
 }

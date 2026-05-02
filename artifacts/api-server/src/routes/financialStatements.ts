@@ -14,6 +14,7 @@ import {
   buildReportStructure,
   type LineTemplate,
 } from "../lib/frameworkRules.js";
+import { getPresentedStatementLineAdjustments } from "../lib/presentationAmounts.js";
 
 const router: IRouter = Router();
 
@@ -214,12 +215,39 @@ router.get(
 
     const noteRefMap = new Map(noteRefs.map((nr) => [nr.financialStatementLineId, nr]));
 
+    // Apply per-lineKey adjustments from active reclassifications with
+    // effectType "report_node_only" or "note_and_report_node". The
+    // financial-statement export, preview, and reconciliation all read
+    // `presentedCurrentYearAmount` so user-approved netting between
+    // notes that map to different BR/RR rows is reflected everywhere.
+    const adjustments = await getPresentedStatementLineAdjustments(reportId);
+
     const linesWithNoteRef = filtered.map((line) => {
       const nr = noteRefMap.get(line.id);
+      const adj = adjustments.get(line.lineKey);
+      const mappedCY =
+        line.currentYearAmount === null
+          ? null
+          : Number(line.currentYearAmount);
+      const presented =
+        adj && mappedCY !== null
+          ? mappedCY + adj.netDelta
+          : adj
+            ? adj.netDelta
+            : mappedCY;
       return {
         ...line,
         noteReferenceStatus: nr?.referenceStatus ?? null,
         suggestedNoteType: nr?.suggestedNoteType ?? null,
+        presentedCurrentYearAmount:
+          presented === null ? null : presented.toFixed(2),
+        reclassificationDelta: adj
+          ? {
+              inflowsCurrentYear: adj.inflowsCurrentYear.toFixed(2),
+              outflowsCurrentYear: adj.outflowsCurrentYear.toFixed(2),
+              netDelta: adj.netDelta.toFixed(2),
+            }
+          : null,
       };
     });
 
