@@ -1,0 +1,69 @@
+Review the completed cash-flow statement implementation in “Årsredovisningar”.
+
+Do not add large new features.
+Do not rebuild the export engine.
+Do not replace existing PDF/Word templates.
+Do not change unrelated UI.
+
+Your task is to verify and, if needed, minimally fix the cash-flow integration.
+
+Check the following:
+
+1. Requirement logic
+- Mandatory / optional / unknown status works correctly.
+- Larger company thresholds are evaluated consistently.
+- Missing company-size data creates a “Behöver bedömas” state.
+- Mandatory cash flow cannot be skipped.
+
+2. Workflow integration
+- “Kassaflödesanalys” appears in the annual-report workflow.
+- The step shows correct status:
+  - Obligatorisk
+  - Frivillig
+  - Behöver bedömas
+  - Behöver granskas
+  - Validerad
+  - Blockerad
+- The workflow checklist reflects validation status correctly.
+
+3. Validation integration
+- Final validation is blocked if mandatory cash flow is missing, incomplete, unreconciled, or not reviewed.
+- Opening cash + årets kassaflöde = closing cash is checked.
+- Closing cash matches balance sheet cash/bank.
+- Optional cash flow validates if enabled.
+- Optional disabled cash flow does not block export.
+
+4. Export integration
+- PDF export includes cash-flow statement only when it should.
+- Word export includes cash-flow statement only when it should.
+- Mandatory but invalid cash flow blocks clean export.
+- Optional disabled cash flow creates no placeholder page.
+- Export uses Swedish annual-report labels only.
+- Internal UI states, badges, warnings, source accounts, and explanations are not exported.
+
+5. Source and adjustment audit
+- Each line item can show source accounts and calculation explanation in the app.
+- Manual adjustments require a reason.
+- Manual adjustments store previous value, new value, user, timestamp, and reason.
+
+6. Regression check
+Confirm that the implementation did not break:
+- Import flow
+- Mapping flow
+- Income statement
+- Balance sheet
+- Notes
+- Note numbering
+- Annual-report preview
+- PDF export
+- Word export
+- Payment/export unlock
+- Demo/watermarked export
+
+Fix only issues directly related to cash-flow integration.
+
+After review, provide a short implementation summary with:
+- What was already working
+- What was fixed
+- Any remaining limitations
+- Files/components/tables touched
