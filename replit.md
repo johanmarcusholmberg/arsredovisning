@@ -42,6 +42,11 @@ The application is built as a pnpm monorepo using Node.js 24 and TypeScript 5.9.
 - **File Management**: Secure upload and download of project files (e.g., SIE, PDF) with permission and entitlement gating.
 - **Export**: Generation and download of PDF/Word exports with watermark enforcement for demo projects. Phase 6.6/7 introduces a single source-of-truth `AnnualReportExportData` contract (`lib/export-contract`) that powers Preview = PDF = Word, with consistency checks, readiness gating, cover-sheet settings, signed-URL downloads, audit logging, and an export history list at `/reports/:reportId/preview`.
 
+### Auth Consolidation (post-Phase 7.5)
+- **Single auth surface**: All authentication lives in `artifacts/arsredovisningar` (real Supabase Auth via `lib/supabase.ts` + `contexts/AuthContext.tsx`, secrets `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`).
+- **Marketing site** (`artifacts/web`) is now strictly marketing + demo. Routes `/login`, `/signup`, `/dashboard`, and `/workspace*` use a small `RedirectToApp` component (`window.location.replace`) to hand off to `/arsredovisningar/login`, `/arsredovisningar/register`, and `/arsredovisningar/` respectively. The header "Logga in" / "Skapa konto" buttons are plain `<a>` tags pointing at the real app — no client-side wouter routing across artifact boundaries.
+- **Removed stubs**: `pages/LoginPage.tsx`, `pages/SignupPage.tsx`, `pages/DashboardPage.tsx`, `pages/PaidWorkspacePage.tsx`, `pages/workspace/`, `hooks/useAuth.ts` were all deleted from `artifacts/web` to eliminate the never-functional placeholder auth.
+
 ### Phase 7.5 — Kassaflödesanalys (Cash Flow Statement)
 - **Legal-requirement assessment** at `/reports/:reportId/cash-flow` (`pages/CashFlowPage.tsx`) — assesses whether kassaflödesanalys is mandatory under ÅRL using size thresholds (50 employees / 40 MSEK balansomslutning / 80 MSEK nettoomsättning, 2 of 3 met for two consecutive years), listed-company status, and BRF flag. Centralized constants in `lib/complianceConfig.ts`.
 - **Indirect-method generator** in `lib/cashFlowStatementService.ts` — builds 22 canonical lines (operating / investing / financing / reconciliation) from `financial_statement_lines`, marks placeholder lines as `needsReview` for user confirmation, supports manual line edits and audited adjustments.

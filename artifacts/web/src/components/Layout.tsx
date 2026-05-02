@@ -2,21 +2,21 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
+const APP_LOGIN_URL = "/arsredovisningar/login";
+const APP_SIGNUP_URL = "/arsredovisningar/register";
+
 export function Layout({ children }: LayoutProps) {
   const { t, language, setLanguage } = useLanguage();
-  const { user } = useAuth();
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = [
-    ...(user ? [{ href: "/dashboard", label: t("nav.dashboard") }] : []),
     { href: "/demo", label: t("nav.demo") },
     { href: "/pricing", label: t("nav.pricing") },
   ];
@@ -69,16 +69,12 @@ export function Layout({ children }: LayoutProps) {
                 {t("nav.lang.toggle")}
               </button>
 
-              <Link href="/login">
-                <Button variant="ghost" size="sm" className="hidden sm:inline-flex text-sm">
-                  {t("nav.login")}
-                </Button>
-              </Link>
-              <Link href="/signup">
-                <Button size="sm" className="hidden sm:inline-flex text-sm">
-                  {t("nav.signup")}
-                </Button>
-              </Link>
+              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-sm">
+                <a href={APP_LOGIN_URL}>{t("nav.login")}</a>
+              </Button>
+              <Button asChild size="sm" className="hidden sm:inline-flex text-sm">
+                <a href={APP_SIGNUP_URL}>{t("nav.signup")}</a>
+              </Button>
 
               <button
                 className="md:hidden p-1.5 rounded-md hover:bg-accent transition-colors"
@@ -116,12 +112,18 @@ export function Layout({ children }: LayoutProps) {
                   {t("nav.mobile.lang_switch")}
                 </button>
               </div>
-              <Link href="/login" onClick={() => setMobileOpen(false)}>
-                <div className="block px-3 py-2 text-sm text-muted-foreground">{t("nav.login")}</div>
-              </Link>
-              <Link href="/signup" onClick={() => setMobileOpen(false)}>
-                <Button size="sm" className="w-full">{t("nav.signup")}</Button>
-              </Link>
+              <a
+                href={APP_LOGIN_URL}
+                onClick={() => setMobileOpen(false)}
+                className="block px-3 py-2 text-sm text-muted-foreground"
+              >
+                {t("nav.login")}
+              </a>
+              <Button asChild size="sm" className="w-full">
+                <a href={APP_SIGNUP_URL} onClick={() => setMobileOpen(false)}>
+                  {t("nav.signup")}
+                </a>
+              </Button>
             </div>
           </div>
         )}

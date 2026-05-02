@@ -4,14 +4,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { Layout } from "@/components/Layout";
+import { RedirectToApp } from "@/components/RedirectToApp";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/LandingPage";
-import LoginPage from "@/pages/LoginPage";
-import SignupPage from "@/pages/SignupPage";
-import DashboardPage from "@/pages/DashboardPage";
 import DemoWorkspacePage from "@/pages/DemoWorkspacePage";
 import PricingPage from "@/pages/PricingPage";
-import PaidWorkspacePage from "@/pages/PaidWorkspacePage";
 
 const queryClient = new QueryClient();
 
@@ -20,12 +17,22 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={LandingPage} />
-        <Route path="/login" component={LoginPage} />
-        <Route path="/signup" component={SignupPage} />
-        <Route path="/dashboard" component={DashboardPage} />
+        <Route path="/login">
+          <RedirectToApp to="/arsredovisningar/login" />
+        </Route>
+        <Route path="/signup">
+          <RedirectToApp to="/arsredovisningar/register" />
+        </Route>
+        <Route path="/dashboard">
+          <RedirectToApp to="/arsredovisningar/" />
+        </Route>
+        <Route path="/workspace/:rest*">
+          <RedirectToApp to="/arsredovisningar/" />
+        </Route>
+        <Route path="/workspace">
+          <RedirectToApp to="/arsredovisningar/" />
+        </Route>
         <Route path="/demo/:section?" component={DemoWorkspacePage} />
-        <Route path="/workspace/:projectId/:section?" component={PaidWorkspacePage} />
-        <Route path="/workspace" component={DashboardPage} />
         <Route path="/pricing" component={PricingPage} />
         <Route component={NotFound} />
       </Switch>
