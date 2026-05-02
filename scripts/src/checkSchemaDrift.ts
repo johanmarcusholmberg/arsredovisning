@@ -6,7 +6,13 @@ type ExpectedCol = {
   name: string;
   sqlType: string;
   notNull: boolean;
+  /** Literal/SQL default we can compare against pg's column_default. NULL when
+   * the column has no default OR when drizzle uses a runtime defaultFn. */
   defaultRaw: string | null;
+  /** True when drizzle declares any default (literal, sql, or defaultFn) so we
+   * can at least assert the live column has *some* default even when we can't
+   * compare values exactly. */
+  hasAnyDefault: boolean;
 };
 
 type DriftItem = { table: string; kind: string; col?: string; detail?: string };
@@ -91,21 +97,26 @@ async function main() {
     try {
       const cfg = getTableConfig(value as PgTable);
       if (!cfg?.name) continue;
-      expected[cfg.name] = cfg.columns.map((c) => ({
-        name: c.name,
-        sqlType: c.getSQLType(),
-        notNull: c.notNull,
-        defaultRaw:
-          c.default !== undefined && c.default !== null
-            ? typeof c.default === "string"
-              ? `'${c.default}'`
-              : typeof c.default === "boolean" || typeof c.default === "number"
-                ? String(c.default)
-                : null
-            : c.defaultFn
-              ? null
-              : null,
-      }));
+      expected[cfg.name] = cfg.columns.map((c) => {
+        const hasLiteral = c.default !== undefined && c.default !== null;
+        const hasFn = !!c.defaultFn || !!(c as unknown as { hasDefault?: boolean }).hasDefault;
+        let defaultRaw: string | null = null;
+        if (hasLiteral) {
+          if (typeof c.default === "string") defaultRaw = `'${c.default}'`;
+          else if (typeof c.default === "boolean" || typeof c.default === "number") defaultRaw = String(c.default);
+          else if (c.default && typeof c.default === "object" && "queryChunks" in (c.default as object)) {
+            // sql`...` template — best-effort: the underlying string lives on a
+            // private field; we leave defaultRaw=null but still set hasAnyDefault.
+          }
+        }
+        return {
+          name: c.name,
+          sqlType: c.getSQLType(),
+          notNull: c.notNull,
+          defaultRaw,
+          hasAnyDefault: hasLiteral || hasFn,
+        };
+      });
     } catch {
       /* not a table */
     }
@@ -184,13 +195,20 @@ async function main() {
       const lNotNull = lc.is_nullable === "NO";
       if (ec.notNull !== lNotNull)
         drift.push({ table: t, kind: "NULLABILITY", col: name, detail: `expected ${ec.notNull ? "NOT NULL" : "NULL"}, live ${lNotNull ? "NOT NULL" : "NULL"}` });
-      if (FLAGS.defaults && ec.defaultRaw !== null) {
-        const expD = normalizeDefault(ec.defaultRaw);
+      if (FLAGS.defaults) {
         const livD = normalizeDefault(lc.column_default);
-        if (expD !== null && livD !== null && expD.toLowerCase() !== livD.toLowerCase()) {
-          drift.push({ table: t, kind: "DEFAULT_MISMATCH", col: name, detail: `expected ${expD}, live ${livD}` });
-        } else if (expD !== null && livD === null) {
-          drift.push({ table: t, kind: "DEFAULT_MISMATCH", col: name, detail: `expected ${expD}, live <none>` });
+        if (ec.defaultRaw !== null) {
+          const expD = normalizeDefault(ec.defaultRaw);
+          if (expD !== null && livD !== null && expD.toLowerCase() !== livD.toLowerCase()) {
+            drift.push({ table: t, kind: "DEFAULT_MISMATCH", col: name, detail: `expected ${expD}, live ${livD}` });
+          } else if (expD !== null && livD === null) {
+            drift.push({ table: t, kind: "DEFAULT_MISMATCH", col: name, detail: `expected ${expD}, live <none>` });
+          }
+        } else if (ec.hasAnyDefault && livD === null) {
+          // Drizzle declares a defaultFn / sql`` default but the live column has
+          // no default at all. We can't compare values, but missing-vs-present
+          // is still drift.
+          drift.push({ table: t, kind: "DEFAULT_MISSING", col: name, detail: "drizzle declares a default (defaultFn or sql``); live column has no default" });
         }
       }
     }
