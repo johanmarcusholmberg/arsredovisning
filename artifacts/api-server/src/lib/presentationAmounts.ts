@@ -1,10 +1,58 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import {
   db,
   annualReportReclassificationsTable,
   reportNoteRowsTable,
   reportNotesTable,
 } from "@workspace/db";
+
+export interface RowAggregates {
+  inflows: number;
+  outflows: number;
+}
+
+/**
+ * Compute the inflows/outflows aggregates per row id from active
+ * reclassifications. Used both by the presented-amount calculation and by
+ * the safeguards in routes/reclassifications when validating new entries.
+ */
+export async function computeRowAggregates(
+  reportId: string,
+  opts: { excludeReclassId?: string } = {},
+): Promise<Map<string, RowAggregates>> {
+  const where = opts.excludeReclassId
+    ? and(
+        eq(annualReportReclassificationsTable.reportId, reportId),
+        eq(annualReportReclassificationsTable.status, "active"),
+        ne(annualReportReclassificationsTable.id, opts.excludeReclassId),
+      )
+    : and(
+        eq(annualReportReclassificationsTable.reportId, reportId),
+        eq(annualReportReclassificationsTable.status, "active"),
+      );
+
+  const reclasses = await db
+    .select()
+    .from(annualReportReclassificationsTable)
+    .where(where);
+
+  const map = new Map<string, RowAggregates>();
+  function get(id: string): RowAggregates {
+    let v = map.get(id);
+    if (!v) {
+      v = { inflows: 0, outflows: 0 };
+      map.set(id, v);
+    }
+    return v;
+  }
+  for (const r of reclasses) {
+    const amt = Math.abs(Number(r.amount));
+    if (!Number.isFinite(amt)) continue;
+    if (r.targetNoteRowId) get(r.targetNoteRowId).inflows += amt;
+    if (r.sourceNoteRowId) get(r.sourceNoteRowId).outflows += amt;
+  }
+  return map;
+}
 
 /**
  * Presentation amounts helper — Phase 6.5.

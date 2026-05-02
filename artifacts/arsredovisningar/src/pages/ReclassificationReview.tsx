@@ -238,6 +238,10 @@ export function ReclassificationReview() {
     s: ReclassificationSuggestion,
     status: "accepted" | "rejected" | "not_relevant",
   ) => {
+    // The server applies an accepted suggestion atomically (it inserts the
+    // matching reclassification in the same transaction), so we no longer
+    // need a follow-up POST here. Just invalidate so the new reclass row
+    // appears in the "Tillämpade" tab.
     updateSuggestion.mutate(
       {
         reportId,
@@ -248,39 +252,19 @@ export function ReclassificationReview() {
         onSuccess: () => {
           invalidateAll();
           toast({
-            title: "Förslag uppdaterat",
+            title:
+              status === "accepted"
+                ? "Förslag accepterat och tillämpat"
+                : "Förslag uppdaterat",
             description: STATUS_LABELS[status] ?? status,
           });
-          if (status === "accepted") {
-            // Apply as a reclassification immediately when accepted from the
-            // quick action.
-            createReclass.mutate(
-              {
-                reportId,
-                data: {
-                  sourceSuggestionId: s.id,
-                  sourceNoteRowId: s.sourceNoteRowId ?? null,
-                  targetNoteRowId: s.targetNoteRowId ?? "",
-                  sourceLabel: s.sourceLabel ?? null,
-                  targetLabel: s.targetLabel ?? null,
-                  amount: s.suggestedAmount,
-                  effectType: "note_only",
-                  reason: s.explanation ?? null,
-                },
-              },
-              {
-                onSuccess: () => invalidateAll(),
-                onError: (err) =>
-                  toast({
-                    title: "Kunde inte tillämpa omklassificering",
-                    description:
-                      err instanceof Error ? err.message : "Okänt fel",
-                    variant: "destructive",
-                  }),
-              },
-            );
-          }
         },
+        onError: (err) =>
+          toast({
+            title: "Kunde inte uppdatera förslag",
+            description: err instanceof Error ? err.message : "Okänt fel",
+            variant: "destructive",
+          }),
       },
     );
   };

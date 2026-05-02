@@ -6,6 +6,7 @@ import {
   noteStatementReferencesTable,
   financialStatementLinesTable,
 } from "@workspace/db";
+import { getPresentedNoteRowAmounts } from "./presentationAmounts.js";
 
 /**
  * noteReconciliation — verify that the totals shown in each note match the
@@ -98,6 +99,11 @@ export async function reconcileNotes(reportId: string): Promise<ReconciliationRe
     rowsByNote.set(r.noteId, arr);
   }
 
+  // Presented amounts (post-reclassification). Reconciliation must compare
+  // the post-netting note totals against statement lines so that approved
+  // reclassifications are reflected in the green/yellow/red status.
+  const presented = await getPresentedNoteRowAmounts(reportId);
+
   // Pull all references for these notes
   const refs = noteIds.length > 0
     ? await db
@@ -139,7 +145,14 @@ export async function reconcileNotes(reportId: string): Promise<ReconciliationRe
       let cur: number | null = null;
       let prev: number | null = null;
       for (const r of dataRows) {
-        const c = toNum(r.currentYearAmount);
+        // Use presented amount (mapped + reclass deltas) when available so
+        // the reconciliation reflects what the user approved. Previous-year
+        // amounts are not affected by reclassifications.
+        const presentedRow = presented.get(r.id);
+        const c =
+          presentedRow !== undefined
+            ? toNum(presentedRow.presentedCurrentYearAmount)
+            : toNum(r.currentYearAmount);
         const p = toNum(r.previousYearAmount);
         if (c !== null) cur = (cur ?? 0) + c;
         if (p !== null) prev = (prev ?? 0) + p;

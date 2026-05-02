@@ -13,6 +13,7 @@ import {
 } from "@workspace/db";
 import { logAuditEvent } from "../lib/auditLog.js";
 import { reconcileNotes } from "../lib/noteReconciliation.js";
+import { getPresentedNoteRowAmounts } from "../lib/presentationAmounts.js";
 
 const router: IRouter = Router();
 
@@ -295,7 +296,34 @@ router.get(
       drilldown[r.id] = await resolveDrilldown(projectId, ranges, ids);
     }
 
-    res.json({ rows, drilldown });
+    // Presented amounts for every row in this note (post-reclassification).
+    // Callers (UI, exports) should display `presentedAmounts[rowId]` rather
+    // than the raw `currentYearAmount` so user-approved netting is visible.
+    const presentedMap = await getPresentedNoteRowAmounts(reportId);
+    const presentedAmounts: Record<
+      string,
+      {
+        mappedCurrentYearAmount: string | null;
+        presentedCurrentYearAmount: string | null;
+        inflowsCurrentYear: string;
+        outflowsCurrentYear: string;
+        hasReclassifications: boolean;
+      }
+    > = {};
+    for (const r of rows) {
+      const p = presentedMap.get(r.id);
+      if (p) {
+        presentedAmounts[r.id] = {
+          mappedCurrentYearAmount: p.mappedCurrentYearAmount,
+          presentedCurrentYearAmount: p.presentedCurrentYearAmount,
+          inflowsCurrentYear: p.inflowsCurrentYear,
+          outflowsCurrentYear: p.outflowsCurrentYear,
+          hasReclassifications: p.hasReclassifications,
+        };
+      }
+    }
+
+    res.json({ rows, drilldown, presentedAmounts });
   },
 );
 

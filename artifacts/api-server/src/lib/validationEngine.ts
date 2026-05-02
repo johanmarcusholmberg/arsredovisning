@@ -1,9 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
   db,
   reportsTable,
   companiesTable,
   reportNotesTable,
+  reportNoteRowsTable,
   noteStatementReferencesTable,
   financialStatementLinesTable,
   validationDismissalsTable,
@@ -11,6 +12,7 @@ import {
   annualReportReclassificationsTable,
 } from "@workspace/db";
 import { reconcileNotes } from "./noteReconciliation.js";
+import { getPresentedNoteRowAmounts } from "./presentationAmounts.js";
 
 /**
  * ValidationIssue — one finding from the engine.
@@ -391,7 +393,7 @@ export async function runValidation(
   }
 
   const activeReclassifications = await db
-    .select({ id: annualReportReclassificationsTable.id })
+    .select()
     .from(annualReportReclassificationsTable)
     .where(
       and(
@@ -409,6 +411,137 @@ export async function runValidation(
       isHighRisk: false,
       quickLinkPath: `/reports/${report.id}/reclassifications`,
     });
+
+    // ── Reclass-aware checks ────────────────────────────────────────────────
+
+    // (a) Reference integrity: every active reclassification must point to
+    // note rows that still exist and belong to active (not_applicable=false)
+    // notes. Stale references mean the user deleted/inactivated a row after
+    // approving a reclass — the presented amounts can no longer be trusted.
+    const referencedRowIds = new Set<string>();
+    for (const r of activeReclassifications) {
+      if (r.sourceNoteRowId) referencedRowIds.add(r.sourceNoteRowId);
+      if (r.targetNoteRowId) referencedRowIds.add(r.targetNoteRowId);
+    }
+    const liveRows = referencedRowIds.size === 0
+      ? []
+      : await db
+          .select({
+            rowId: reportNoteRowsTable.id,
+            noteId: reportNotesTable.id,
+            noteStatus: reportNotesTable.status,
+            noteTitle: reportNotesTable.title,
+          })
+          .from(reportNoteRowsTable)
+          .innerJoin(
+            reportNotesTable,
+            eq(reportNoteRowsTable.noteId, reportNotesTable.id),
+          )
+          .where(
+            and(
+              eq(reportNotesTable.reportId, report.id),
+              inArray(reportNoteRowsTable.id, [...referencedRowIds]),
+            ),
+          );
+    const liveById = new Map(liveRows.map((r) => [r.rowId, r]));
+
+    for (const r of activeReclassifications) {
+      const checks: Array<{
+        rowId: string | null;
+        side: "source" | "target";
+        label: string | null;
+      }> = [
+        { rowId: r.sourceNoteRowId, side: "source", label: r.sourceLabel },
+        { rowId: r.targetNoteRowId, side: "target", label: r.targetLabel },
+      ];
+      for (const c of checks) {
+        if (!c.rowId) continue;
+        const live = liveById.get(c.rowId);
+        if (!live) {
+          issues.push({
+            ruleKey: `reclassification:row_missing:${r.id}:${c.side}`,
+            level: "blocking",
+            section: "notes",
+            message: `Omklassificeringen mot ${
+              c.label ?? "okänd rad"
+            } pekar på en notrad som inte längre finns. Återkalla eller återställ raden.`,
+            entityRef: r.id,
+            isHighRisk: true,
+            quickLinkPath: `/reports/${report.id}/reclassifications`,
+          });
+        } else if (live.noteStatus === "not_applicable") {
+          issues.push({
+            ruleKey: `reclassification:note_inactive:${r.id}:${c.side}`,
+            level: "blocking",
+            section: "notes",
+            message: `Omklassificeringen mot ${
+              c.label ?? live.noteTitle
+            } pekar på en not som markerats ej tillämplig. Återkalla omklassificeringen.`,
+            entityRef: r.id,
+            isHighRisk: true,
+            quickLinkPath: `/reports/${report.id}/reclassifications`,
+          });
+        }
+      }
+    }
+
+    // (b) No-disappearance / no-double-counting: for every source row, the
+    // sum of active outflows must not exceed |mapped| + inflows. This is
+    // already enforced when creating a reclassification, but data can drift
+    // (e.g. a row's mapped amount is changed downward after approval), so we
+    // verify it again at validation time.
+    const presented = await getPresentedNoteRowAmounts(report.id);
+    const sourceRowIds = new Set<string>();
+    for (const r of activeReclassifications) {
+      if (r.sourceNoteRowId) sourceRowIds.add(r.sourceNoteRowId);
+    }
+    for (const rowId of sourceRowIds) {
+      const p = presented.get(rowId);
+      if (!p) continue;
+      const mappedAbs = Math.abs(Number(p.mappedCurrentYearAmount ?? 0));
+      const inflow = Number(p.inflowsCurrentYear);
+      const outflow = Number(p.outflowsCurrentYear);
+      if (outflow > mappedAbs + inflow + 1) {
+        const live = liveById.get(rowId);
+        issues.push({
+          ruleKey: `reclassification:over_allocation:${rowId}`,
+          level: "blocking",
+          section: "notes",
+          message: `Källraden ${
+            live?.noteTitle ?? rowId
+          } är överallokerad: utflöden (${outflow.toLocaleString(
+            "sv-SE",
+          )} kr) är större än mappat värde plus inflöden. Justera eller återkalla en omklassificering.`,
+          entityRef: rowId,
+          isHighRisk: true,
+          quickLinkPath: `/reports/${report.id}/reclassifications`,
+        });
+      }
+    }
+
+    // (c) Net-zero conservation across notes: every "note_only"
+    // reclassification must have BOTH a source and a target inside the
+    // report. A note_only reclass with a missing source effectively creates
+    // value out of thin air; one with a missing target destroys value. The
+    // engine must surface this so unbalanced entries can't silently ship.
+    for (const r of activeReclassifications) {
+      if (r.effectType !== "note_only") continue;
+      if (!r.sourceNoteRowId || !r.targetNoteRowId) {
+        issues.push({
+          ruleKey: `reclassification:unbalanced:${r.id}`,
+          level: "warning",
+          section: "notes",
+          message: `Omklassificeringen "${
+            r.reason ?? r.targetLabel ?? r.id
+          }" är konfigurerad som "endast not" men saknar ${
+            r.sourceNoteRowId ? "målrad" : "källrad"
+          } — den nettar inte mot någon annan post.`,
+          entityRef: r.id,
+          isHighRisk: true,
+          quickLinkPath: `/reports/${report.id}/reclassifications`,
+        });
+      }
+    }
   }
 
   // ── Apply dismissals ─────────────────────────────────────────────────────

@@ -12,6 +12,10 @@ import {
 } from "@workspace/db";
 import { runReclassificationDetection } from "../lib/reclassificationEngine.js";
 import { logReclassificationAudit } from "../lib/reclassificationAuditLog.js";
+import {
+  computeRowAggregates,
+  type RowAggregates,
+} from "../lib/presentationAmounts.js";
 
 const router: IRouter = Router();
 
@@ -31,9 +35,24 @@ async function getReportWithCompany(reportId: string, profileId: string) {
   return row ?? null;
 }
 
-async function noteRowBelongsToReport(rowId: string, reportId: string) {
+interface NoteRowContext {
+  rowId: string;
+  noteId: string;
+  noteStatus: string;
+  mappedAmount: number | null;
+}
+
+async function loadNoteRowContext(
+  rowId: string,
+  reportId: string,
+): Promise<NoteRowContext | null> {
   const [row] = await db
-    .select({ rowId: reportNoteRowsTable.id })
+    .select({
+      rowId: reportNoteRowsTable.id,
+      noteId: reportNotesTable.id,
+      noteStatus: reportNotesTable.status,
+      mappedAmount: reportNoteRowsTable.currentYearAmount,
+    })
     .from(reportNoteRowsTable)
     .innerJoin(
       reportNotesTable,
@@ -45,7 +64,88 @@ async function noteRowBelongsToReport(rowId: string, reportId: string) {
         eq(reportNotesTable.reportId, reportId),
       ),
     );
-  return Boolean(row);
+  if (!row) return null;
+  const m = row.mappedAmount === null ? null : Number(row.mappedAmount);
+  return {
+    rowId: row.rowId,
+    noteId: row.noteId,
+    noteStatus: row.noteStatus,
+    mappedAmount: m === null || !Number.isFinite(m) ? null : m,
+  };
+}
+
+const TOLERANCE_SEK = 1;
+
+/**
+ * Validate that applying a new reclassification of `amount` from `sourceCtx`
+ * to `targetCtx` does not violate the safeguards:
+ *   - both source and target rows must belong to active (not "not_applicable")
+ *     notes
+ *   - the source row's total active outflows after this entry cannot exceed
+ *     |mappedAmount| + existing inflows (no value disappearance / no
+ *     double-counting). When source is null (an external reclassification),
+ *     no source-side check is performed.
+ *
+ * Pass `excludeReclassId` to ignore an existing reclassification when
+ * recomputing — used to validate replacements/edits in the future.
+ */
+async function validateReclassification(opts: {
+  reportId: string;
+  amount: number;
+  sourceCtx: NoteRowContext | null;
+  targetCtx: NoteRowContext;
+  aggregates?: Map<string, RowAggregates>;
+  excludeReclassId?: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  if (!Number.isFinite(opts.amount) || opts.amount === 0) {
+    return { ok: false, message: "amount must be a non-zero number" };
+  }
+  if (opts.targetCtx.noteStatus === "not_applicable") {
+    return {
+      ok: false,
+      message: "Målnoten är markerad som ej tillämplig.",
+    };
+  }
+  if (opts.sourceCtx) {
+    if (opts.sourceCtx.noteStatus === "not_applicable") {
+      return {
+        ok: false,
+        message: "Källnoten är markerad som ej tillämplig.",
+      };
+    }
+    if (opts.sourceCtx.rowId === opts.targetCtx.rowId) {
+      return { ok: false, message: "source and target rows must differ" };
+    }
+
+    const aggs =
+      opts.aggregates ??
+      (await computeRowAggregates(opts.reportId, {
+        excludeReclassId: opts.excludeReclassId,
+      }));
+    const srcAgg = aggs.get(opts.sourceCtx.rowId) ?? {
+      inflows: 0,
+      outflows: 0,
+    };
+    // Capacity = |mapped| + existing inflows. Outflow can never push the
+    // presented amount below zero (in absolute terms). This catches the
+    // "value disappearance" and "double-counting" cases.
+    const mappedAbs = Math.abs(opts.sourceCtx.mappedAmount ?? 0);
+    const capacity = mappedAbs + srcAgg.inflows;
+    const newOutflows = srcAgg.outflows + Math.abs(opts.amount);
+    if (newOutflows > capacity + TOLERANCE_SEK) {
+      return {
+        ok: false,
+        message: `Överallokering: källraden har ${mappedAbs.toLocaleString(
+          "sv-SE",
+        )} kr i mappat värde och ${srcAgg.inflows.toLocaleString(
+          "sv-SE",
+        )} kr i tidigare inflöden, men summan av utflöden skulle bli ${newOutflows.toLocaleString(
+          "sv-SE",
+        )} kr.`,
+      };
+    }
+  }
+  return { ok: true };
 }
 
 // ─── Input validation ────────────────────────────────────────────────────────
@@ -267,6 +367,11 @@ router.post(
 );
 
 // ─── PATCH /reports/:reportId/reclassifications/suggestions/:suggestionId ────
+//
+// When status === "accepted" this is an atomic operation: the suggestion
+// transitions to "accepted" AND a corresponding reclassification row is
+// inserted in the SAME database transaction. Other status transitions
+// (rejected, edited, not_relevant) only update the suggestion.
 
 router.patch(
   "/reports/:reportId/reclassifications/suggestions/:suggestionId",
@@ -305,21 +410,109 @@ router.patch(
       return;
     }
 
-    const [updated] = await db
-      .update(annualReportReclassificationSuggestionsTable)
-      .set({
-        status: parsed.data.status,
-        reviewedByProfileId: profileId,
-        reviewedAt: new Date(),
-        reviewerComment: parsed.data.reviewerComment ?? null,
-        suggestedAmount:
-          parsed.data.status === "edited" && parsed.data.editedAmount
-            ? parsed.data.editedAmount
-            : existing.suggestedAmount,
-        updatedAt: new Date(),
-      })
-      .where(eq(annualReportReclassificationSuggestionsTable.id, suggestionId))
-      .returning();
+    // Pre-validate before opening a transaction so we can return a clean 400
+    // for accept-time safeguard violations without rolling anything back.
+    let acceptedAmountStr: string | null = null;
+    let acceptedAmountNum = 0;
+    let sourceCtx: NoteRowContext | null = null;
+    let targetCtx: NoteRowContext | null = null;
+
+    if (parsed.data.status === "accepted") {
+      acceptedAmountStr = existing.suggestedAmount;
+      acceptedAmountNum = Number(acceptedAmountStr);
+      if (!Number.isFinite(acceptedAmountNum) || acceptedAmountNum === 0) {
+        res.status(400).json({
+          error: "invalid_input",
+          message: "Suggestion amount is missing or zero — cannot accept.",
+        });
+        return;
+      }
+      if (!existing.targetNoteRowId) {
+        res.status(400).json({
+          error: "invalid_input",
+          message:
+            "Suggestion has no target row — cannot accept. Edit the suggestion first.",
+        });
+        return;
+      }
+      targetCtx = await loadNoteRowContext(existing.targetNoteRowId, reportId);
+      if (!targetCtx) {
+        res.status(409).json({
+          error: "stale_reference",
+          message:
+            "Förslagets målrad har tagits bort eller flyttats — kan inte tillämpas.",
+        });
+        return;
+      }
+      if (existing.sourceNoteRowId) {
+        sourceCtx = await loadNoteRowContext(existing.sourceNoteRowId, reportId);
+        if (!sourceCtx) {
+          res.status(409).json({
+            error: "stale_reference",
+            message:
+              "Förslagets källrad har tagits bort eller flyttats — kan inte tillämpas.",
+          });
+          return;
+        }
+      }
+      const validation = await validateReclassification({
+        reportId,
+        amount: acceptedAmountNum,
+        sourceCtx,
+        targetCtx,
+      });
+      if (!validation.ok) {
+        res
+          .status(400)
+          .json({ error: "invalid_input", message: validation.message });
+        return;
+      }
+    }
+
+    // Apply update (and create reclass if accepting) atomically.
+    const txResult = await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(annualReportReclassificationSuggestionsTable)
+        .set({
+          status: parsed.data.status,
+          reviewedByProfileId: profileId,
+          reviewedAt: new Date(),
+          reviewerComment: parsed.data.reviewerComment ?? null,
+          suggestedAmount:
+            parsed.data.status === "edited" && parsed.data.editedAmount
+              ? parsed.data.editedAmount
+              : existing.suggestedAmount,
+          updatedAt: new Date(),
+        })
+        .where(eq(annualReportReclassificationSuggestionsTable.id, suggestionId))
+        .returning();
+
+      let createdReclass:
+        | typeof annualReportReclassificationsTable.$inferSelect
+        | null = null;
+
+      if (parsed.data.status === "accepted" && targetCtx) {
+        const [inserted] = await tx
+          .insert(annualReportReclassificationsTable)
+          .values({
+            reportId,
+            sourceSuggestionId: suggestionId,
+            sourceNoteRowId: existing.sourceNoteRowId ?? null,
+            targetNoteRowId: targetCtx.rowId,
+            sourceLabel: existing.sourceLabel ?? null,
+            targetLabel: existing.targetLabel ?? null,
+            amount: acceptedAmountStr ?? existing.suggestedAmount,
+            effectType: existing.effectType,
+            reason: existing.explanation ?? null,
+            status: "active",
+            createdByProfileId: profileId,
+          })
+          .returning();
+        createdReclass = inserted;
+      }
+
+      return { updated, createdReclass };
+    });
 
     const eventType =
       parsed.data.status === "accepted"
@@ -342,7 +535,24 @@ router.patch(
       },
     });
 
-    res.json(updated);
+    if (txResult.createdReclass) {
+      await logReclassificationAudit({
+        reportId,
+        eventType: "reclassification_created",
+        actorProfileId: profileId,
+        reclassificationId: txResult.createdReclass.id,
+        suggestionId,
+        payload: {
+          sourceNoteRowId: txResult.createdReclass.sourceNoteRowId,
+          targetNoteRowId: txResult.createdReclass.targetNoteRowId,
+          amount: txResult.createdReclass.amount,
+          effectType: txResult.createdReclass.effectType,
+          appliedFrom: "suggestion_accept_atomic",
+        },
+      });
+    }
+
+    res.json(txResult.updated);
   },
 );
 
@@ -407,37 +617,43 @@ router.post(
       return;
     }
 
-    // Validate the target row belongs to a note in this report.
-    const targetOk = await noteRowBelongsToReport(
+    // Resolve target row + note status.
+    const targetCtx = await loadNoteRowContext(
       parsed.data.targetNoteRowId,
       reportId,
     );
-    if (!targetOk) {
+    if (!targetCtx) {
       res.status(400).json({
         error: "invalid_input",
         message: "targetNoteRowId does not belong to this report",
       });
       return;
     }
+
+    let sourceCtx: NoteRowContext | null = null;
     if (parsed.data.sourceNoteRowId) {
-      const sourceOk = await noteRowBelongsToReport(
+      sourceCtx = await loadNoteRowContext(
         parsed.data.sourceNoteRowId,
         reportId,
       );
-      if (!sourceOk) {
+      if (!sourceCtx) {
         res.status(400).json({
           error: "invalid_input",
           message: "sourceNoteRowId does not belong to this report",
         });
         return;
       }
-      if (parsed.data.sourceNoteRowId === parsed.data.targetNoteRowId) {
-        res.status(400).json({
-          error: "invalid_input",
-          message: "source and target rows must differ",
-        });
-        return;
-      }
+    }
+
+    const validation = await validateReclassification({
+      reportId,
+      amount: Number(parsed.data.amount),
+      sourceCtx,
+      targetCtx,
+    });
+    if (!validation.ok) {
+      res.status(400).json({ error: "invalid_input", message: validation.message });
+      return;
     }
 
     const [inserted] = await db
