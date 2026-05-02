@@ -7,6 +7,10 @@ export interface WorkflowStep {
   id: string;
   label: string;
   status: StepStatus;
+  /** Optional inline badge text — e.g. "Obligatorisk", "Validerad". */
+  badge?: string;
+  /** Optional badge tone. */
+  badgeTone?: "default" | "info" | "warning" | "success" | "danger";
 }
 
 const DEFAULT_STEPS: WorkflowStep[] = [
@@ -53,6 +57,21 @@ export function WorkflowProgress({
         : step.status,
   }));
 
+  const badgeToneClass = (tone: WorkflowStep["badgeTone"]) => {
+    switch (tone) {
+      case "success":
+        return "bg-emerald-500/10 text-emerald-700 border border-emerald-400/40";
+      case "warning":
+        return "bg-amber-500/10 text-amber-700 border border-amber-400/40";
+      case "danger":
+        return "bg-destructive/10 text-destructive border border-destructive/40";
+      case "info":
+        return "bg-primary/10 text-primary border border-primary/30";
+      default:
+        return "bg-muted text-muted-foreground border border-border";
+    }
+  };
+
   const completedCount = resolvedSteps.filter((s) => s.status === "completed").length;
   const total = resolvedSteps.length;
   const percent = Math.round((completedCount / total) * 100);
@@ -89,6 +108,16 @@ export function WorkflowProgress({
             </span>
             <StepIcon status={step.status} />
             <span className="truncate">{step.label}</span>
+            {step.badge && (
+              <span
+                className={cn(
+                  "ml-auto shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium",
+                  badgeToneClass(step.badgeTone),
+                )}
+              >
+                {step.badge}
+              </span>
+            )}
           </li>
         ))}
       </ol>

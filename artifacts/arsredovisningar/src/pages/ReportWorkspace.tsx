@@ -21,8 +21,14 @@ import {
   Shuffle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { WorkflowProgress } from "@/components/WorkflowProgress";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { WorkflowProgress, type WorkflowStep, type StepStatus } from "@/components/WorkflowProgress";
+import {
+  getCashFlowAssessment,
+  getCashFlowStatement,
+  type CashFlowAssessmentResponse,
+  type CashFlowStatementResponse,
+} from "@workspace/api-client-react";
 
 const SECTIONS = [
   {
@@ -105,6 +111,26 @@ export function ReportWorkspace() {
   });
 
   const updateReport = useUpdateReport();
+
+  // ── Cash flow workflow step status ────────────────────────────────────────
+  // Wires the "Kassaflödesanalys" workflow step to the real assessment +
+  // statement state so the sidebar reflects whether it is mandatory, optional,
+  // pending review, validated, or blocked.
+  const { data: cfAssessment } = useQuery<CashFlowAssessmentResponse>({
+    queryKey: ["cf-assessment", reportId],
+    enabled: !!reportId,
+    queryFn: () => getCashFlowAssessment(reportId),
+  });
+  const { data: cfStatement } = useQuery<CashFlowStatementResponse>({
+    queryKey: ["cf-statement", reportId],
+    enabled: !!reportId,
+    queryFn: () => getCashFlowStatement(reportId),
+  });
+
+  const cashFlowStep = deriveCashFlowStep(cfAssessment, cfStatement);
+  const workflowSteps: WorkflowStep[] = DEFAULT_WORKFLOW_STEPS.map((s) =>
+    s.id === "cash-flow" ? { ...s, ...cashFlowStep } : s,
+  );
 
   const handleStatusChange = (
     newStatus: "draft" | "in_progress" | "complete" | "exported",
@@ -283,7 +309,7 @@ export function ReportWorkspace() {
               <CardTitle className="text-lg">9-stegs arbetsflöde</CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
-              <WorkflowProgress currentStepId="import" completedStepIds={[]} />
+              <WorkflowProgress steps={workflowSteps} />
             </CardContent>
           </Card>
 
@@ -318,4 +344,85 @@ export function ReportWorkspace() {
       </div>
     </div>
   );
+}
+
+// ─── Workflow helpers ───────────────────────────────────────────────────────
+
+const DEFAULT_WORKFLOW_STEPS: WorkflowStep[] = [
+  { id: "import", label: "Import accounting data", status: "not-started" },
+  { id: "mapping", label: "Review account mapping", status: "not-started" },
+  { id: "structure", label: "Generate report structure", status: "not-started" },
+  { id: "statements", label: "Review financial statements", status: "not-started" },
+  { id: "notes", label: "Review notes", status: "not-started" },
+  { id: "reclassification", label: "Omklassificering & nettning", status: "not-started" },
+  { id: "cash-flow", label: "Kassaflödesanalys", status: "not-started" },
+  { id: "validate", label: "Validate", status: "not-started" },
+  { id: "collaborate", label: "Collaborate & review", status: "not-started" },
+  { id: "preview", label: "Preview", status: "not-started" },
+  { id: "export", label: "Final export", status: "not-started" },
+];
+
+/**
+ * Map cash-flow assessment + statement state to the workflow step
+ * status + an inline badge using the canonical Swedish labels:
+ *   Obligatorisk · Frivillig · Behöver bedömas · Behöver granskas
+ *   · Validerad · Blockerad
+ */
+function deriveCashFlowStep(
+  assessment: CashFlowAssessmentResponse | undefined,
+  cf: CashFlowStatementResponse | undefined,
+): Partial<WorkflowStep> {
+  if (!assessment) return {};
+
+  // Requirement decision must be settled first.
+  if (assessment.cashFlowRequirement === "unknown") {
+    return {
+      status: "needs-review" as StepStatus,
+      badge: "Behöver bedömas",
+      badgeTone: "warning",
+    };
+  }
+
+  // Optional + voluntary disabled → not in export, not blocking.
+  if (assessment.cashFlowRequirement === "optional" && !assessment.shouldIncludeInExport) {
+    return {
+      status: "not-started" as StepStatus,
+      badge: "Frivillig",
+      badgeTone: "default",
+    };
+  }
+
+  const stmt = cf?.statement ?? null;
+  if (!stmt) {
+    return {
+      status: "needs-review" as StepStatus,
+      badge:
+        assessment.cashFlowRequirement === "mandatory" ? "Obligatorisk" : "Frivillig",
+      badgeTone: assessment.cashFlowRequirement === "mandatory" ? "danger" : "info",
+    };
+  }
+
+  switch (stmt.status) {
+    case "validated":
+      return { status: "completed" as StepStatus, badge: "Validerad", badgeTone: "success" };
+    case "blocked":
+      return { status: "blocked" as StepStatus, badge: "Blockerad", badgeTone: "danger" };
+    case "needs_review":
+      return {
+        status: "needs-review" as StepStatus,
+        badge: "Behöver granskas",
+        badgeTone: "warning",
+      };
+    case "draft":
+    default:
+      return {
+        status: "current" as StepStatus,
+        badge:
+          assessment.cashFlowRequirement === "mandatory"
+            ? "Obligatorisk"
+            : "Frivillig",
+        badgeTone:
+          assessment.cashFlowRequirement === "mandatory" ? "danger" : "info",
+      };
+  }
 }
