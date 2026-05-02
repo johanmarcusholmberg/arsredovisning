@@ -905,11 +905,24 @@ router.get(
       return;
     }
 
+    // Honour the OpenAPI-defined `limit` (default 200, max 500) so the
+    // generated client and the server agree on row counts. Invalid /
+    // out-of-range values are clamped instead of returning 400 — the
+    // audit log is a low-stakes read and clamping keeps the UI
+    // responsive even if a stale client passes a bad value.
+    const rawLimit = req.query.limit;
+    const parsedLimit =
+      typeof rawLimit === "string" ? Number.parseInt(rawLimit, 10) : NaN;
+    const limit = Number.isFinite(parsedLimit)
+      ? Math.min(500, Math.max(1, parsedLimit))
+      : 200;
+
     const entries = await db
       .select()
       .from(annualReportReclassificationAuditLogTable)
       .where(eq(annualReportReclassificationAuditLogTable.reportId, reportId))
-      .orderBy(desc(annualReportReclassificationAuditLogTable.createdAt));
+      .orderBy(desc(annualReportReclassificationAuditLogTable.createdAt))
+      .limit(limit);
 
     res.json({ entries });
   },
