@@ -70,10 +70,10 @@ export function Layout({ children }: LayoutProps) {
               </button>
 
               <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-sm">
-                <a href={APP_LOGIN_URL}>{t("nav.login")}</a>
+                <a href={APP_LOGIN_URL} target="_top" rel="noopener">{t("nav.login")}</a>
               </Button>
               <Button asChild size="sm" className="hidden sm:inline-flex text-sm">
-                <a href={APP_SIGNUP_URL}>{t("nav.signup")}</a>
+                <a href={APP_SIGNUP_URL} target="_top" rel="noopener">{t("nav.signup")}</a>
               </Button>
 
               <button
@@ -114,13 +114,15 @@ export function Layout({ children }: LayoutProps) {
               </div>
               <a
                 href={APP_LOGIN_URL}
+                target="_top"
+                rel="noopener"
                 onClick={() => setMobileOpen(false)}
                 className="block px-3 py-2 text-sm text-muted-foreground"
               >
                 {t("nav.login")}
               </a>
               <Button asChild size="sm" className="w-full">
-                <a href={APP_SIGNUP_URL} onClick={() => setMobileOpen(false)}>
+                <a href={APP_SIGNUP_URL} target="_top" rel="noopener" onClick={() => setMobileOpen(false)}>
                   {t("nav.signup")}
                 </a>
               </Button>
