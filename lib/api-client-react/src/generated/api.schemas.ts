@@ -451,6 +451,161 @@ export interface UpdateFrameworkBody {
   regenerateStatements?: boolean;
 }
 
+export type NoteRequirementLevel =
+  (typeof NoteRequirementLevel)[keyof typeof NoteRequirementLevel];
+
+export const NoteRequirementLevel = {
+  required: "required",
+  likely_required: "likely_required",
+  optional: "optional",
+} as const;
+
+export type NoteStatus = (typeof NoteStatus)[keyof typeof NoteStatus];
+
+export const NoteStatus = {
+  not_started: "not_started",
+  suggested: "suggested",
+  needs_review: "needs_review",
+  reviewed: "reviewed",
+  complete: "complete",
+  not_applicable: "not_applicable",
+  missing_info: "missing_info",
+} as const;
+
+export type NoteFramework = (typeof NoteFramework)[keyof typeof NoteFramework];
+
+export const NoteFramework = {
+  K2: "K2",
+  K3: "K3",
+} as const;
+
+export interface Note {
+  id: string;
+  reportId: string;
+  noteNumber?: number | null;
+  noteType: string;
+  title: string;
+  requirementLevel: NoteRequirementLevel;
+  status: NoteStatus;
+  framework: NoteFramework;
+  sourceTrigger?: string | null;
+  /** JSON array of { lineKey, statementType, label } */
+  linkedStatementLines?: unknown | null;
+  linkedAccountGroups?: unknown | null;
+  currentYearValue?: string | null;
+  previousYearValue?: string | null;
+  suggestedText?: string | null;
+  acceptedText?: string | null;
+  acceptedByProfileId?: string | null;
+  acceptedAt?: string | null;
+  textIsAiGenerated: boolean;
+  manualNumberOverride?: number | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type NoteListResponseFramework =
+  (typeof NoteListResponseFramework)[keyof typeof NoteListResponseFramework];
+
+export const NoteListResponseFramework = {
+  K2: "K2",
+  K3: "K3",
+} as const;
+
+export interface NoteListResponse {
+  notes: Note[];
+  framework: NoteListResponseFramework;
+  totalActive: number;
+  totalNotApplicable: number;
+}
+
+export type CreateNoteBodyRequirementLevel =
+  (typeof CreateNoteBodyRequirementLevel)[keyof typeof CreateNoteBodyRequirementLevel];
+
+export const CreateNoteBodyRequirementLevel = {
+  required: "required",
+  likely_required: "likely_required",
+  optional: "optional",
+} as const;
+
+export interface CreateNoteBody {
+  noteType: string;
+  title: string;
+  requirementLevel?: CreateNoteBodyRequirementLevel;
+  sortOrder?: number;
+}
+
+export type UpdateNoteBodyStatus =
+  (typeof UpdateNoteBodyStatus)[keyof typeof UpdateNoteBodyStatus];
+
+export const UpdateNoteBodyStatus = {
+  not_started: "not_started",
+  suggested: "suggested",
+  needs_review: "needs_review",
+  reviewed: "reviewed",
+  complete: "complete",
+  not_applicable: "not_applicable",
+  missing_info: "missing_info",
+} as const;
+
+export interface UpdateNoteBody {
+  title?: string;
+  status?: UpdateNoteBodyStatus;
+  suggestedText?: string | null;
+  acceptedText?: string | null;
+  sortOrder?: number;
+  manualNumberOverride?: number | null;
+  currentYearValue?: string | null;
+  previousYearValue?: string | null;
+}
+
+export interface DeleteNoteResponse {
+  deleted: boolean;
+  renumbered: number;
+}
+
+export type SuggestNotesResponseFramework =
+  (typeof SuggestNotesResponseFramework)[keyof typeof SuggestNotesResponseFramework];
+
+export const SuggestNotesResponseFramework = {
+  K2: "K2",
+  K3: "K3",
+} as const;
+
+export interface SuggestNotesResponse {
+  created: number;
+  updated: number;
+  renumbered: number;
+  framework: SuggestNotesResponseFramework;
+}
+
+export interface RecalculateNumbersResponse {
+  renumbered: number;
+  total: number;
+}
+
+export interface AcceptTextBody {
+  /** Optional override text. If omitted, the current suggestedText is accepted. */
+  text?: string | null;
+}
+
+export type AiDraftResponseProvider =
+  (typeof AiDraftResponseProvider)[keyof typeof AiDraftResponseProvider];
+
+export const AiDraftResponseProvider = {
+  openai: "openai",
+  anthropic: "anthropic",
+  not_configured: "not_configured",
+} as const;
+
+export interface AiDraftResponse {
+  draft?: string | null;
+  provider: AiDraftResponseProvider;
+  instructions?: string | null;
+  noteId: string;
+}
+
 export type GetFinancialStatementsParams = {
   statementType?: GetFinancialStatementsStatementType;
 };

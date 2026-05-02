@@ -20,6 +20,8 @@ tags:
     description: Dashboard and summary data
   - name: entitlement
     description: User entitlement and access tier
+  - name: notes
+    description: Notes (disclosures) module
 
 paths:
   /healthz:
@@ -570,6 +572,209 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  # ─── Notes ───────────────────────────────────────────────────────────────────
+  /reports/{reportId}/notes:
+    get:
+      operationId: listReportNotes
+      tags: [notes]
+      summary: List all notes for a report (ordered by note_number)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Notes list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NoteListResponse"
+    post:
+      operationId: createReportNote
+      tags: [notes]
+      summary: Create a note manually
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteBody"
+      responses:
+        "201":
+          description: Note created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  /reports/{reportId}/notes/{noteId}:
+    patch:
+      operationId: updateReportNote
+      tags: [notes]
+      summary: Update a note (status, text, ordering, etc.)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: noteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNoteBody"
+      responses:
+        "200":
+          description: Note updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+    delete:
+      operationId: deleteReportNote
+      tags: [notes]
+      summary: Delete a note (triggers renumbering)
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: noteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Note deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteNoteResponse"
+
+  /reports/{reportId}/notes/suggest:
+    post:
+      operationId: suggestReportNotes
+      tags: [notes]
+      summary: Run the requirement engine and upsert suggested notes
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Suggestions applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuggestNotesResponse"
+
+  /reports/{reportId}/notes/recalculate-numbers:
+    post:
+      operationId: recalculateNoteNumbers
+      tags: [notes]
+      summary: Force a renumber pass for all notes on a report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Renumbering completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecalculateNumbersResponse"
+
+  /reports/{reportId}/notes/{noteId}/accept-text:
+    post:
+      operationId: acceptNoteText
+      tags: [notes]
+      summary: Accept the suggested/AI text as the final note text
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: noteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptTextBody"
+      responses:
+        "200":
+          description: Text accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  /reports/{reportId}/notes/{noteId}/ai-draft:
+    post:
+      operationId: requestNoteAiDraft
+      tags: [notes]
+      summary: Request an AI-generated draft text for a note
+      description: >
+        If an AI provider is configured, returns a Swedish-language draft
+        proposal. Otherwise returns provider="not_configured" and instructions
+        for the user to add an OPENAI_API_KEY. The draft is never auto-accepted.
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: noteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: AI draft response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiDraftResponse"
 
 components:
   schemas:
@@ -1235,3 +1440,211 @@ components:
           description: If true, existing statement lines will be regenerated for the new framework
       required:
         - accountingFramework
+
+    # ─── Notes Schemas ────────────────────────────────────────────────────────
+    Note:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        reportId:
+          type: string
+          format: uuid
+        noteNumber:
+          type: integer
+          nullable: true
+        noteType:
+          type: string
+        title:
+          type: string
+        requirementLevel:
+          type: string
+          enum: [required, likely_required, optional]
+        status:
+          type: string
+          enum: [not_started, suggested, needs_review, reviewed, complete, not_applicable, missing_info]
+        framework:
+          type: string
+          enum: [K2, K3]
+        sourceTrigger:
+          type: string
+          nullable: true
+        linkedStatementLines:
+          nullable: true
+          description: JSON array of { lineKey, statementType, label }
+        linkedAccountGroups:
+          nullable: true
+        currentYearValue:
+          type: string
+          nullable: true
+        previousYearValue:
+          type: string
+          nullable: true
+        suggestedText:
+          type: string
+          nullable: true
+        acceptedText:
+          type: string
+          nullable: true
+        acceptedByProfileId:
+          type: string
+          nullable: true
+        acceptedAt:
+          type: string
+          format: date-time
+          nullable: true
+        textIsAiGenerated:
+          type: boolean
+        manualNumberOverride:
+          type: integer
+          nullable: true
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - reportId
+        - noteType
+        - title
+        - requirementLevel
+        - status
+        - framework
+        - textIsAiGenerated
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    NoteListResponse:
+      type: object
+      properties:
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Note"
+        framework:
+          type: string
+          enum: [K2, K3]
+        totalActive:
+          type: integer
+        totalNotApplicable:
+          type: integer
+      required:
+        - notes
+        - framework
+        - totalActive
+        - totalNotApplicable
+
+    CreateNoteBody:
+      type: object
+      properties:
+        noteType:
+          type: string
+        title:
+          type: string
+        requirementLevel:
+          type: string
+          enum: [required, likely_required, optional]
+        sortOrder:
+          type: integer
+      required:
+        - noteType
+        - title
+
+    UpdateNoteBody:
+      type: object
+      properties:
+        title:
+          type: string
+        status:
+          type: string
+          enum: [not_started, suggested, needs_review, reviewed, complete, not_applicable, missing_info]
+        suggestedText:
+          type: string
+          nullable: true
+        acceptedText:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        manualNumberOverride:
+          type: integer
+          nullable: true
+        currentYearValue:
+          type: string
+          nullable: true
+        previousYearValue:
+          type: string
+          nullable: true
+
+    DeleteNoteResponse:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+        renumbered:
+          type: integer
+      required:
+        - deleted
+        - renumbered
+
+    SuggestNotesResponse:
+      type: object
+      properties:
+        created:
+          type: integer
+        updated:
+          type: integer
+        renumbered:
+          type: integer
+        framework:
+          type: string
+          enum: [K2, K3]
+      required:
+        - created
+        - updated
+        - renumbered
+        - framework
+
+    RecalculateNumbersResponse:
+      type: object
+      properties:
+        renumbered:
+          type: integer
+        total:
+          type: integer
+      required:
+        - renumbered
+        - total
+
+    AcceptTextBody:
+      type: object
+      properties:
+        text:
+          type: string
+          nullable: true
+          description: Optional override text. If omitted, the current suggestedText is accepted.
+
+    AiDraftResponse:
+      type: object
+      properties:
+        draft:
+          type: string
+          nullable: true
+        provider:
+          type: string
+          enum: [openai, anthropic, not_configured]
+        instructions:
+          type: string
+          nullable: true
+        noteId:
+          type: string
+          format: uuid
+      required:
+        - provider
+        - noteId

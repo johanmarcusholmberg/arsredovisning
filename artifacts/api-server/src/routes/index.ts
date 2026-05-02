@@ -9,6 +9,7 @@ import projectsRouter from "./projects";
 import entitlementRouter from "./entitlement";
 import filesRouter from "./files";
 import financialStatementsRouter from "./financialStatements";
+import notesRouter from "./notes";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(projectsRouter);
 router.use(entitlementRouter);
 router.use(filesRouter);
 router.use(financialStatementsRouter);
+router.use(notesRouter);
 
 export default router;

@@ -40,7 +40,7 @@ const SECTIONS = [
     title: "Noter",
     icon: FileText,
     desc: "Redovisningsprinciper och tilläggsupplysningar",
-    href: null,
+    href: "notes",
   },
   {
     id: "underskrifter",

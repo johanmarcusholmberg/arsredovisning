@@ -70,3 +70,19 @@ export const previousYearSourceEnum = pgEnum("previous_year_source", [
   "manual",
   "previous_report_placeholder",
 ]);
+
+export const noteRequirementLevelEnum = pgEnum("note_requirement_level", [
+  "required",
+  "likely_required",
+  "optional",
+]);
+
+export const noteStatusEnum = pgEnum("note_status", [
+  "not_started",
+  "suggested",
+  "needs_review",
+  "reviewed",
+  "complete",
+  "not_applicable",
+  "missing_info",
+]);

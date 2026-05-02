@@ -12,6 +12,7 @@ import { CompanyDetail } from "./pages/CompanyDetail";
 import { ReportWorkspace } from "./pages/ReportWorkspace";
 import { ReportSummary } from "./pages/ReportSummary";
 import { FinancialStatements } from "./pages/FinancialStatements";
+import { NotesPage } from "./pages/NotesPage";
 import { Settings } from "./pages/Settings";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
@@ -36,6 +37,7 @@ function AppRoutes() {
           <Route path="/companies/:companyId" component={CompanyDetail} />
           <Route path="/reports/:reportId" component={ReportWorkspace} />
           <Route path="/reports/:reportId/statements" component={FinancialStatements} />
+          <Route path="/reports/:reportId/notes" component={NotesPage} />
           <Route path="/reports/:reportId/summary" component={ReportSummary} />
           <Route path="/settings" component={Settings} />
           <Route component={NotFound} />

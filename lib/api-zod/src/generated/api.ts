@@ -659,3 +659,243 @@ export const UpdateProjectFrameworkResponse = zod.object({
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
+
+/**
+ * @summary List all notes for a report (ordered by note_number)
+ */
+export const ListReportNotesParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const ListReportNotesResponse = zod.object({
+  notes: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      reportId: zod.string().uuid(),
+      noteNumber: zod.number().nullish(),
+      noteType: zod.string(),
+      title: zod.string(),
+      requirementLevel: zod.enum(["required", "likely_required", "optional"]),
+      status: zod.enum([
+        "not_started",
+        "suggested",
+        "needs_review",
+        "reviewed",
+        "complete",
+        "not_applicable",
+        "missing_info",
+      ]),
+      framework: zod.enum(["K2", "K3"]),
+      sourceTrigger: zod.string().nullish(),
+      linkedStatementLines: zod
+        .unknown()
+        .nullish()
+        .describe("JSON array of { lineKey, statementType, label }"),
+      linkedAccountGroups: zod.unknown().nullish(),
+      currentYearValue: zod.string().nullish(),
+      previousYearValue: zod.string().nullish(),
+      suggestedText: zod.string().nullish(),
+      acceptedText: zod.string().nullish(),
+      acceptedByProfileId: zod.string().nullish(),
+      acceptedAt: zod.coerce.date().nullish(),
+      textIsAiGenerated: zod.boolean(),
+      manualNumberOverride: zod.number().nullish(),
+      sortOrder: zod.number(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  framework: zod.enum(["K2", "K3"]),
+  totalActive: zod.number(),
+  totalNotApplicable: zod.number(),
+});
+
+/**
+ * @summary Create a note manually
+ */
+export const CreateReportNoteParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const CreateReportNoteBody = zod.object({
+  noteType: zod.string(),
+  title: zod.string(),
+  requirementLevel: zod
+    .enum(["required", "likely_required", "optional"])
+    .optional(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a note (status, text, ordering, etc.)
+ */
+export const UpdateReportNoteParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  noteId: zod.coerce.string().uuid(),
+});
+
+export const UpdateReportNoteBody = zod.object({
+  title: zod.string().optional(),
+  status: zod
+    .enum([
+      "not_started",
+      "suggested",
+      "needs_review",
+      "reviewed",
+      "complete",
+      "not_applicable",
+      "missing_info",
+    ])
+    .optional(),
+  suggestedText: zod.string().nullish(),
+  acceptedText: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+  manualNumberOverride: zod.number().nullish(),
+  currentYearValue: zod.string().nullish(),
+  previousYearValue: zod.string().nullish(),
+});
+
+export const UpdateReportNoteResponse = zod.object({
+  id: zod.string().uuid(),
+  reportId: zod.string().uuid(),
+  noteNumber: zod.number().nullish(),
+  noteType: zod.string(),
+  title: zod.string(),
+  requirementLevel: zod.enum(["required", "likely_required", "optional"]),
+  status: zod.enum([
+    "not_started",
+    "suggested",
+    "needs_review",
+    "reviewed",
+    "complete",
+    "not_applicable",
+    "missing_info",
+  ]),
+  framework: zod.enum(["K2", "K3"]),
+  sourceTrigger: zod.string().nullish(),
+  linkedStatementLines: zod
+    .unknown()
+    .nullish()
+    .describe("JSON array of { lineKey, statementType, label }"),
+  linkedAccountGroups: zod.unknown().nullish(),
+  currentYearValue: zod.string().nullish(),
+  previousYearValue: zod.string().nullish(),
+  suggestedText: zod.string().nullish(),
+  acceptedText: zod.string().nullish(),
+  acceptedByProfileId: zod.string().nullish(),
+  acceptedAt: zod.coerce.date().nullish(),
+  textIsAiGenerated: zod.boolean(),
+  manualNumberOverride: zod.number().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a note (triggers renumbering)
+ */
+export const DeleteReportNoteParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  noteId: zod.coerce.string().uuid(),
+});
+
+export const DeleteReportNoteResponse = zod.object({
+  deleted: zod.boolean(),
+  renumbered: zod.number(),
+});
+
+/**
+ * @summary Run the requirement engine and upsert suggested notes
+ */
+export const SuggestReportNotesParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const SuggestReportNotesResponse = zod.object({
+  created: zod.number(),
+  updated: zod.number(),
+  renumbered: zod.number(),
+  framework: zod.enum(["K2", "K3"]),
+});
+
+/**
+ * @summary Force a renumber pass for all notes on a report
+ */
+export const RecalculateNoteNumbersParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const RecalculateNoteNumbersResponse = zod.object({
+  renumbered: zod.number(),
+  total: zod.number(),
+});
+
+/**
+ * @summary Accept the suggested/AI text as the final note text
+ */
+export const AcceptNoteTextParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  noteId: zod.coerce.string().uuid(),
+});
+
+export const AcceptNoteTextBody = zod.object({
+  text: zod
+    .string()
+    .nullish()
+    .describe(
+      "Optional override text. If omitted, the current suggestedText is accepted.",
+    ),
+});
+
+export const AcceptNoteTextResponse = zod.object({
+  id: zod.string().uuid(),
+  reportId: zod.string().uuid(),
+  noteNumber: zod.number().nullish(),
+  noteType: zod.string(),
+  title: zod.string(),
+  requirementLevel: zod.enum(["required", "likely_required", "optional"]),
+  status: zod.enum([
+    "not_started",
+    "suggested",
+    "needs_review",
+    "reviewed",
+    "complete",
+    "not_applicable",
+    "missing_info",
+  ]),
+  framework: zod.enum(["K2", "K3"]),
+  sourceTrigger: zod.string().nullish(),
+  linkedStatementLines: zod
+    .unknown()
+    .nullish()
+    .describe("JSON array of { lineKey, statementType, label }"),
+  linkedAccountGroups: zod.unknown().nullish(),
+  currentYearValue: zod.string().nullish(),
+  previousYearValue: zod.string().nullish(),
+  suggestedText: zod.string().nullish(),
+  acceptedText: zod.string().nullish(),
+  acceptedByProfileId: zod.string().nullish(),
+  acceptedAt: zod.coerce.date().nullish(),
+  textIsAiGenerated: zod.boolean(),
+  manualNumberOverride: zod.number().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * If an AI provider is configured, returns a Swedish-language draft proposal. Otherwise returns provider="not_configured" and instructions for the user to add an OPENAI_API_KEY. The draft is never auto-accepted.
+
+ * @summary Request an AI-generated draft text for a note
+ */
+export const RequestNoteAiDraftParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  noteId: zod.coerce.string().uuid(),
+});
+
+export const RequestNoteAiDraftResponse = zod.object({
+  draft: zod.string().nullish(),
+  provider: zod.enum(["openai", "anthropic", "not_configured"]),
+  instructions: zod.string().nullish(),
+  noteId: zod.string().uuid(),
+});
