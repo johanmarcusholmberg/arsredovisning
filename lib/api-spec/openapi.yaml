@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: projects
+    description: Annual report project operations (Phase 2)
   - name: companies
     description: Company management
   - name: reports
@@ -32,11 +34,92 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  # ─── Projects (Phase 2 — not yet implemented) ──────────────────────────────
+  # These endpoints will be fully implemented in Phase 2 once Supabase Auth
+  # and the database are wired up. They currently return HTTP 501.
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List annual report projects for the authenticated user
+      description: >
+        Returns all projects the authenticated user has access to.
+        Phase 2 only — returns 501 until Supabase Auth is configured.
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnnualReportProject"
+        "501":
+          description: Not implemented (Phase 2)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotImplemented"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a new annual report project
+      description: >
+        Creates a new project for an authenticated, paying user.
+        Phase 2 only — returns 501 until Supabase Auth and Stripe are configured.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectBody"
+      responses:
+        "201":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnualReportProject"
+        "501":
+          description: Not implemented (Phase 2)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotImplemented"
+
+  /projects/{projectId}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get a single annual report project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnualReportProject"
+        "501":
+          description: Not implemented (Phase 2)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotImplemented"
+
+  # ─── Companies ──────────────────────────────────────────────────────────────
   /companies:
     get:
       operationId: listCompanies
       tags: [companies]
       summary: List all companies
+      description: Phase 2 only — returns 501 until Supabase Auth is configured.
       responses:
         "200":
           description: List of companies
@@ -46,10 +129,17 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Company"
+        "501":
+          description: Not implemented (Phase 2)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotImplemented"
     post:
       operationId: createCompany
       tags: [companies]
       summary: Create a new company
+      description: Phase 2 only — returns 501 until Supabase Auth is configured.
       requestBody:
         required: true
         content:
@@ -63,6 +153,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Company"
+        "501":
+          description: Not implemented (Phase 2)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotImplemented"
 
   /companies/{companyId}:
     get:
@@ -257,11 +353,22 @@ components:
         - error
         - message
 
+    NotImplemented:
+      type: object
+      properties:
+        error:
+          type: string
+        phase:
+          type: string
+      required:
+        - error
+
     Company:
       type: object
       properties:
         id:
           type: string
+          format: uuid
         name:
           type: string
           description: Company name (företagsnamn)
@@ -273,10 +380,13 @@ components:
           description: Legal form (AB, HB, KB, EF, etc.)
         address:
           type: string
+          nullable: true
         zipCode:
           type: string
+          nullable: true
         city:
           type: string
+          nullable: true
         accountingFramework:
           type: string
           description: K2 or K3
@@ -314,6 +424,7 @@ components:
         legalForm:
           type: string
           enum: [AB, HB, KB, EF, Ideell, Stiftelse]
+          default: AB
         address:
           type: string
         zipCode:
@@ -323,6 +434,7 @@ components:
         accountingFramework:
           type: string
           enum: [K2, K3]
+          default: K3
         fiscalYearStart:
           type: string
         fiscalYearEnd:
@@ -349,6 +461,69 @@ components:
         accountingFramework:
           type: string
           enum: [K2, K3]
+
+    AnnualReportProject:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        fiscalYearStart:
+          type: string
+          format: date
+        fiscalYearEnd:
+          type: string
+          format: date
+        accountingFramework:
+          type: string
+          enum: [K2, K3]
+        status:
+          type: string
+          enum: [draft, in_review, approved, exported]
+        noteNumberingScheme:
+          type: string
+        importedSieFileName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - companyId
+        - fiscalYearStart
+        - fiscalYearEnd
+        - accountingFramework
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateProjectBody:
+      type: object
+      properties:
+        companyId:
+          type: string
+          format: uuid
+        fiscalYearStart:
+          type: string
+          format: date
+        fiscalYearEnd:
+          type: string
+          format: date
+        accountingFramework:
+          type: string
+          enum: [K2, K3]
+          default: K3
+      required:
+        - companyId
+        - fiscalYearStart
+        - fiscalYearEnd
 
     AnnualReport:
       type: object

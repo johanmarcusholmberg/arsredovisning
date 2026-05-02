@@ -4,6 +4,7 @@ import healthRouter from "./health";
 import companiesRouter from "./companies";
 import reportsRouter from "./reports";
 import dashboardRouter from "./dashboard";
+import projectsRouter from "./projects";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(requireAuth);
 router.use(companiesRouter);
 router.use(reportsRouter);
 router.use(dashboardRouter);
+router.use(projectsRouter);
 
 export default router;
