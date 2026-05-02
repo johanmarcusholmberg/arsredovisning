@@ -510,7 +510,20 @@ router.patch(
       }
     }
 
-    // Apply update (and create reclass if accepting) atomically.
+    const eventType =
+      parsed.data.status === "accepted"
+        ? "suggestion_accepted"
+        : parsed.data.status === "rejected"
+          ? "suggestion_rejected"
+          : parsed.data.status === "edited"
+            ? "suggestion_edited"
+            : "suggestion_marked_not_relevant";
+
+    // Apply update (and create reclass if accepting) atomically. The
+    // status-update audit row and — when accepting — the
+    // reclassification-created audit row are also written inside this
+    // same transaction so audit traceability commits or rolls back
+    // together with the domain mutation.
     const txResult = await db.transaction(async (tx) => {
       // Re-check inside the transaction to close the race window between
       // pre-validation and the update: another concurrent request might
@@ -593,6 +606,40 @@ router.patch(
         createdReclass = inserted;
       }
 
+      // Audit rows live inside the transaction so a failed audit
+      // insert rolls the suggestion update (and any new reclass
+      // row) back as well.
+      await logReclassificationAudit({
+        reportId,
+        eventType,
+        actorProfileId: profileId,
+        suggestionId,
+        executor: tx,
+        payload: {
+          from: existing.status,
+          to: parsed.data.status,
+          comment: parsed.data.reviewerComment ?? null,
+        },
+      });
+
+      if (createdReclass) {
+        await logReclassificationAudit({
+          reportId,
+          eventType: "reclassification_created",
+          actorProfileId: profileId,
+          reclassificationId: createdReclass.id,
+          suggestionId,
+          executor: tx,
+          payload: {
+            sourceNoteRowId: createdReclass.sourceNoteRowId,
+            targetNoteRowId: createdReclass.targetNoteRowId,
+            amount: createdReclass.amount,
+            effectType: createdReclass.effectType,
+            appliedFrom: "suggestion_accept_atomic",
+          },
+        });
+      }
+
       return { updated, createdReclass };
     }).catch((err: unknown) => {
       if (err instanceof Error && err.message === "CONCURRENT_ACCEPT") {
@@ -617,44 +664,6 @@ router.patch(
         message,
       });
       return;
-    }
-
-    const eventType =
-      parsed.data.status === "accepted"
-        ? "suggestion_accepted"
-        : parsed.data.status === "rejected"
-          ? "suggestion_rejected"
-          : parsed.data.status === "edited"
-            ? "suggestion_edited"
-            : "suggestion_marked_not_relevant";
-
-    await logReclassificationAudit({
-      reportId,
-      eventType,
-      actorProfileId: profileId,
-      suggestionId,
-      payload: {
-        from: existing.status,
-        to: parsed.data.status,
-        comment: parsed.data.reviewerComment ?? null,
-      },
-    });
-
-    if (txResult.createdReclass) {
-      await logReclassificationAudit({
-        reportId,
-        eventType: "reclassification_created",
-        actorProfileId: profileId,
-        reclassificationId: txResult.createdReclass.id,
-        suggestionId,
-        payload: {
-          sourceNoteRowId: txResult.createdReclass.sourceNoteRowId,
-          targetNoteRowId: txResult.createdReclass.targetNoteRowId,
-          amount: txResult.createdReclass.amount,
-          effectType: txResult.createdReclass.effectType,
-          appliedFrom: "suggestion_accept_atomic",
-        },
-      });
     }
 
     res.json(txResult.updated);
@@ -762,36 +771,44 @@ router.post(
       return;
     }
 
-    const [inserted] = await db
-      .insert(annualReportReclassificationsTable)
-      .values({
-        reportId,
-        sourceSuggestionId: parsed.data.sourceSuggestionId ?? null,
-        sourceNoteRowId: parsed.data.sourceNoteRowId ?? null,
-        targetNoteRowId: parsed.data.targetNoteRowId,
-        sourceLabel: parsed.data.sourceLabel ?? null,
-        targetLabel: parsed.data.targetLabel ?? null,
-        amount: parsed.data.amount,
-        effectType: parsed.data.effectType,
-        reason: parsed.data.reason ?? null,
-        status: "active",
-        createdByProfileId: profileId,
-      })
-      .returning();
+    // Insert the reclassification and its audit row inside one
+    // transaction so traceability is committed atomically with the
+    // mutation: a failed audit insert rolls the reclassification back.
+    const inserted = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(annualReportReclassificationsTable)
+        .values({
+          reportId,
+          sourceSuggestionId: parsed.data.sourceSuggestionId ?? null,
+          sourceNoteRowId: parsed.data.sourceNoteRowId ?? null,
+          targetNoteRowId: parsed.data.targetNoteRowId,
+          sourceLabel: parsed.data.sourceLabel ?? null,
+          targetLabel: parsed.data.targetLabel ?? null,
+          amount: parsed.data.amount,
+          effectType: parsed.data.effectType,
+          reason: parsed.data.reason ?? null,
+          status: "active",
+          createdByProfileId: profileId,
+        })
+        .returning();
 
-    await logReclassificationAudit({
-      reportId,
-      eventType: "reclassification_created",
-      actorProfileId: profileId,
-      reclassificationId: inserted.id,
-      suggestionId: parsed.data.sourceSuggestionId ?? null,
-      payload: {
-        sourceNoteRowId: inserted.sourceNoteRowId,
-        targetNoteRowId: inserted.targetNoteRowId,
-        amount: inserted.amount,
-        effectType: inserted.effectType,
-        reason: inserted.reason,
-      },
+      await logReclassificationAudit({
+        reportId,
+        eventType: "reclassification_created",
+        actorProfileId: profileId,
+        reclassificationId: row.id,
+        suggestionId: parsed.data.sourceSuggestionId ?? null,
+        executor: tx,
+        payload: {
+          sourceNoteRowId: row.sourceNoteRowId,
+          targetNoteRowId: row.targetNoteRowId,
+          amount: row.amount,
+          effectType: row.effectType,
+          reason: row.reason,
+        },
+      });
+
+      return row;
     });
 
     res.status(201).json(inserted);
@@ -838,25 +855,33 @@ router.post(
       return;
     }
 
-    const [updated] = await db
-      .update(annualReportReclassificationsTable)
-      .set({
-        status: "undone",
-        undoneAt: new Date(),
-        undoneByProfileId: profileId,
-        updatedAt: new Date(),
-      })
-      .where(eq(annualReportReclassificationsTable.id, reclassId))
-      .returning();
+    // Update the reclassification and write the audit row in one
+    // transaction so the trail is committed atomically with the
+    // status flip — a failed audit insert rolls back the undo.
+    const updated = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(annualReportReclassificationsTable)
+        .set({
+          status: "undone",
+          undoneAt: new Date(),
+          undoneByProfileId: profileId,
+          updatedAt: new Date(),
+        })
+        .where(eq(annualReportReclassificationsTable.id, reclassId))
+        .returning();
 
-    await logReclassificationAudit({
-      reportId,
-      eventType: "reclassification_undone",
-      actorProfileId: profileId,
-      reclassificationId: reclassId,
-      payload: {
-        previousAmount: existing.amount,
-      },
+      await logReclassificationAudit({
+        reportId,
+        eventType: "reclassification_undone",
+        actorProfileId: profileId,
+        reclassificationId: reclassId,
+        executor: tx,
+        payload: {
+          previousAmount: existing.amount,
+        },
+      });
+
+      return row;
     });
 
     res.json(updated);
