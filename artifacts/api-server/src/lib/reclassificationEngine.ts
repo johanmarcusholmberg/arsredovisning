@@ -59,6 +59,30 @@ export interface DetectionResult {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * For an opposite-sign pair, decide which row is the SOURCE (value
+ * drained) and which is the TARGET (value topped up) so the netting
+ * actually reduces both balances toward zero.
+ *
+ *   presented = mapped + inflow − outflow
+ *
+ * If we want a positive-balance row and a negative-balance row to both
+ * approach zero, the positive one must lose value (outflow → source)
+ * and the negative one must gain value (inflow → target). Picking the
+ * wrong direction *amplifies* the imbalance, which silently turns
+ * "smart netting" into "smart breaking". This helper is therefore the
+ * single decision point for direction across every rule below.
+ */
+function chooseDirection<T>(
+  a: { row: T; amount: number },
+  b: { row: T; amount: number },
+): { source: { row: T; amount: number }; target: { row: T; amount: number } } {
+  // Positive-side drains; negative-side fills.
+  return a.amount >= 0
+    ? { source: a, target: b }
+    : { source: b, target: a };
+}
+
 function toNum(v: string | null | undefined): number | null {
   if (v === null || v === undefined || v === "") return null;
   const n = Number(v);
@@ -191,15 +215,23 @@ export async function detectReclassificationCandidates(
         if (av === null || bv === null) continue;
         if (Math.sign(av) === Math.sign(bv)) continue;
         if (av === 0 || bv === 0) continue;
+        const { source, target } = chooseDirection(
+          { row: a, amount: av },
+          { row: b, amount: bv },
+        );
         const netAmount = Math.min(Math.abs(av), Math.abs(bv));
-        const noteA = noteById.get(a.noteId);
-        const noteB = noteById.get(b.noteId);
+        const noteSrc = noteById.get(source.row.noteId);
+        const noteTgt = noteById.get(target.row.noteId);
         candidates.push({
           reportId,
-          sourceNoteRowId: a.id,
-          targetNoteRowId: b.id,
-          sourceLabel: noteA ? `${noteA.title}: ${a.label}` : a.label,
-          targetLabel: noteB ? `${noteB.title}: ${b.label}` : b.label,
+          sourceNoteRowId: source.row.id,
+          targetNoteRowId: target.row.id,
+          sourceLabel: noteSrc
+            ? `${noteSrc.title}: ${source.row.label}`
+            : source.row.label,
+          targetLabel: noteTgt
+            ? `${noteTgt.title}: ${target.row.label}`
+            : target.row.label,
           sourceAccountNumber: acct,
           targetAccountNumber: acct,
           suggestedAmount: fmtAmount(netAmount),
@@ -211,8 +243,10 @@ export async function detectReclassificationCandidates(
           detailJson: {
             rule: "opposite_signs_same_account",
             account: acct,
-            sourceAmount: av,
-            targetAmount: bv,
+            sourceAmount: source.amount,
+            targetAmount: target.amount,
+            directionRationale:
+              "Källan är raden med positivt saldo (dräneras), målet är raden med negativt saldo (fylls upp).",
           },
           effectType: "note_only",
         });
@@ -241,16 +275,24 @@ export async function detectReclassificationCandidates(
         Math.min(Math.abs(av), Math.abs(bv)) /
         Math.max(Math.abs(av), Math.abs(bv));
       if (ratio < 0.95) continue;
-      const noteA = noteById.get(a.noteId);
-      const noteB = noteById.get(b.noteId);
+      const { source, target } = chooseDirection(
+        { row: { ...a, _acct: acctA }, amount: av },
+        { row: { ...b, _acct: acctB }, amount: bv },
+      );
+      const noteSrc = noteById.get(source.row.noteId);
+      const noteTgt = noteById.get(target.row.noteId);
       candidates.push({
         reportId,
-        sourceNoteRowId: a.id,
-        targetNoteRowId: b.id,
-        sourceLabel: noteA ? `${noteA.title}: ${a.label}` : a.label,
-        targetLabel: noteB ? `${noteB.title}: ${b.label}` : b.label,
-        sourceAccountNumber: acctA,
-        targetAccountNumber: acctB,
+        sourceNoteRowId: source.row.id,
+        targetNoteRowId: target.row.id,
+        sourceLabel: noteSrc
+          ? `${noteSrc.title}: ${source.row.label}`
+          : source.row.label,
+        targetLabel: noteTgt
+          ? `${noteTgt.title}: ${target.row.label}`
+          : target.row.label,
+        sourceAccountNumber: source.row._acct,
+        targetAccountNumber: target.row._acct,
         suggestedAmount: fmtAmount(Math.min(Math.abs(av), Math.abs(bv))),
         confidenceLevel: "medium",
         ruleKey: "opposite_signs_offset_pair",
@@ -259,11 +301,13 @@ export async function detectReclassificationCandidates(
           `och har här motsatta tecken med nästan samma belopp. Överväg nettning.`,
         detailJson: {
           rule: "opposite_signs_offset_pair",
-          accountSource: acctA,
-          accountTarget: acctB,
-          sourceAmount: av,
-          targetAmount: bv,
+          accountSource: source.row._acct,
+          accountTarget: target.row._acct,
+          sourceAmount: source.amount,
+          targetAmount: target.amount,
           similarityRatio: ratio,
+          directionRationale:
+            "Källan är raden med positivt saldo (dräneras), målet är raden med negativt saldo (fylls upp).",
         },
         effectType: "note_only",
       });
@@ -283,16 +327,24 @@ export async function detectReclassificationCandidates(
       if (av === null || bv === null) continue;
       if (Math.sign(av) === Math.sign(bv)) continue;
       if (Math.abs(Math.abs(av) - Math.abs(bv)) > 1) continue;
-      const noteA = noteById.get(a.noteId);
-      const noteB = noteById.get(b.noteId);
+      const { source, target } = chooseDirection(
+        { row: a, amount: av },
+        { row: b, amount: bv },
+      );
+      const noteSrc = noteById.get(source.row.noteId);
+      const noteTgt = noteById.get(target.row.noteId);
       candidates.push({
         reportId,
-        sourceNoteRowId: a.id,
-        targetNoteRowId: b.id,
-        sourceLabel: noteA ? `${noteA.title}: ${a.label}` : a.label,
-        targetLabel: noteB ? `${noteB.title}: ${b.label}` : b.label,
-        sourceAccountNumber: firstAccountNumber(a),
-        targetAccountNumber: firstAccountNumber(b),
+        sourceNoteRowId: source.row.id,
+        targetNoteRowId: target.row.id,
+        sourceLabel: noteSrc
+          ? `${noteSrc.title}: ${source.row.label}`
+          : source.row.label,
+        targetLabel: noteTgt
+          ? `${noteTgt.title}: ${target.row.label}`
+          : target.row.label,
+        sourceAccountNumber: firstAccountNumber(source.row),
+        targetAccountNumber: firstAccountNumber(target.row),
         suggestedAmount: fmtAmount(Math.min(Math.abs(av), Math.abs(bv))),
         confidenceLevel: "medium",
         ruleKey: "similar_amount_intercompany",
@@ -301,8 +353,10 @@ export async function detectReclassificationCandidates(
           `Det tyder på en spegelvänd intern fordran/skuld som kan behöva nettas.`,
         detailJson: {
           rule: "similar_amount_intercompany",
-          sourceAmount: av,
-          targetAmount: bv,
+          sourceAmount: source.amount,
+          targetAmount: target.amount,
+          directionRationale:
+            "Källan är raden med positivt saldo (dräneras), målet är raden med negativt saldo (fylls upp).",
         },
         effectType: "note_only",
       });
@@ -320,16 +374,24 @@ export async function detectReclassificationCandidates(
       const bv = toNum(b.currentYearAmount);
       if (av === null || bv === null || av === 0 || bv === 0) continue;
       if (Math.sign(av) === Math.sign(bv)) continue;
-      const noteA = noteById.get(a.noteId);
-      const noteB = noteById.get(b.noteId);
+      const { source, target } = chooseDirection(
+        { row: a, amount: av },
+        { row: b, amount: bv },
+      );
+      const noteSrc = noteById.get(source.row.noteId);
+      const noteTgt = noteById.get(target.row.noteId);
       candidates.push({
         reportId,
-        sourceNoteRowId: a.id,
-        targetNoteRowId: b.id,
-        sourceLabel: noteA ? `${noteA.title}: ${a.label}` : a.label,
-        targetLabel: noteB ? `${noteB.title}: ${b.label}` : b.label,
-        sourceAccountNumber: firstAccountNumber(a),
-        targetAccountNumber: firstAccountNumber(b),
+        sourceNoteRowId: source.row.id,
+        targetNoteRowId: target.row.id,
+        sourceLabel: noteSrc
+          ? `${noteSrc.title}: ${source.row.label}`
+          : source.row.label,
+        targetLabel: noteTgt
+          ? `${noteTgt.title}: ${target.row.label}`
+          : target.row.label,
+        sourceAccountNumber: firstAccountNumber(source.row),
+        targetAccountNumber: firstAccountNumber(target.row),
         suggestedAmount: fmtAmount(Math.min(Math.abs(av), Math.abs(bv))),
         confidenceLevel: "low",
         ruleKey: "vat_inout_same_period",
@@ -338,8 +400,10 @@ export async function detectReclassificationCandidates(
           `Kontrollera om de bör nettas till en momsfordran eller momsskuld.`,
         detailJson: {
           rule: "vat_inout_same_period",
-          sourceAmount: av,
-          targetAmount: bv,
+          sourceAmount: source.amount,
+          targetAmount: target.amount,
+          directionRationale:
+            "Källan är raden med positivt saldo (dräneras), målet är raden med negativt saldo (fylls upp).",
         },
         effectType: "note_only",
       });

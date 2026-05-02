@@ -46,6 +46,11 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   ArrowLeft,
   Sparkles,
   Loader2,
@@ -58,6 +63,7 @@ import {
   Info,
   History,
   ArrowRight,
+  ChevronDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -110,6 +116,143 @@ function formatDate(value: string | null | undefined): string {
   } catch {
     return value;
   }
+}
+
+/**
+ * Expert decision-support panel under each suggestion. Surfaces:
+ *   - mapped → presented (before / after) for both source and target rows,
+ *   - involved BAS account numbers,
+ *   - debit/credit hint derived from the sign of the source/target amounts,
+ *   - the rule's full detail JSON (for accountants who want to inspect
+ *     similarity ratios, account ranges, etc.).
+ *
+ * The "after" amount applies the suggested netting: source loses the
+ * suggested amount (drained toward zero), target gains it (filled toward
+ * zero). This is the same direction the server uses.
+ */
+function ExpertDetailPanel({
+  suggestion,
+}: {
+  suggestion: ReclassificationSuggestion;
+}) {
+  const [open, setOpen] = useState(false);
+  const detail = (suggestion.detailJson ?? {}) as Record<string, unknown>;
+  const sourceAmount =
+    typeof detail.sourceAmount === "number"
+      ? detail.sourceAmount
+      : Number(detail.sourceAmount ?? NaN);
+  const targetAmount =
+    typeof detail.targetAmount === "number"
+      ? detail.targetAmount
+      : Number(detail.targetAmount ?? NaN);
+  const delta = Number(suggestion.suggestedAmount);
+
+  const sourceBefore = Number.isFinite(sourceAmount) ? sourceAmount : null;
+  const targetBefore = Number.isFinite(targetAmount) ? targetAmount : null;
+  const sourceAfter =
+    sourceBefore !== null && Number.isFinite(delta)
+      ? sourceBefore - delta
+      : null;
+  const targetAfter =
+    targetBefore !== null && Number.isFinite(delta)
+      ? targetBefore + delta
+      : null;
+
+  const sourceDc =
+    sourceBefore !== null
+      ? sourceBefore >= 0
+        ? "Debet (fordran/tillgång)"
+        : "Kredit (skuld)"
+      : "—";
+  const targetDc =
+    targetBefore !== null
+      ? targetBefore >= 0
+        ? "Debet (fordran/tillgång)"
+        : "Kredit (skuld)"
+      : "—";
+  const directionRationale =
+    typeof detail.directionRationale === "string"
+      ? detail.directionRationale
+      : "Källan dräneras med beloppet, målet fylls upp.";
+
+  return (
+    <div className="mt-3 rounded-md border bg-muted/30">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 text-sm">
+        <div>
+          <div className="text-xs uppercase text-muted-foreground mb-1">
+            Källrad (dräneras)
+          </div>
+          <div className="font-medium">{suggestion.sourceLabel ?? "—"}</div>
+          <div className="text-xs text-muted-foreground">
+            Konto {suggestion.sourceAccountNumber ?? "—"} · {sourceDc}
+          </div>
+          <div className="font-mono mt-1">
+            {formatAmount(
+              sourceBefore !== null ? sourceBefore.toFixed(2) : null,
+            )}
+            <ArrowRight className="inline h-3 w-3 mx-1" />
+            <span data-testid={`source-after-${suggestion.id}`}>
+              {formatAmount(
+                sourceAfter !== null ? sourceAfter.toFixed(2) : null,
+              )}
+            </span>
+          </div>
+        </div>
+        <div>
+          <div className="text-xs uppercase text-muted-foreground mb-1">
+            Målrad (fylls upp)
+          </div>
+          <div className="font-medium">{suggestion.targetLabel ?? "—"}</div>
+          <div className="text-xs text-muted-foreground">
+            Konto {suggestion.targetAccountNumber ?? "—"} · {targetDc}
+          </div>
+          <div className="font-mono mt-1">
+            {formatAmount(
+              targetBefore !== null ? targetBefore.toFixed(2) : null,
+            )}
+            <ArrowRight className="inline h-3 w-3 mx-1" />
+            <span data-testid={`target-after-${suggestion.id}`}>
+              {formatAmount(
+                targetAfter !== null ? targetAfter.toFixed(2) : null,
+              )}
+            </span>
+          </div>
+        </div>
+      </div>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground border-t"
+          >
+            <span>Expertdetaljer (BAS-konton, debet/kredit, regelmotiv)</span>
+            <ChevronDown
+              className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="px-3 pb-3 text-xs space-y-2">
+          <div>
+            <span className="text-muted-foreground">Riktningsval: </span>
+            {directionRationale}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <span className="text-muted-foreground">Regel: </span>
+              <code>{suggestion.ruleKey}</code>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Effekt: </span>
+              {suggestion.effectType}
+            </div>
+          </div>
+          <pre className="bg-background border rounded p-2 overflow-x-auto whitespace-pre-wrap break-all text-[11px]">
+            {JSON.stringify(detail, null, 2)}
+          </pre>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
 }
 
 export function ReclassificationReview() {
@@ -495,6 +638,9 @@ export function ReclassificationReview() {
                     </div>
                   </div>
                 </CardHeader>
+                <CardContent className="pt-0">
+                  <ExpertDetailPanel suggestion={s} />
+                </CardContent>
                 <CardContent className="flex flex-wrap items-center gap-2 pt-0">
                   <Button
                     size="sm"
