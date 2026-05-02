@@ -288,14 +288,4 @@ router.get("/reports/:reportId/summary", async (req, res): Promise<void> => {
   );
 });
 
-// ─── Snapshot stubs (Phase 7) ────────────────────────────────────────────────
-
-router.get("/reports/:reportId/snapshots", (_req, res): void => {
-  res.status(501).json({ message: "Snapshot listing coming in a later phase" });
-});
-
-router.post("/reports/:reportId/snapshots", (_req, res): void => {
-  res.status(501).json({ message: "Snapshot creation coming in a later phase" });
-});
-
 export default router;
