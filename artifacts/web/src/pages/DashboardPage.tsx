@@ -95,12 +95,12 @@ export default function DashboardPage() {
             </div>
 
             <div className="mt-5">
-              <LockedFeatureTooltip>
-                <Button variant="outline" className="w-full gap-2 pointer-events-none">
+              <Link href="/workspace">
+                <Button className="w-full gap-2 pointer-events-auto">
                   {t("dashboard.real_card.cta")}
                   <ArrowRight className="size-4" />
                 </Button>
-              </LockedFeatureTooltip>
+              </Link>
               <Link href="/pricing">
                 <Button size="sm" variant="ghost" className="w-full mt-2 text-primary">
                   {t("dashboard.real_card.pricing_link")} <ArrowRight className="size-3 ml-1" />

@@ -26,6 +26,9 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <a href="#main-content" className="skip-link">
+        Hoppa till huvudinnehåll
+      </a>
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-14 items-center justify-between">
@@ -122,7 +125,7 @@ export function Layout({ children }: LayoutProps) {
         )}
       </header>
 
-      <main className="flex-1">{children}</main>
+      <main id="main-content" className="flex-1">{children}</main>
 
       <footer className="border-t border-border bg-muted/30 py-6">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

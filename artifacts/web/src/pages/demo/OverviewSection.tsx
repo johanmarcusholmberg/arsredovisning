@@ -1,7 +1,8 @@
 import { demoData } from "@/data/demoData";
 import { StatusBadge } from "@/components/badges/StatusBadge";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Building2, Calendar, FileCheck } from "lucide-react";
+import { Building2, Calendar, FileCheck, ArrowRight } from "lucide-react";
+import { WorkflowProgress, WorkflowStep } from "@/components/WorkflowProgress";
 
 type StatusType = "draft" | "done" | "warning" | "error" | "in_progress";
 
@@ -30,6 +31,18 @@ export function OverviewSection() {
     notes: overviewStatus.notes as StatusType,
     validation: getValidationStatus(overviewStatus.validation),
   };
+
+  const workflowSteps: WorkflowStep[] = [
+    { id: "1", label: t("landing.steps.1"), state: "completed" },
+    { id: "2", label: t("landing.steps.2"), state: "completed" },
+    { id: "3", label: t("landing.steps.3"), state: "completed" },
+    { id: "4", label: t("landing.steps.4"), state: "current" },
+    { id: "5", label: t("landing.steps.5"), state: "not-started" },
+    { id: "6", label: t("landing.steps.6"), state: "not-started" },
+    { id: "7", label: t("landing.steps.7"), state: "not-started" },
+    { id: "8", label: t("landing.steps.8"), state: "not-started" },
+    { id: "9", label: t("landing.steps.9"), state: "not-started" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -88,6 +101,11 @@ export function OverviewSection() {
           </p>
         </div>
       )}
+
+      <div className="rounded-xl border border-border bg-card p-5 mt-6">
+        <h2 className="text-base font-semibold text-foreground mb-6">Process</h2>
+        <WorkflowProgress steps={workflowSteps} />
+      </div>
     </div>
   );
 }

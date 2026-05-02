@@ -56,15 +56,16 @@ pnpm workspace monorepo using TypeScript. A web application for preparing Swedis
 | Route | Component | Notes |
 |-------|-----------|-------|
 | `/` | `LandingPage` | Hero, 8-step workflow, trust section |
-| `/login` | `LoginPage` | Auth pages |
-| `/signup` | `SignupPage` | Auth pages |
+| `/login` | `LoginPage` | Auth pages (Supabase stub) |
+| `/signup` | `SignupPage` | Auth pages (Supabase stub) |
 | `/dashboard` | `DashboardPage` | Demo card + locked real project card |
-| `/demo/:section?` | `DemoWorkspacePage` | 8 sections, read-only, Nordic Design AB data |
+| `/demo/:section?` | `DemoWorkspacePage` | 8 sections, read-only, Nordic Design AB demo data + guidance panel |
+| `/workspace/:section?` | `PaidWorkspacePage` | Paid workspace shell with payment banner + sidebar |
 | `/pricing` | `PricingPage` | 999 kr per report + coming soon subscription |
 
 ## Demo Workspace Sections
 
-1. `overview` — Company info + project status badges
+1. `overview` — Company info + project status badges + 9-step WorkflowProgress
 2. `import` — SIE file import summary (locked upload)
 3. `mapping` — Account mapping table with confidence badges
 4. `statements` — Resultaträkning + Balansräkning with note references
@@ -76,15 +77,25 @@ pnpm workspace monorepo using TypeScript. A web application for preparing Swedis
 ## Key Source Files
 
 - `artifacts/web/src/App.tsx` — routing setup with LanguageProvider, Router, TooltipProvider
-- `artifacts/web/src/contexts/LanguageContext.tsx` — SV/EN toggle, `useLanguage()` hook
+- `artifacts/web/src/contexts/LanguageContext.tsx` — SV/EN toggle persisted to localStorage
 - `artifacts/web/src/i18n/strings.ts` — all UI strings in Swedish and English
 - `artifacts/web/src/data/demoData.ts` — Nordic Design AB 2024 demo data (K3)
-- `artifacts/web/src/hooks/useAuth.ts` — wired to Supabase Auth
-- `artifacts/web/src/components/Layout.tsx` — nav header + footer, language toggle
-- `artifacts/web/src/components/badges/` — 10 reusable UX components (DemoDataBadge, LockedFeatureTooltip, etc.)
+- `artifacts/web/src/hooks/useAuth.ts` — stub (wired to Supabase Auth in Phase 2)
+- `artifacts/web/src/components/Layout.tsx` — nav header + footer, language toggle, skip link
+- `artifacts/web/src/components/WorkflowProgress.tsx` — 9-step workflow tracker (not-started/current/completed/needs-review/blocked)
+- `artifacts/web/src/components/GuidancePanel.tsx` — collapsible right-side contextual help panel
+- `artifacts/web/src/components/badges/` — 10 reusable UX badge components
+- `artifacts/web/src/components/cards/` — 11 card components (SummaryCard, StatusCard, ActionCard, LockedFeatureCard, DemoDataCard, WarningCard, ValidationIssueCard, FinancialStatementSummaryCard, NoteCard, CommentReviewCard, ExportReadinessCard)
+- `artifacts/web/src/components/tables/` — 6 table components (AccountMappingTable, FinancialStatementTable, NotesTable, ValidationTable, AuditLogTable, UsersRolesTable)
+- `artifacts/web/src/components/guidance/` — 6 guidance components (InlineHelp, BASLogicExpander, AIConfirmationBanner, ReviewedBanner, DemoGuidanceBanner, LockedGuidanceBanner)
+- `artifacts/web/src/components/states/` — 6 state components (EmptyState, LoadingState, ErrorState, UploadProgressState, ParseSpinnerState, GenerationSkeletonState)
 - `artifacts/api-server/src/routes/projects.ts` — **stub** — all return 501 (Phase 2)
 - `lib/db/src/schema/` — Drizzle table definitions (not pushed to DB yet)
 - `lib/api-spec/openapi.yaml` — OpenAPI 3.1 spec (source of truth for codegen)
+
+## Artifact Path Note
+
+The `artifacts/arsredovisningar` artifact (an older/parallel implementation) has been moved to `/arsredovisningar/` to avoid proxy routing conflict with the canonical `artifacts/web` at `/`.
 
 ## Documentation
 

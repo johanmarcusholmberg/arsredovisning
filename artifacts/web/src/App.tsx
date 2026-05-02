@@ -11,6 +11,7 @@ import SignupPage from "@/pages/SignupPage";
 import DashboardPage from "@/pages/DashboardPage";
 import DemoWorkspacePage from "@/pages/DemoWorkspacePage";
 import PricingPage from "@/pages/PricingPage";
+import PaidWorkspacePage from "@/pages/PaidWorkspacePage";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/signup" component={SignupPage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/demo/:section?" component={DemoWorkspacePage} />
+        <Route path="/workspace/:section?" component={PaidWorkspacePage} />
         <Route path="/pricing" component={PricingPage} />
         <Route component={NotFound} />
       </Switch>
