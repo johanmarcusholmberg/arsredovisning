@@ -5,7 +5,6 @@ import {
   reportsTable,
   companiesTable,
   reportNotesTable,
-  noteStatementReferencesTable,
 } from "@workspace/db";
 import { logAuditEvent } from "../lib/auditLog.js";
 import { recalculateNoteNumbers } from "../lib/noteNumberingService.js";
@@ -450,9 +449,5 @@ router.post(
     });
   },
 );
-
-// Suppress unused-import lint warning for noteStatementReferencesTable
-// (kept available for future synchronous reference inspection).
-void noteStatementReferencesTable;
 
 export default router;
