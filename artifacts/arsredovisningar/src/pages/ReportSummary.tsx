@@ -42,8 +42,10 @@ export function ReportSummary() {
           <h1 className="text-3xl font-bold tracking-tight">Report Summary</h1>
           <p className="text-muted-foreground mt-1 text-lg">{summary.companyName}</p>
         </div>
-        <Button className="shadow-sm">
-          <FileDown className="mr-2 h-4 w-4" /> Export Report
+        <Button className="shadow-sm" asChild>
+          <Link href={`/reports/${reportId}/preview`}>
+            <FileDown className="mr-2 h-4 w-4" /> Export Report
+          </Link>
         </Button>
       </div>
 

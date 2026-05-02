@@ -293,9 +293,13 @@ export function ReportWorkspace() {
                 <TrendingUp className="mr-2 h-4 w-4" />
                 Finansiella rapporter
               </Button>
-              <Button variant="outline" className="w-full justify-start" disabled>
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => navigate(`/reports/${reportId}/preview`)}
+              >
                 <FileText className="mr-2 h-4 w-4" />
-                Ladda ner utkast PDF
+                Förhandsvisa & exportera
               </Button>
               <Button variant="outline" className="w-full justify-start" disabled>
                 <PenTool className="mr-2 h-4 w-4" />
