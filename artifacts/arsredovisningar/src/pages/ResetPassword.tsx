@@ -125,7 +125,7 @@ export function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 relative">
+    <div className="auth-brand min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 relative">
       {/* Plain anchor (not wouter Link): the marketing homepage lives in a
           different artifact at "/", so we need a real navigation. */}
       <a

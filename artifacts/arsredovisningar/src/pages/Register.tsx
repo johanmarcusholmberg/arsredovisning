@@ -58,7 +58,7 @@ export function Register() {
 
   if (success) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 relative">
+      <div className="auth-brand min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 relative">
         <BackToHomepageLink />
         <div className="w-full max-w-md space-y-6 animate-in zoom-in-95 duration-500 text-center">
           <div className="flex flex-col items-center gap-4">
@@ -80,7 +80,7 @@ export function Register() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 relative">
+    <div className="auth-brand min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 relative">
       <BackToHomepageLink />
       <div className="w-full max-w-md space-y-6 animate-in zoom-in-95 duration-500">
         <div className="flex flex-col items-center text-center space-y-2">
