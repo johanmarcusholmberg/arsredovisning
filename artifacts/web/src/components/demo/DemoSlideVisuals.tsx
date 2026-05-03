@@ -662,7 +662,11 @@ function FlipReport({
 
       {/* Page + side arrows row (arrows only for lg) */}
       <div
-        className={isLg ? "flex items-center justify-center gap-2 sm:gap-4 w-full" : "w-full"}
+        className={
+          isLg
+            ? "flex items-center justify-center gap-2 sm:gap-4 w-full"
+            : "w-full flex justify-center"
+        }
       >
         {isLg && sideArrowBtn("prev")}
 
