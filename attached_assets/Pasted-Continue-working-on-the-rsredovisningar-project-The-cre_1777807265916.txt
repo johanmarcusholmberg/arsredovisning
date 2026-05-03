@@ -1,0 +1,95 @@
+Continue working on the Årsredovisningar project.
+
+The credits-based user-facing model has now been replaced with a project-license / entitlement-based dashboard and upgrade page.
+
+Before adding Stripe Checkout, perform an access-control audit and fix any gaps.
+
+Goal:
+Make sure unpaid users cannot access, create, modify, import, validate, collaborate on, or export real annual-report project data by navigating directly to routes, manipulating frontend state, or calling backend endpoints.
+
+Important:
+Do not implement Stripe Checkout yet.
+Do not change the product model back to credits.
+Keep the user-facing model as:
+- demo account for unpaid users
+- project license for paid users
+- one purchase = one company + one financial year + one annual report
+
+Audit and verify the following:
+
+1. Frontend route protection
+Check all real app routes and make sure unpaid users are redirected to demo/account/upgrade, not allowed into real workspace screens.
+
+Protected examples:
+- dashboard actions that create projects
+- company creation
+- project creation
+- workspace
+- import
+- account mapping
+- financial statements
+- notes
+- cash-flow statement
+- validation
+- export
+- collaboration
+
+2. Backend endpoint protection
+Check all backend/API/server actions that modify or expose real project data.
+
+Every protected endpoint should verify:
+- user is authenticated
+- user owns or is allowed to access the resource
+- user has active entitlement/project license for the relevant company/project/financial year
+
+3. Project ID tampering
+Make sure a paid user for Project A cannot access Project B by changing the projectId/companyId/financialYear in the URL or API request.
+
+4. Demo separation
+Make sure demo data is not stored as real customer project data.
+Demo routes should use seeded/sample data only, or demo-only tables if necessary.
+Demo activity should not create real companies, real projects, real imports, real mappings, real reports, or real exports.
+
+5. User-facing terminology
+Search the normal user-facing UI for:
+- “Credits”
+- “credit”
+- “availableProjectCredits”
+- “tokens”
+
+Remove or hide these from normal user UI.
+It is acceptable if credits remain as internal/admin implementation details, but not as the customer-facing access model.
+
+6. Admin/manual entitlement safety
+Admin tools may grant manual test access, but they must:
+- be admin-only
+- not be accessible by normal users
+- not allow users to grant themselves access
+- preferably grant access scoped to a project/company/year, not unlimited global access
+
+7. Locked-state UX
+If an unpaid user tries to access a protected area, show a clear message:
+- “För att skapa en riktig årsredovisning behöver du låsa upp ett projekt.”
+- “Ett köp gäller för ett bolag och ett räkenskapsår.”
+- CTA: “Lås upp årsredovisning”
+- Secondary CTA: “Visa demo”
+
+8. Acceptance criteria
+The audit is complete when:
+- unpaid users cannot access real workspace routes by direct URL
+- unpaid users cannot create companies/projects
+- unpaid users cannot upload/import accounting files
+- unpaid users cannot save mappings, notes, cash-flow, statements, or validations
+- unpaid users cannot export clean PDF/Word
+- users cannot access another user’s project by changing IDs
+- demo data remains separate from real project data
+- normal user UI no longer exposes credits terminology
+- entitlement checks remain backend-enforced
+- no Stripe Checkout is implemented in this step
+
+After completing the audit, provide a short report listing:
+- routes checked
+- endpoints checked
+- issues found
+- fixes made
+- any remaining risks or follow-up tasks

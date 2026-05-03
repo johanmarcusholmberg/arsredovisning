@@ -24,7 +24,8 @@ import {
   UpdateCompanyParams,
 } from "@workspace/api-zod";
 import { logAuditEvent } from "../lib/auditLog.js";
-import { canCreateRealProject } from "../helpers/permissions.js";
+import { canCreateRealProject, hasPaidProjectEntitlement } from "../helpers/permissions.js";
+import { annualReportProjectsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -178,6 +179,39 @@ router.patch("/companies/:companyId", async (req, res): Promise<void> => {
   const profileId = req.profile?.id;
   if (!profileId) {
     res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  // Entitlement gate: editing a real company is a paid action. The owner
+  // must either be an admin, hold an unredeemed project credit, or own at
+  // least one project on this company that has an active paid entitlement.
+  // Without this check, a user whose entitlements were revoked could still
+  // mutate company metadata (name, fiscal year, address) belonging to a
+  // project they no longer have a paid licence for.
+  const projects = await db
+    .select({ id: annualReportProjectsTable.id })
+    .from(annualReportProjectsTable)
+    .where(
+      and(
+        eq(annualReportProjectsTable.companyId, req.params.companyId),
+        eq(annualReportProjectsTable.createdByProfileId, profileId),
+      ),
+    );
+  let allowed = await canCreateRealProject(profileId);
+  if (!allowed) {
+    for (const p of projects) {
+      if (await hasPaidProjectEntitlement(p.id)) {
+        allowed = true;
+        break;
+      }
+    }
+  }
+  if (!allowed) {
+    res.status(402).json({
+      error: "payment_required",
+      message:
+        "En aktiv projektlicens krävs för att ändra företagsuppgifter.",
+    });
     return;
   }
 
