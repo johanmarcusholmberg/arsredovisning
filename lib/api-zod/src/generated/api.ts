@@ -2124,6 +2124,138 @@ export const SaveMappingOverrideResponse = zod.object({
 });
 
 /**
+ * Returns a `MappingAssistantSuggestion` with the current row, suggested
+row, confidence, severity, plain-Swedish reason/explanation, recommended
+action, alternative rows and an expandable "expert" section.
+
+The response shape is stable; an external AI provider may later be
+wired into this endpoint without changing the client.
+
+ * @summary Get a structured rule-based assistant suggestion for a single account mapping
+ */
+export const GetMappingAssistantSuggestionParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+  mappingId: zod.coerce.string().uuid(),
+});
+
+export const GetMappingAssistantSuggestionResponse = zod
+  .object({
+    accountId: zod.string().uuid(),
+    accountNumber: zod.string(),
+    accountName: zod.string().nullable(),
+    currentRowId: zod.string().nullable(),
+    currentRowLabel: zod.string().nullable(),
+    suggestedRowId: zod.string().nullable(),
+    suggestedRowLabel: zod.string().nullable(),
+    confidence: zod.enum(["low", "medium", "high"]),
+    severity: zod.enum(["info", "warning", "blocking"]),
+    reason: zod.string().describe("One-sentence Swedish reason headline."),
+    explanation: zod
+      .string()
+      .describe("Plain-Swedish explanation safe to show to non-experts."),
+    recommendedAction: zod.enum([
+      "keep",
+      "remap",
+      "net",
+      "review",
+      "manual_adjustment",
+    ]),
+    alternatives: zod.array(
+      zod.object({
+        reportLine: zod.string(),
+        reportLineLabel: zod.string(),
+        reason: zod.string(),
+      }),
+    ),
+    isHighRisk: zod
+      .boolean()
+      .describe(
+        "Surfaces in validationEngine — high-risk findings produce\nunresolved warnings that the user must review or comment on.\n",
+      ),
+    source: zod.enum(["rules", "ai"]),
+    expert: zod.object({
+      basRange: zod.string().nullable(),
+      basGroup: zod.string().nullable(),
+      inferredSign: zod.enum(["debit", "credit", "either"]),
+      rulePriority: zod.number().nullable(),
+      expectedReportLine: zod.string().nullable(),
+      notes: zod.array(zod.string()),
+    }),
+  })
+  .describe(
+    "Structured per-account assistant suggestion. Stable shape: a future\nexternal AI provider populates the same fields without breaking\nclients.\n",
+  );
+
+/**
+ * Returns suggestions only for mapping rows where the assistant has
+something meaningful to surface (severity ≠ info or recommendedAction
+≠ keep). Used to badge accounts on the mapping page and to feed the
+validation engine with high-risk classification findings.
+
+ * @summary Scan all account mappings and return rows that need attention
+ */
+export const ScanMappingAssistantParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+});
+
+export const ScanMappingAssistantResponse = zod.object({
+  total: zod
+    .number()
+    .describe("Total number of mapping rows in the active confirmed batch."),
+  highRiskCount: zod.number(),
+  warningCount: zod.number(),
+  suggestions: zod.array(
+    zod
+      .object({
+        accountId: zod.string().uuid(),
+        accountNumber: zod.string(),
+        accountName: zod.string().nullable(),
+        currentRowId: zod.string().nullable(),
+        currentRowLabel: zod.string().nullable(),
+        suggestedRowId: zod.string().nullable(),
+        suggestedRowLabel: zod.string().nullable(),
+        confidence: zod.enum(["low", "medium", "high"]),
+        severity: zod.enum(["info", "warning", "blocking"]),
+        reason: zod.string().describe("One-sentence Swedish reason headline."),
+        explanation: zod
+          .string()
+          .describe("Plain-Swedish explanation safe to show to non-experts."),
+        recommendedAction: zod.enum([
+          "keep",
+          "remap",
+          "net",
+          "review",
+          "manual_adjustment",
+        ]),
+        alternatives: zod.array(
+          zod.object({
+            reportLine: zod.string(),
+            reportLineLabel: zod.string(),
+            reason: zod.string(),
+          }),
+        ),
+        isHighRisk: zod
+          .boolean()
+          .describe(
+            "Surfaces in validationEngine — high-risk findings produce\nunresolved warnings that the user must review or comment on.\n",
+          ),
+        source: zod.enum(["rules", "ai"]),
+        expert: zod.object({
+          basRange: zod.string().nullable(),
+          basGroup: zod.string().nullable(),
+          inferredSign: zod.enum(["debit", "credit", "either"]),
+          rulePriority: zod.number().nullable(),
+          expectedReportLine: zod.string().nullable(),
+          notes: zod.array(zod.string()),
+        }),
+      })
+      .describe(
+        "Structured per-account assistant suggestion. Stable shape: a future\nexternal AI provider populates the same fields without breaking\nclients.\n",
+      ),
+  ),
+});
+
+/**
  * @summary List reusable mapping templates for the authenticated user
  */
 export const ListMappingTemplatesParams = zod.object({

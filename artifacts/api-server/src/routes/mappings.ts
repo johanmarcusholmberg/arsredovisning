@@ -20,10 +20,71 @@ import {
   mappingTemplatesTable,
   importBatchesTable,
 } from "@workspace/db";
-import { canEditProject } from "../helpers/permissions.js";
+import { canEditProject, canViewProject } from "../helpers/permissions.js";
 import { logAuditEvent } from "../helpers/auditLog.js";
+import {
+  getAssistantSuggestionForMapping,
+  scanMappingsForAssistance,
+} from "../lib/mappingAssistantService.js";
 
 const router: IRouter = Router();
+
+// ---------------------------------------------------------------------------
+// GET /api/projects/:projectId/mappings/:mappingId/assistant
+// Returns a structured rule-based suggestion for ONE mapping row.
+//
+// Read-only: gated on canViewProject so any project member (including
+// viewers and free/demo users) can SEE the suggestion. Applying the
+// suggestion goes through the override endpoint below, which requires
+// canEditProject — so demo users cannot mutate state.
+// ---------------------------------------------------------------------------
+router.get(
+  "/projects/:projectId/mappings/:mappingId/assistant",
+  async (req, res): Promise<void> => {
+    const { projectId, mappingId } = req.params;
+    const profileId = req.profile?.id;
+
+    if (!profileId) {
+      res.status(401).json({ error: "unauthorized", message: "Authentication required" });
+      return;
+    }
+    if (!(await canViewProject(profileId, projectId))) {
+      res.status(403).json({ error: "forbidden", message: "Åtkomst nekad." });
+      return;
+    }
+
+    const suggestion = await getAssistantSuggestionForMapping(projectId, mappingId);
+    if (!suggestion) {
+      res.status(404).json({ error: "not_found", message: "Kontomappning hittades inte." });
+      return;
+    }
+    res.json(suggestion);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/projects/:projectId/mappings/assistant/scan
+// Bulk scan — returns only rows that need attention. Read-only.
+// ---------------------------------------------------------------------------
+router.get(
+  "/projects/:projectId/mappings/assistant/scan",
+  async (req, res): Promise<void> => {
+    const { projectId } = req.params;
+    const profileId = req.profile?.id;
+
+    if (!profileId) {
+      res.status(401).json({ error: "unauthorized", message: "Authentication required" });
+      return;
+    }
+    if (!(await canViewProject(profileId, projectId))) {
+      res.status(403).json({ error: "forbidden", message: "Åtkomst nekad." });
+      return;
+    }
+
+    const result = await scanMappingsForAssistance(projectId);
+    res.json(result);
+  },
+);
 
 // ---------------------------------------------------------------------------
 // GET /api/projects/:projectId/mappings

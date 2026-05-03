@@ -463,7 +463,8 @@ export const strings = {
     "workspace.mapping.status.unmapped": "Omappad",
 
     // ── Footer ──────────────────────────────────────────────────────────────
-    "footer.tagline": "Årsredovisningar – snabbt, korrekt och med AI-stöd.",
+    "footer.tagline":
+      "Årsredovisningar – snabbt, korrekt och med smarta regler och AI-stöd. Resultatet ska alltid granskas av användaren.",
     "footer.disclaimer": "Årsredovisningar är ett digitalt stöd för att skapa årsredovisningar. Tjänsten kan hjälpa till med struktur, beräkningar, validering och dokumentgenerering, men ersätter inte professionell rådgivning. Användaren ansvarar alltid för att den slutliga årsredovisningen är korrekt, fullständig och uppfyller gällande lagar och regelverk.",
     "footer.demo_note": "Demoexempel och förhandsvisningar kan innehålla exempeldata och ska inte användas som färdig årsredovisning.",
     "footer.copyright": "© {year} Årsredovisningar. Alla rättigheter förbehållna.",
@@ -986,7 +987,8 @@ export const strings = {
     "workspace.mapping.status.unmapped": "Unmapped",
 
     // ── Footer ──────────────────────────────────────────────────────────────
-    "footer.tagline": "Årsredovisningar – fast, accurate, AI-assisted.",
+    "footer.tagline":
+      "Annual reports — fast, accurate, with smart rules and AI assistance. Always review the result before submitting.",
     "footer.disclaimer": "Årsredovisningar is a digital assistant for preparing annual reports. The service can help with structure, calculations, validation and document generation, but it does not replace professional advice. The user is always responsible for ensuring that the final annual report is accurate, complete and compliant with applicable laws and regulations.",
     "footer.demo_note": "Demo examples and previews may contain sample data and should not be used as a final annual report.",
     "footer.copyright": "© {year} Årsredovisningar. All rights reserved.",

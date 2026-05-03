@@ -1618,6 +1618,64 @@ paths:
               schema:
                 $ref: "#/components/schemas/AccountMapping"
 
+  /projects/{projectId}/mappings/{mappingId}/assistant:
+    get:
+      operationId: getMappingAssistantSuggestion
+      tags: [mappings]
+      summary: Get a structured rule-based assistant suggestion for a single account mapping
+      description: |
+        Returns a `MappingAssistantSuggestion` with the current row, suggested
+        row, confidence, severity, plain-Swedish reason/explanation, recommended
+        action, alternative rows and an expandable "expert" section.
+
+        The response shape is stable; an external AI provider may later be
+        wired into this endpoint without changing the client.
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: mappingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Structured suggestion for the mapping row
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MappingAssistantSuggestion"
+
+  /projects/{projectId}/mappings/assistant/scan:
+    get:
+      operationId: scanMappingAssistant
+      tags: [mappings]
+      summary: Scan all account mappings and return rows that need attention
+      description: |
+        Returns suggestions only for mapping rows where the assistant has
+        something meaningful to surface (severity ≠ info or recommendedAction
+        ≠ keep). Used to badge accounts on the mapping page and to feed the
+        validation engine with high-risk classification findings.
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Scan result with summary counts and only the rows that need attention
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MappingAssistantScanResult"
+
   /projects/{projectId}/mapping-templates:
     get:
       operationId: listMappingTemplates
@@ -3697,6 +3755,131 @@ components:
       required:
         - reportLine
         - reportLineLabel
+
+    MappingAssistantAlternativeRow:
+      type: object
+      properties:
+        reportLine:
+          type: string
+        reportLineLabel:
+          type: string
+        reason:
+          type: string
+      required: [reportLine, reportLineLabel, reason]
+
+    MappingAssistantExpert:
+      type: object
+      properties:
+        basRange:
+          type: string
+          nullable: true
+        basGroup:
+          type: string
+          nullable: true
+        inferredSign:
+          type: string
+          enum: [debit, credit, either]
+        rulePriority:
+          type: integer
+          nullable: true
+        expectedReportLine:
+          type: string
+          nullable: true
+        notes:
+          type: array
+          items:
+            type: string
+      required: [basRange, basGroup, inferredSign, rulePriority, expectedReportLine, notes]
+
+    MappingAssistantSuggestion:
+      type: object
+      description: |
+        Structured per-account assistant suggestion. Stable shape: a future
+        external AI provider populates the same fields without breaking
+        clients.
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        accountNumber:
+          type: string
+        accountName:
+          type: string
+          nullable: true
+        currentRowId:
+          type: string
+          nullable: true
+        currentRowLabel:
+          type: string
+          nullable: true
+        suggestedRowId:
+          type: string
+          nullable: true
+        suggestedRowLabel:
+          type: string
+          nullable: true
+        confidence:
+          type: string
+          enum: [low, medium, high]
+        severity:
+          type: string
+          enum: [info, warning, blocking]
+        reason:
+          type: string
+          description: One-sentence Swedish reason headline.
+        explanation:
+          type: string
+          description: Plain-Swedish explanation safe to show to non-experts.
+        recommendedAction:
+          type: string
+          enum: [keep, remap, net, review, manual_adjustment]
+        alternatives:
+          type: array
+          items:
+            $ref: "#/components/schemas/MappingAssistantAlternativeRow"
+        isHighRisk:
+          type: boolean
+          description: |
+            Surfaces in validationEngine — high-risk findings produce
+            unresolved warnings that the user must review or comment on.
+        source:
+          type: string
+          enum: [rules, ai]
+        expert:
+          $ref: "#/components/schemas/MappingAssistantExpert"
+      required:
+        - accountId
+        - accountNumber
+        - accountName
+        - currentRowId
+        - currentRowLabel
+        - suggestedRowId
+        - suggestedRowLabel
+        - confidence
+        - severity
+        - reason
+        - explanation
+        - recommendedAction
+        - alternatives
+        - isHighRisk
+        - source
+        - expert
+
+    MappingAssistantScanResult:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of mapping rows in the active confirmed batch.
+        highRiskCount:
+          type: integer
+        warningCount:
+          type: integer
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MappingAssistantSuggestion"
+      required: [total, highRiskCount, warningCount, suggestions]
 
     MappingTemplateEntry:
       type: object

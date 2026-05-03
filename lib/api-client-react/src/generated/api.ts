@@ -70,6 +70,8 @@ import type {
   ListSectionCommentsParams,
   ListSectionReviews200,
   ListValidationDismissals200,
+  MappingAssistantScanResult,
+  MappingAssistantSuggestion,
   MappingTemplate,
   MeResponse,
   Note,
@@ -5853,6 +5855,221 @@ export const useSaveMappingOverride = <
 > => {
   return useMutation(getSaveMappingOverrideMutationOptions(options));
 };
+
+/**
+ * Returns a `MappingAssistantSuggestion` with the current row, suggested
+row, confidence, severity, plain-Swedish reason/explanation, recommended
+action, alternative rows and an expandable "expert" section.
+
+The response shape is stable; an external AI provider may later be
+wired into this endpoint without changing the client.
+
+ * @summary Get a structured rule-based assistant suggestion for a single account mapping
+ */
+export const getGetMappingAssistantSuggestionUrl = (
+  projectId: string,
+  mappingId: string,
+) => {
+  return `/api/projects/${projectId}/mappings/${mappingId}/assistant`;
+};
+
+export const getMappingAssistantSuggestion = async (
+  projectId: string,
+  mappingId: string,
+  options?: RequestInit,
+): Promise<MappingAssistantSuggestion> => {
+  return customFetch<MappingAssistantSuggestion>(
+    getGetMappingAssistantSuggestionUrl(projectId, mappingId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetMappingAssistantSuggestionQueryKey = (
+  projectId: string,
+  mappingId: string,
+) => {
+  return [
+    `/api/projects/${projectId}/mappings/${mappingId}/assistant`,
+  ] as const;
+};
+
+export const getGetMappingAssistantSuggestionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMappingAssistantSuggestion>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  mappingId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMappingAssistantSuggestion>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetMappingAssistantSuggestionQueryKey(projectId, mappingId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMappingAssistantSuggestion>>
+  > = ({ signal }) =>
+    getMappingAssistantSuggestion(projectId, mappingId, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(projectId && mappingId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMappingAssistantSuggestion>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMappingAssistantSuggestionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMappingAssistantSuggestion>>
+>;
+export type GetMappingAssistantSuggestionQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get a structured rule-based assistant suggestion for a single account mapping
+ */
+
+export function useGetMappingAssistantSuggestion<
+  TData = Awaited<ReturnType<typeof getMappingAssistantSuggestion>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  mappingId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMappingAssistantSuggestion>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMappingAssistantSuggestionQueryOptions(
+    projectId,
+    mappingId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns suggestions only for mapping rows where the assistant has
+something meaningful to surface (severity ≠ info or recommendedAction
+≠ keep). Used to badge accounts on the mapping page and to feed the
+validation engine with high-risk classification findings.
+
+ * @summary Scan all account mappings and return rows that need attention
+ */
+export const getScanMappingAssistantUrl = (projectId: string) => {
+  return `/api/projects/${projectId}/mappings/assistant/scan`;
+};
+
+export const scanMappingAssistant = async (
+  projectId: string,
+  options?: RequestInit,
+): Promise<MappingAssistantScanResult> => {
+  return customFetch<MappingAssistantScanResult>(
+    getScanMappingAssistantUrl(projectId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getScanMappingAssistantQueryKey = (projectId: string) => {
+  return [`/api/projects/${projectId}/mappings/assistant/scan`] as const;
+};
+
+export const getScanMappingAssistantQueryOptions = <
+  TData = Awaited<ReturnType<typeof scanMappingAssistant>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof scanMappingAssistant>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getScanMappingAssistantQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof scanMappingAssistant>>
+  > = ({ signal }) =>
+    scanMappingAssistant(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof scanMappingAssistant>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ScanMappingAssistantQueryResult = NonNullable<
+  Awaited<ReturnType<typeof scanMappingAssistant>>
+>;
+export type ScanMappingAssistantQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Scan all account mappings and return rows that need attention
+ */
+
+export function useScanMappingAssistant<
+  TData = Awaited<ReturnType<typeof scanMappingAssistant>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof scanMappingAssistant>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getScanMappingAssistantQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List reusable mapping templates for the authenticated user

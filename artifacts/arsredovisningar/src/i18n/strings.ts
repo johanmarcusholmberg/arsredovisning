@@ -245,6 +245,8 @@ export const strings = {
     "company.new.subtitle": "Registrera en kund för att börja förbereda rapporter.",
     "company.edit.title": "Redigera företag",
     "company.edit.subtitle": "Uppdatera företagets registrerade uppgifter.",
+    "company.edit.usage_hint":
+      "Dessa uppgifter används direkt i årsredovisningen — på framsidan, i förvaltningsberättelsen och i noterna. Ändringar måste sparas innan du kan fortsätta till export.",
     "company.form.section.details": "Företagsuppgifter",
     "company.form.section.details_new_desc":
       "Ange företagets officiellt registrerade uppgifter.",
@@ -605,6 +607,8 @@ export const strings = {
     "company.new.subtitle": "Register a client to begin preparing reports.",
     "company.edit.title": "Edit Company",
     "company.edit.subtitle": "Update the company's registered details.",
+    "company.edit.usage_hint":
+      "These details are used directly in the annual report — on the cover page, in the directors' report, and in the notes. Changes must be saved before you can continue to export.",
     "company.form.section.details": "Company Details",
     "company.form.section.details_new_desc":
       "Enter the official registered details of the company.",

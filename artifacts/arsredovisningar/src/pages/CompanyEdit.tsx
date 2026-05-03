@@ -196,6 +196,9 @@ export function CompanyEdit() {
             {t("company.edit.title")}
           </h1>
           <p className="text-muted-foreground">{t("company.edit.subtitle")}</p>
+          <p className="text-xs text-muted-foreground mt-2 max-w-2xl">
+            {t("company.edit.usage_hint")}
+          </p>
         </div>
       </div>
 

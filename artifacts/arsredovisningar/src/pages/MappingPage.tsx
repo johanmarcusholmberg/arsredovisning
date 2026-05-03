@@ -47,6 +47,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { MappingAssistantPanel } from "@/components/MappingAssistantPanel";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft,
@@ -605,7 +606,7 @@ function OverrideButton({
       <DialogTrigger asChild>
         <Button size="sm" variant="ghost"><Pencil className="h-3.5 w-3.5 mr-1" />Justera</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Manuell mappning</DialogTitle>
           <DialogDescription>
@@ -613,6 +614,16 @@ function OverrideButton({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          {open && (
+            <MappingAssistantPanel
+              projectId={row.projectId}
+              mappingId={row.id}
+              onApplySuggestion={(rowId, rowLabel) => {
+                setReportLine(rowId);
+                setReportLineLabel(rowLabel);
+              }}
+            />
+          )}
           <div className="space-y-2">
             <Label htmlFor="reportLine">Rapportradnyckel</Label>
             <Input

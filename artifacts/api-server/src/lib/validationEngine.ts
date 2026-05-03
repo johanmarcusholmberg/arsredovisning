@@ -586,6 +586,40 @@ export async function runValidation(
     }
   }
 
+  // ── Mapping assistant findings ──────────────────────────────────────────
+  // The rule-based mapping assistant flags accounts that look risky
+  // (unmapped, manual override that diverges from BAS, mirror-prone groups
+  // that should be netted, sign mismatches). Surface only the high-risk
+  // ones so the validation panel doesn't drown the user.
+  try {
+    const { resolveProjectForReport } = await import(
+      "../helpers/projectReportLink.js"
+    );
+    const link = await resolveProjectForReport(report.id);
+    if (link?.projectId) {
+      const { scanMappingsForAssistance } = await import(
+        "./mappingAssistantService.js"
+      );
+      const scan = await scanMappingsForAssistance(link.projectId);
+      for (const s of scan.suggestions) {
+        if (!s.isHighRisk) continue;
+        issues.push({
+          ruleKey: `mapping_assistant:${s.recommendedAction}:${s.accountId}`,
+          level: s.severity === "blocking" ? "blocking" : "warning",
+          section: "mapping",
+          message: `Konto ${s.accountNumber}${
+            s.accountName ? ` (${s.accountName})` : ""
+          }: ${s.reason}`,
+          entityRef: s.accountId,
+          isHighRisk: true,
+          quickLinkPath: `/projects/${link.projectId}/mapping`,
+        });
+      }
+    }
+  } catch (mapErr) {
+    void mapErr;
+  }
+
   // ── Cash flow statement (Kassaflödesanalys) ──────────────────────────────
   // Pulled in from the dedicated cash flow services so the validation engine
   // remains the single entry point for "is this report ready?".

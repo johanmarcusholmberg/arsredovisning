@@ -1131,6 +1131,105 @@ export interface SaveMappingOverrideBody {
   reason?: string | null;
 }
 
+export interface MappingAssistantAlternativeRow {
+  reportLine: string;
+  reportLineLabel: string;
+  reason: string;
+}
+
+export type MappingAssistantExpertInferredSign =
+  (typeof MappingAssistantExpertInferredSign)[keyof typeof MappingAssistantExpertInferredSign];
+
+export const MappingAssistantExpertInferredSign = {
+  debit: "debit",
+  credit: "credit",
+  either: "either",
+} as const;
+
+export interface MappingAssistantExpert {
+  basRange: string | null;
+  basGroup: string | null;
+  inferredSign: MappingAssistantExpertInferredSign;
+  rulePriority: number | null;
+  expectedReportLine: string | null;
+  notes: string[];
+}
+
+export type MappingAssistantSuggestionConfidence =
+  (typeof MappingAssistantSuggestionConfidence)[keyof typeof MappingAssistantSuggestionConfidence];
+
+export const MappingAssistantSuggestionConfidence = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export type MappingAssistantSuggestionSeverity =
+  (typeof MappingAssistantSuggestionSeverity)[keyof typeof MappingAssistantSuggestionSeverity];
+
+export const MappingAssistantSuggestionSeverity = {
+  info: "info",
+  warning: "warning",
+  blocking: "blocking",
+} as const;
+
+export type MappingAssistantSuggestionRecommendedAction =
+  (typeof MappingAssistantSuggestionRecommendedAction)[keyof typeof MappingAssistantSuggestionRecommendedAction];
+
+export const MappingAssistantSuggestionRecommendedAction = {
+  keep: "keep",
+  remap: "remap",
+  net: "net",
+  review: "review",
+  manual_adjustment: "manual_adjustment",
+} as const;
+
+export type MappingAssistantSuggestionSource =
+  (typeof MappingAssistantSuggestionSource)[keyof typeof MappingAssistantSuggestionSource];
+
+export const MappingAssistantSuggestionSource = {
+  rules: "rules",
+  ai: "ai",
+} as const;
+
+/**
+ * Structured per-account assistant suggestion. Stable shape: a future
+external AI provider populates the same fields without breaking
+clients.
+
+ */
+export interface MappingAssistantSuggestion {
+  accountId: string;
+  accountNumber: string;
+  accountName: string | null;
+  currentRowId: string | null;
+  currentRowLabel: string | null;
+  suggestedRowId: string | null;
+  suggestedRowLabel: string | null;
+  confidence: MappingAssistantSuggestionConfidence;
+  severity: MappingAssistantSuggestionSeverity;
+  /** One-sentence Swedish reason headline. */
+  reason: string;
+  /** Plain-Swedish explanation safe to show to non-experts. */
+  explanation: string;
+  recommendedAction: MappingAssistantSuggestionRecommendedAction;
+  alternatives: MappingAssistantAlternativeRow[];
+  /** Surfaces in validationEngine — high-risk findings produce
+unresolved warnings that the user must review or comment on.
+ */
+  isHighRisk: boolean;
+  source: MappingAssistantSuggestionSource;
+  expert: MappingAssistantExpert;
+}
+
+export interface MappingAssistantScanResult {
+  /** Total number of mapping rows in the active confirmed batch. */
+  total: number;
+  highRiskCount: number;
+  warningCount: number;
+  suggestions: MappingAssistantSuggestion[];
+}
+
 export interface MappingTemplateEntry {
   accountNumber: string;
   reportLine: string;
