@@ -1,0 +1,400 @@
+Continue working on the “Årsredovisningar” project.
+
+Context:
+We recently changed the public Demo page into a slide-based demo with a downloadable demo PDF, and moved the previous interactive demo functionality toward admin / future demo environment use.
+
+I now want two improvements:
+
+1. Verify and fix the final demo slide / user-facing view
+2. Add real AI-assisted help for account mapping, explanations and correct reclassification logic
+
+Important:
+- Build on the existing codebase.
+- Do not replace the whole app.
+- Reuse existing routes, components, Supabase structure and current design system.
+- Keep the product direction: one unified annual-report workflow for all users.
+- Free/demo users should still only see demo/sample content and should not be able to create or edit real annual-report projects.
+- Paid/unlocked real projects should use the real workflow.
+- The exported annual report remains Swedish-only at launch.
+
+---
+
+## PART 1 — Final demo slide / user page consistency
+
+### Problem
+
+The final slide in the public demo currently seems to show a view that may not actually exist in the real system.
+
+Please inspect the final demo slide and verify:
+
+- Is this exact view available somewhere in the real user workflow?
+- Can a logged-in user actually reach this view?
+- Does the UI shown in the slide match an implemented route/component?
+- Is the slide misleading compared to the real product?
+
+### Required behavior
+
+If the final demo slide shows a view that does not exist yet, do NOT leave the demo slide as a fake product view.
+
+Instead, update the real user/company page so that the functionality shown in the slide exists in the actual system.
+
+The user/company page should include editable company-related fields that are needed for the annual report, such as:
+
+- Company name
+- Organization number
+- Financial year start/end
+- Registered office / säte
+- Company address
+- Board members / signatories, if already supported
+- Annual-report framework: K2, K3, RFR2 or IFRS
+- Contact person / owner / accountant, if already supported
+- Company metadata needed later for annual report generation
+
+This should not become an isolated settings page with no connection to the annual report.
+
+The fields should be connected to the company/project data model and should later be usable in:
+
+- Annual report generation
+- Cover page
+- Management report / förvaltningsberättelse
+- Signature section
+- Validation checks
+- Export metadata
+
+### UX requirements
+
+The page should feel like part of the guided annual-report workflow.
+
+Add helpful microcopy such as:
+
+- “These details are used in the annual report.”
+- “Some fields may be required before export.”
+- “Company information can be updated before final validation.”
+
+Add clear save behavior:
+
+- Unsaved changes state
+- Save button
+- Success state
+- Error state
+- Validation for required fields
+- Read-only handling for demo/free users if applicable
+
+If the final demo slide is valid and already exists in the product, then instead make sure the slide links or references the correct real view clearly.
+
+---
+
+## PART 2 — Real AI-assisted mapping and explanations
+
+### Problem
+
+The website currently says or implies that the product has AI help, but I am not sure whether there is actual useful AI assistance in the system when it comes to:
+
+- Account mapping
+- Explaining why accounts belong on certain rows
+- Suggesting corrections
+- Detecting incorrect classification
+- Helping the user make safe and correct changes
+
+I want the product to feel like the user is actively getting help, not just seeing static mapping tables.
+
+### Goal
+
+Implement a practical AI-assistance layer for account mapping and annual-report classification.
+
+This does not need to be a perfect external AI integration yet if no AI provider is configured, but the system should have a real architecture and useful behavior from day one.
+
+The user should feel guided when mapping accounts and resolving classification issues.
+
+---
+
+## Required features
+
+### 1. Mapping assistant panel
+
+Add an assistant/help panel in the account mapping review step.
+
+The panel should help the user understand:
+
+- What account is being mapped
+- Which annual-report row it currently maps to
+- Why that row is suggested
+- What source accounts contribute to the row
+- Whether the mapping looks normal, unusual or risky
+- What alternative rows may be relevant
+- What effect a change would have on the balance sheet, income statement, notes and validation
+
+Example UI labels:
+
+- “AI mapping help”
+- “Suggested classification”
+- “Why this row?”
+- “Possible issue”
+- “Recommended action”
+- “Show calculation”
+- “Apply suggestion”
+- “Dismiss”
+
+Use Swedish user-facing copy in the app.
+
+---
+
+### 2. Rule-based AI fallback
+
+If no external AI provider is configured, build a deterministic rule-based assistant that behaves like an AI helper.
+
+This fallback should use:
+
+- BAS account number ranges
+- Existing mapping rules
+- Imported balances
+- Debit/credit sign
+- Current financial statement row
+- Existing mapped row
+- Whether the same account type appears on both asset and liability side
+- Framework selected: K2/K3/RFR2/IFRS, if available
+- Previous-year values, if available
+
+The code should be structured so that an external AI provider can later be connected without rewriting the UI.
+
+Create a clean service layer, for example:
+
+- `mappingAssistantService`
+- `classificationSuggestionService`
+- or similar existing naming pattern
+
+It should return structured suggestions, not raw text only.
+
+Suggested return shape:
+
+```ts
+type MappingAssistantSuggestion = {
+  accountId: string;
+  accountNumber: string;
+  accountName: string;
+  currentRowId: string | null;
+  suggestedRowId: string | null;
+  confidence: "low" | "medium" | "high";
+  severity: "info" | "warning" | "blocking";
+  reason: string;
+  explanation: string;
+  recommendedAction: "keep" | "remap" | "net" | "review" | "manual_adjustment";
+  calculationPreview?: {
+    before: number;
+    after: number;
+    affectedRows: Array<{
+      rowId: string;
+      rowLabel: string;
+      before: number;
+      after: number;
+    }>;
+  };
+  source: "rules" | "ai";
+};
+
+Adapt the exact type to the existing codebase.
+
+3. Smart reclassification and netting guidance
+
+Add intelligent handling for situations where values appear on both asset and liability sections but should be presented netted or reclassified according to annual-report logic.
+
+Important example:
+
+If a value is currently shown under receivables but, based on sign/current balance/classification logic, it should instead reduce or move to liabilities — or the other way around — the system should not simply show duplicated or contradictory rows.
+
+The assistant should detect cases such as:
+
+Same counterparty/account group appears on both receivable and liability side
+Negative receivable balances
+Negative liability balances
+Account groups that should normally be netted or reclassified for presentation
+Imported balances that produce values in both sections where the annual-report row should show a net amount
+Current and previous-year values pointing in different directions
+
+The system should suggest a correction such as:
+
+Move amount from receivable row to liability row
+Move amount from liability row to receivable row
+Net two related rows into the correct annual-report presentation row
+Keep separate, but require user review/comment
+Require manual adjustment when the system cannot safely decide
+
+The user must be able to review the suggestion before applying it.
+
+Do not silently change financial statement rows without showing the user.
+
+4. Example behavior for receivables vs liabilities
+
+Implement logic for cases similar to this:
+
+A mapped account or account group creates a value under receivables
+Another related account or sign-adjusted value creates a value under liabilities
+The two values should not appear incorrectly as separate positive values if presentation logic requires netting or reclassification
+The assistant should calculate the net effect and propose the correct row
+
+Example user-facing explanation:
+
+“Det finns värden både på fordrings- och skuldsidan för denna grupp. Systemet rekommenderar att beloppen nettas och presenteras på den sida där nettot hör hemma. Granska beräkningen innan du tillämpar ändringen.”
+
+The calculation preview should show:
+
+Current receivable row amount
+Current liability row amount
+Net amount
+Proposed final row
+Affected annual-report row(s)
+Whether notes are affected
+5. Manual override and audit trail
+
+The user must always be able to:
+
+Accept suggestion
+Dismiss suggestion
+Manually choose another row
+Add a comment explaining the decision
+See that a mapping was manually overridden
+
+Store enough information for audit/review:
+
+Original row
+Suggested row
+Final selected row
+Reason/suggestion text
+User decision
+Timestamp
+User id, if auth is available
+Whether the change came from rule-based assistant or external AI
+
+This should support later validation and collaboration.
+
+6. Explanation layer for non-experts
+
+For each mapping suggestion or detected issue, add plain-language explanations.
+
+The explanation should answer:
+
+What is the issue?
+Why does it matter?
+What happens if I accept the suggestion?
+What happens if I ignore it?
+Which accounts and rows are affected?
+
+Use Swedish text in the UI.
+
+Example copy:
+
+“Det här kontot har ett saldo som gör att det normalt bör presenteras på skuldsidan i årsredovisningen. Om det ligger kvar som en fordran kan balansräkningen visa ett missvisande belopp.”
+
+Also add an expandable expert section:
+
+BAS account logic
+Current row id
+Suggested row id
+Debit/credit sign logic
+Source accounts
+Calculation
+Validation impact
+7. Validation integration
+
+The mapping assistant should connect to validation.
+
+If the assistant detects risky classification issues that the user has not resolved, validation should show warnings.
+
+Examples:
+
+“Möjlig felklassificering mellan fordringar och skulder”
+“Negativt saldo på rad som normalt inte ska vara negativ”
+“Belopp finns både på tillgångs- och skuldsidan och bör granskas”
+“Manuell kommentar krävs för att behålla nuvarande klassificering”
+
+Some issues can be warnings, others can be blocking only if they would make the annual report structurally inconsistent.
+
+Do not block export for every uncertain mapping issue, but high-risk unresolved issues should require review/comment before export.
+
+8. No fake AI claims
+
+Review current website copy and in-app text.
+
+If the product says “AI” but currently only has static or rule-based help, adjust the wording so it is accurate.
+
+Acceptable wording:
+
+“AI-stöd och smarta regler”
+“Systemet föreslår klassificeringar baserat på kontoplan, saldo och årsredovisningslogik”
+“AI-förberedd assistans”
+“Smarta förslag för mappning och kontroll”
+
+Avoid misleading claims such as:
+
+“AI guarantees correct annual reports”
+“Fully automated compliance”
+“No review needed”
+
+The product should be positioned as:
+
+“A compliance assistant, not a guarantee.”
+
+Implementation expectations
+Backend / data model
+
+Add or update tables/entities if needed for:
+
+Mapping suggestions
+User decisions
+Manual overrides
+Mapping comments
+Assistant explanations
+Reclassification/netting suggestions
+Audit history
+
+Use Supabase/RLS-safe patterns consistent with the existing project.
+
+Make sure company/project ownership is respected.
+
+Demo/sample projects must not write real user data unless the existing architecture already supports demo-safe storage.
+
+Frontend
+
+Update the relevant pages/components for:
+
+Account mapping review
+Mapping assistant panel
+Company/user/company information page
+Validation summary
+Demo slide consistency
+
+Keep UI clean and calm.
+
+Use the existing design direction:
+
+Swedish minimalism
+Financial Stripe-inspired clarity
+Progressive disclosure
+Plain-language first, expert details expandable
+Acceptance criteria
+
+After implementation:
+
+The final public demo slide must not show a fake/non-existing product view.
+If the slide showed a missing view, the real user/company page must now contain the relevant company fields.
+The company fields must be connected to actual company/project data.
+The account mapping step must include assistant-style help.
+The assistant must provide explanations, suggested actions and confidence/severity.
+Rule-based suggestions must work even without an external AI provider.
+The system must detect likely receivable/liability classification or netting issues.
+The user must be able to accept, dismiss or manually override suggestions.
+Changes must create an audit trail.
+Validation must show unresolved high-risk mapping/classification issues.
+Website and app copy must not overclaim AI functionality.
+All new UI copy visible to users should be Swedish.
+Existing demo/free/paywall behavior must not be broken.
+Do not do
+Do not build final PDF/Word export in this task.
+Do not change Stripe/payment unlock logic unless required to preserve existing behavior.
+Do not create a separate “expert mode” or separate product mode.
+Do not silently reclassify accounting data without user review.
+Do not make fake AI responses that are not connected to real mapping data.
+Do not remove existing mapping functionality.
+Do not break the annual-report workflow sidebar.
+
+I would treat this as an important product-quality prompt because it closes two gaps: the demo must reflect the real system, and the “AI support” must become visible, useful and honest instead of just marketing language.
