@@ -570,9 +570,49 @@ function FlipReport({
 
   const padding = isLg ? "p-[5%]" : "p-3";
 
+  const demoBadge = (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 font-bold text-amber-800 uppercase tracking-wider shadow-sm"
+      style={
+        isLg
+          ? { fontSize: "12px", padding: "4px 10px" }
+          : { fontSize: "9px", padding: "2px 6px" }
+      }
+    >
+      <Sparkles style={isLg ? { width: 14, height: 14 } : { width: 10, height: 10 }} />
+      DEMO
+    </span>
+  );
+
+  const sideArrowBtn = (dir: "prev" | "next") => {
+    const isPrev = dir === "prev";
+    return (
+      <button
+        type="button"
+        onClick={isPrev ? goPrev : goNext}
+        disabled={isPrev ? pageIndex === 0 : pageIndex === total - 1}
+        aria-label={t(
+          isPrev ? "publicDemo.finished.prev" : "publicDemo.finished.next",
+        )}
+        className="inline-flex items-center justify-center rounded-full border border-border bg-background/95 text-foreground shadow-md hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed size-11 shrink-0 backdrop-blur-sm"
+      >
+        {isPrev ? <ChevronLeft className="size-5" /> : <ChevronRight className="size-5" />}
+      </button>
+    );
+  };
+
   return (
     <div className={isLg ? "w-full flex flex-col items-center" : "w-full"}>
-      <div className="relative mx-auto" style={pageWrapperStyle}>
+      {/* DEMO badge above the popup page (lg only) */}
+      {isLg && <div className="mb-2 flex justify-center">{demoBadge}</div>}
+
+      {/* Page + side arrows row (arrows only for lg) */}
+      <div
+        className={isLg ? "flex items-center justify-center gap-2 sm:gap-4 w-full" : "w-full"}
+      >
+        {isLg && sideArrowBtn("prev")}
+
+        <div className="relative" style={pageWrapperStyle}>
         {/* Stacked-page shadows */}
         <div
           aria-hidden
@@ -589,32 +629,10 @@ function FlipReport({
           className="relative aspect-[3/4] rounded-xl border border-neutral-300 bg-white shadow-xl overflow-hidden"
           style={{ transformStyle: "preserve-3d" }}
         >
-          {/* DEMO badge — top-left for lg so it doesn't collide with the
-              dialog close button at top-right */}
-          <div
-            className={`absolute z-20 ${isLg ? "top-3 left-3" : "top-2 right-2"}`}
-          >
-            <span
-              className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 font-bold text-amber-800 uppercase tracking-wider"
-              style={
-                isLg
-                  ? {
-                      fontSize: `calc(${lgFontCss} * 0.7)`,
-                      padding: `calc(${lgFontCss} * 0.2) calc(${lgFontCss} * 0.55)`,
-                    }
-                  : { fontSize: "9px", padding: "2px 6px" }
-              }
-            >
-              <Sparkles
-                style={
-                  isLg
-                    ? { width: `calc(${lgFontCss} * 0.85)`, height: `calc(${lgFontCss} * 0.85)` }
-                    : { width: 10, height: 10 }
-                }
-              />
-              DEMO
-            </span>
-          </div>
+          {/* DEMO badge — only inside page for sm variant; lg has it above */}
+          {!isLg && (
+            <div className="absolute z-20 top-2 right-2">{demoBadge}</div>
+          )}
 
           {/* Watermark */}
           <div
@@ -667,31 +685,16 @@ function FlipReport({
             </span>
           </div>
         </div>
+        </div>
+
+        {isLg && sideArrowBtn("next")}
       </div>
 
-      {/* Flip controls */}
-      <div
-        className={`flex items-center justify-between gap-2 ${isLg ? "mt-4" : "mt-3"}`}
-        style={isLg ? { width: lgWidthCss, maxWidth: "92vw" } : undefined}
-      >
-        <button
-          type="button"
-          onClick={goPrev}
-          disabled={pageIndex === 0}
-          aria-label={t("publicDemo.finished.prev")}
-          className={`inline-flex items-center justify-center rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-            isLg ? "size-10" : "size-8"
-          }`}
-        >
-          <ChevronLeft className={isLg ? "size-5" : "size-4"} />
-        </button>
-        <div className="flex-1 text-center">
-          <p
-            className={`font-medium text-foreground ${isLg ? "text-sm" : "text-[11px]"}`}
-          >
-            {current.label}
-          </p>
-          <div className="mt-1.5 flex items-center justify-center gap-1">
+      {/* Bottom area: label + dots (and prev/next arrows for sm only) */}
+      {isLg ? (
+        <div className="mt-3 flex flex-col items-center gap-1.5">
+          <p className="text-sm font-medium text-foreground">{current.label}</p>
+          <div className="flex items-center justify-center gap-1">
             {miniPages.map((_, i) => (
               <button
                 key={i}
@@ -702,29 +705,61 @@ function FlipReport({
                   setPageIndex(i, dir);
                 }}
                 aria-label={`${t("publicDemo.finished.goto")} ${i + 1}`}
-                className={`rounded-full transition-all ${
-                  isLg ? "h-2" : "h-1.5"
-                } ${
+                className={`rounded-full transition-all h-2 ${
                   i === pageIndex
-                    ? `bg-primary ${isLg ? "w-7" : "w-5"}`
-                    : `bg-border hover:bg-muted-foreground/40 ${isLg ? "w-2" : "w-1.5"}`
+                    ? "bg-primary w-7"
+                    : "bg-white/70 hover:bg-white w-2"
                 }`}
               />
             ))}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={goNext}
-          disabled={pageIndex === total - 1}
-          aria-label={t("publicDemo.finished.next")}
-          className={`inline-flex items-center justify-center rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-            isLg ? "size-10" : "size-8"
-          }`}
-        >
-          <ChevronRight className={isLg ? "size-5" : "size-4"} />
-        </button>
-      </div>
+      ) : (
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={goPrev}
+            disabled={pageIndex === 0}
+            aria-label={t("publicDemo.finished.prev")}
+            className="inline-flex items-center justify-center rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed size-8"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <div className="flex-1 text-center">
+            <p className="font-medium text-foreground text-[11px]">
+              {current.label}
+            </p>
+            <div className="mt-1.5 flex items-center justify-center gap-1">
+              {miniPages.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    const dir: 1 | -1 = i > pageIndex ? 1 : -1;
+                    setDirection(dir);
+                    setPageIndex(i, dir);
+                  }}
+                  aria-label={`${t("publicDemo.finished.goto")} ${i + 1}`}
+                  className={`rounded-full transition-all h-1.5 ${
+                    i === pageIndex
+                      ? "bg-primary w-5"
+                      : "bg-border hover:bg-muted-foreground/40 w-1.5"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={pageIndex === total - 1}
+            aria-label={t("publicDemo.finished.next")}
+            className="inline-flex items-center justify-center rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed size-8"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
