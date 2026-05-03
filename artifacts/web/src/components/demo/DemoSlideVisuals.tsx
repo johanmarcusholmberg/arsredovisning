@@ -556,17 +556,23 @@ function FlipReport({
   };
 
   // Base font size drives all em-relative sizes inside pages.
-  const pageFontSize = isLg ? 14 : 10;
-  const padding = isLg ? "p-5" : "p-3";
-  const watermarkSize = isLg ? 100 : 56;
-  const maxWidth = isLg ? 360 : 260;
+  // For lg, both font size and width are derived from viewport so the
+  // popup scales gracefully on phones, tablets, and large monitors.
+  // Page aspect is 3:4 (width:height); constrain by both viewport width
+  // and viewport height (leaving headroom for the controls row).
+  const lgWidthCss = "min(92vw, calc(72vh * 0.75))";
+  const lgFontCss = `calc(${lgWidthCss} / 26)`;
+  const lgWatermarkCss = `calc(${lgWidthCss} / 4)`;
+
+  const pageWrapperStyle: React.CSSProperties = isLg
+    ? { perspective: "1600px", width: lgWidthCss, maxWidth: "92vw" }
+    : { perspective: "1600px", width: "100%", maxWidth: 260 };
+
+  const padding = isLg ? "p-[5%]" : "p-3";
 
   return (
     <div className={isLg ? "w-full flex flex-col items-center" : "w-full"}>
-      <div
-        className="relative mx-auto"
-        style={{ perspective: "1600px", width: "100%", maxWidth }}
-      >
+      <div className="relative mx-auto" style={pageWrapperStyle}>
         {/* Stacked-page shadows */}
         <div
           aria-hidden
@@ -583,14 +589,29 @@ function FlipReport({
           className="relative aspect-[3/4] rounded-xl border border-neutral-300 bg-white shadow-xl overflow-hidden"
           style={{ transformStyle: "preserve-3d" }}
         >
-          {/* DEMO badge */}
-          <div className={`absolute ${isLg ? "top-3 right-3" : "top-2 right-2"} z-20`}>
+          {/* DEMO badge — top-left for lg so it doesn't collide with the
+              dialog close button at top-right */}
+          <div
+            className={`absolute z-20 ${isLg ? "top-3 left-3" : "top-2 right-2"}`}
+          >
             <span
-              className={`inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 font-bold text-amber-800 uppercase tracking-wider ${
-                isLg ? "px-2.5 py-1 text-xs" : "px-1.5 py-0.5 text-[9px]"
-              }`}
+              className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 font-bold text-amber-800 uppercase tracking-wider"
+              style={
+                isLg
+                  ? {
+                      fontSize: `calc(${lgFontCss} * 0.7)`,
+                      padding: `calc(${lgFontCss} * 0.2) calc(${lgFontCss} * 0.55)`,
+                    }
+                  : { fontSize: "9px", padding: "2px 6px" }
+              }
             >
-              <Sparkles className={isLg ? "size-3.5" : "size-2.5"} />
+              <Sparkles
+                style={
+                  isLg
+                    ? { width: `calc(${lgFontCss} * 0.85)`, height: `calc(${lgFontCss} * 0.85)` }
+                    : { width: 10, height: 10 }
+                }
+              />
               DEMO
             </span>
           </div>
@@ -603,7 +624,7 @@ function FlipReport({
             <span
               style={{
                 transform: "rotate(-26deg)",
-                fontSize: `${watermarkSize}px`,
+                fontSize: isLg ? lgWatermarkCss : "56px",
                 fontWeight: 900,
                 color: "rgba(180, 30, 30, 0.07)",
                 letterSpacing: "0.18em",
@@ -626,7 +647,7 @@ function FlipReport({
               style={{
                 transformOrigin: direction > 0 ? "left center" : "right center",
                 backfaceVisibility: "hidden",
-                fontSize: `${pageFontSize}px`,
+                fontSize: isLg ? lgFontCss : "10px",
               }}
             >
               {current.render()}
@@ -636,10 +657,9 @@ function FlipReport({
           {/* Page footer */}
           <div
             className={`absolute z-10 flex items-center justify-between text-neutral-500 ${
-              isLg
-                ? "bottom-2.5 left-5 right-5 text-[11px]"
-                : "bottom-1.5 left-3 right-3 text-[8px]"
+              isLg ? "bottom-[2%] left-[5%] right-[5%]" : "bottom-1.5 left-3 right-3 text-[8px]"
             }`}
+            style={isLg ? { fontSize: `calc(${lgFontCss} * 0.75)` } : undefined}
           >
             <span>Nordic Design AB</span>
             <span className="font-mono tabular-nums">
@@ -651,9 +671,8 @@ function FlipReport({
 
       {/* Flip controls */}
       <div
-        className={`flex items-center justify-between gap-2 ${
-          isLg ? "mt-4 w-full max-w-[360px]" : "mt-3"
-        }`}
+        className={`flex items-center justify-between gap-2 ${isLg ? "mt-4" : "mt-3"}`}
+        style={isLg ? { width: lgWidthCss, maxWidth: "92vw" } : undefined}
       >
         <button
           type="button"
@@ -743,14 +762,14 @@ export function FinishedVisual() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[440px] max-h-[92vh] overflow-y-auto p-5 sm:p-6">
-          <DialogTitle className="text-base font-semibold">
+        <DialogContent className="bg-transparent border-0 shadow-none p-0 max-w-none w-auto sm:max-w-none sm:rounded-none gap-0 grid-cols-1 [&>button]:bg-white/90 [&>button]:rounded-full [&>button]:p-1.5 [&>button]:top-2 [&>button]:right-2 [&>button]:shadow">
+          <DialogTitle className="sr-only">
             {t("publicDemo.finished.dialog.title")}
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground -mt-1">
+          <DialogDescription className="sr-only">
             {t("publicDemo.finished.dialog.subtitle")}
           </DialogDescription>
-          <div className="mt-2 flex justify-center">
+          <div className="flex justify-center">
             <FlipReport
               variant="lg"
               pageIndex={largePageIndex}
