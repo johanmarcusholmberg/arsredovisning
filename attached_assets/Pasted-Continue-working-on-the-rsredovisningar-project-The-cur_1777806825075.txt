@@ -1,0 +1,87 @@
+Continue working on the Årsredovisningar project.
+
+The current user start page after account creation shows “Credits”. I do not want Credits to be the main access model for this product.
+
+Replace the credits-based user start concept with a clear entitlement/license-based account start page.
+
+Important product principle:
+Årsredovisningar should not feel like a credit-consumption tool. It should feel like a paid annual-report project tool.
+
+For MVP:
+One payment should unlock one real annual-report project for:
+- one company
+- one financial year
+- one annual report
+
+Do not use “Credits” as the primary user-facing access concept.
+
+A newly registered unpaid user should land on an account/start page that clearly says they are in demo/unpaid mode.
+
+Use wording like:
+
+Swedish:
+“Demo-konto”
+“Du kan utforska produkten med exempeldata.”
+“För att skapa en riktig årsredovisning behöver du låsa upp ett projekt.”
+“Ett köp gäller för ett bolag och ett räkenskapsår.”
+
+English:
+“Demo account”
+“You can explore the product with sample data.”
+“To create a real annual report, unlock a paid project.”
+“One purchase applies to one company and one financial year.”
+
+Update the user start page so it contains:
+
+1. Account status card
+- Status: Demo account / No active project
+- Explanation that the user can view demo/sample data only
+- Clear CTA: “View demo”
+- Clear CTA: “Unlock annual report project”
+
+2. Active project/license area
+If the user has active project entitlements, show:
+- company name
+- financial year
+- project status
+- access status
+- button to continue to project workspace
+
+3. Locked functionality explanation
+Show a short list of what requires an unlocked project:
+- import accounting data
+- create company/project
+- map accounts
+- generate financial statements
+- manage notes and cash-flow statement
+- validate the annual report
+- export clean PDF/Word
+
+4. Remove or hide Credits language
+Remove “Credits” from the main user-facing start page unless it is only used internally or for a future AI-usage meter.
+Do not make users think they need to buy credits to complete an annual report.
+
+5. Backend/access model
+Do not weaken the entitlement checks already implemented.
+Real access should still be based on active project entitlement, not credit balance.
+
+6. Optional internal compatibility
+If the existing code already has a credits field/table, do not break it unnecessarily.
+But do not expose it as the main product model.
+If needed, rename the visible concept to “Project license” or “Annual report access”.
+
+7. UX direction
+The start page should feel like:
+- clear
+- trustworthy
+- professional
+- suitable for financial/accounting work
+- not like a game or token-based SaaS
+
+Acceptance criteria:
+- A newly registered unpaid user no longer sees “Credits” as the main start-page concept.
+- The user clearly understands they are in demo/unpaid mode.
+- The user cannot create real projects before payment/entitlement.
+- The user has clear options to view demo or unlock a real project.
+- Paid users see their active annual-report project licenses.
+- Access remains controlled by entitlements, not by frontend-only UI.
