@@ -87,7 +87,7 @@ export function DemoCarousel({ slides }: DemoCarouselProps) {
                     </p>
                   </div>
                   <div className="bg-muted/30 border-t md:border-t-0 md:border-l border-border p-5 md:p-8 flex items-center justify-center overflow-hidden">
-                    <div className="w-full max-w-md max-h-full overflow-auto">{slide.visual}</div>
+                    <div className="w-full max-w-md">{slide.visual}</div>
                   </div>
                 </div>
               </article>
