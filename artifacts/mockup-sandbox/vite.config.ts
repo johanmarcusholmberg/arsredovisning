@@ -46,9 +46,59 @@ export default defineConfig({
       : []),
   ],
   resolve: {
-    alias: {
-      "@": path.resolve(import.meta.dirname, "src"),
-    },
+    alias: [
+      {
+        find: /^@\/(i18n\/.*|hooks\/useLanguage|contexts\/languageContextValue|contexts\/LanguageContext)$/,
+        replacement: path.resolve(
+          import.meta.dirname,
+          "..",
+          "arsredovisningar",
+          "src",
+          "$1",
+        ),
+      },
+      {
+        find: "@",
+        replacement: path.resolve(import.meta.dirname, "src"),
+      },
+      {
+        find: /^react$/,
+        replacement: path.resolve(
+          import.meta.dirname,
+          "node_modules",
+          "react",
+          "index.js",
+        ),
+      },
+      {
+        find: /^react-dom$/,
+        replacement: path.resolve(
+          import.meta.dirname,
+          "node_modules",
+          "react-dom",
+          "index.js",
+        ),
+      },
+      {
+        find: /^react\/jsx-runtime$/,
+        replacement: path.resolve(
+          import.meta.dirname,
+          "node_modules",
+          "react",
+          "jsx-runtime.js",
+        ),
+      },
+      {
+        find: /^react\/jsx-dev-runtime$/,
+        replacement: path.resolve(
+          import.meta.dirname,
+          "node_modules",
+          "react",
+          "jsx-dev-runtime.js",
+        ),
+      },
+    ],
+    dedupe: ["react", "react-dom"],
   },
   root: path.resolve(import.meta.dirname),
   build: {

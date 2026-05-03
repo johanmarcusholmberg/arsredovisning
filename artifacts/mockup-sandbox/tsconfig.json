@@ -10,6 +10,10 @@
     "allowImportingTsExtensions": true,
     "types": ["node", "vite/client"],
     "paths": {
+      "@/i18n/*": ["../arsredovisningar/src/i18n/*"],
+      "@/hooks/useLanguage": ["../arsredovisningar/src/hooks/useLanguage"],
+      "@/contexts/languageContextValue": ["../arsredovisningar/src/contexts/languageContextValue"],
+      "@/contexts/LanguageContext": ["../arsredovisningar/src/contexts/LanguageContext"],
       "@/*": ["./src/*"]
     }
   }
