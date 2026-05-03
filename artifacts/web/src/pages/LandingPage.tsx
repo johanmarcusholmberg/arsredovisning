@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/hooks/useLanguage";
+import { HeroAnimation } from "@/components/HeroAnimation";
 
 const workflowStepKeys = [
   "landing.steps.1",
@@ -45,48 +46,59 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-20 md:py-28">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: "easeOut" as const }}
-            className="max-w-2xl"
-          >
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-medium text-primary mb-6">
-              {t("landing.badge")}
-            </div>
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">
-              {t("landing.title")}
-            </h1>
-            <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-              {t("landing.subtitle")}
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <Link href="/demo">
-                <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2">
-                  {t("landing.cta.demo")}
-                  <ArrowRight className="size-4" />
-                </Button>
-              </Link>
-              <Link href="/pricing">
-                <Button size="lg" className="w-full sm:w-auto gap-2">
-                  {t("landing.cta.start")}
-                  <ArrowRight className="size-4" />
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 md:py-14 lg:py-16">
+          <div className="grid lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-12 items-center">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: "easeOut" as const }}
+              className="max-w-xl"
+            >
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-medium text-primary mb-5">
+                {t("landing.badge")}
+              </div>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight">
+                {t("landing.title")}
+              </h1>
+              <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed">
+                {t("landing.subtitle")}
+              </p>
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <Link href="/demo">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2">
+                    {t("landing.cta.demo")}
+                    <ArrowRight className="size-4" />
+                  </Button>
+                </Link>
+                <Link href="/pricing">
+                  <Button size="lg" className="w-full sm:w-auto gap-2">
+                    {t("landing.cta.start")}
+                    <ArrowRight className="size-4" />
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.55, delay: 0.1, ease: "easeOut" as const }}
+              className="hidden md:block"
+            >
+              <HeroAnimation />
+            </motion.div>
+          </div>
         </div>
       </section>
 
       {/* 8-step workflow */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 md:py-16">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.4 }}
-          className="text-center mb-12"
+          className="text-center mb-8 md:mb-10"
         >
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             {t("landing.workflow.title")}
