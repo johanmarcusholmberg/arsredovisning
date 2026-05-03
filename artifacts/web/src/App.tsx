@@ -9,6 +9,11 @@ import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/LandingPage";
 import DemoWorkspacePage from "@/pages/DemoWorkspacePage";
 import PricingPage from "@/pages/PricingPage";
+import PrivacyPage from "@/pages/legal/PrivacyPage";
+import TermsPage from "@/pages/legal/TermsPage";
+import SupportPage from "@/pages/legal/SupportPage";
+import SecurityPage from "@/pages/legal/SecurityPage";
+import ContactPage from "@/pages/legal/ContactPage";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +39,11 @@ function Router() {
         </Route>
         <Route path="/demo/:section?" component={DemoWorkspacePage} />
         <Route path="/pricing" component={PricingPage} />
+        <Route path="/privacy" component={PrivacyPage} />
+        <Route path="/terms" component={TermsPage} />
+        <Route path="/support" component={SupportPage} />
+        <Route path="/security" component={SecurityPage} />
+        <Route path="/contact" component={ContactPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

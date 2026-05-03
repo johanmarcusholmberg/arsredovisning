@@ -3,6 +3,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupConte
 import { Building, Home, Settings, LogOut, Briefcase, ListChecks, FileText } from "lucide-react";
 import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { AppFooter } from "@/components/layout/AppFooter";
 
 export function SidebarLayout({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
@@ -109,8 +110,11 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
             <SidebarTrigger />
             <span className="ml-4 font-bold">Årsredovisningar</span>
           </header>
-          <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 lg:p-10 max-w-7xl mx-auto w-full">
-            {children}
+          <div className="flex-1 overflow-auto">
+            <div className="p-4 sm:p-6 md:p-8 lg:p-10 max-w-7xl mx-auto w-full min-h-full flex flex-col">
+              <div className="flex-1">{children}</div>
+              <AppFooter />
+            </div>
           </div>
         </main>
       </div>

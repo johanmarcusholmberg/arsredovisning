@@ -1,0 +1,122 @@
+Continue working on the Årsredovisningar project.
+
+Goal:
+Add a proper footer section to the website/app shell with disclaimers, legal/support links, and move the language selector there instead of showing it in the current top/header location.
+
+Important:
+- Do not rebuild the whole app.
+- Do not change the core annual-report workflow.
+- Reuse the existing design system, colors, spacing, typography, and language/i18n setup.
+- The exported annual report language remains Swedish only.
+- This change only affects the website/application UI language selector.
+
+Implement the following:
+
+1. Footer layout
+Create or update a reusable footer component used across the public website and logged-in app shell where appropriate.
+
+The footer should appear at the bottom of relevant pages and include:
+
+- Product/company placeholder branding:
+  - Årsredovisningar
+  - Tagline: “Årsredovisningar – snabbt, korrekt och med AI-stöd.”
+  - Use existing placeholder logo/brand treatment if available.
+
+- Disclaimer text:
+  Swedish:
+  “Årsredovisningar är ett digitalt stöd för att skapa årsredovisningar. Tjänsten kan hjälpa till med struktur, beräkningar, validering och dokumentgenerering, men ersätter inte professionell rådgivning. Användaren ansvarar alltid för att den slutliga årsredovisningen är korrekt, fullständig och uppfyller gällande lagar och regelverk.”
+
+  English:
+  “Årsredovisningar is a digital assistant for preparing annual reports. The service can help with structure, calculations, validation and document generation, but it does not replace professional advice. The user is always responsible for ensuring that the final annual report is accurate, complete and compliant with applicable laws and regulations.”
+
+- Compliance/support links:
+  - Integritetspolicy / Privacy Policy
+  - Användarvillkor / Terms of Service
+  - Support
+  - Säkerhet / Security
+  - Kontakt / Contact
+
+If these pages/routes do not exist yet:
+- Add placeholder routes/pages for them.
+- Keep them simple, clean and professional.
+- Make it clear that the legal texts are placeholders and should be reviewed before launch.
+
+2. Move language selector
+Move the existing language selector from its current header/top navigation location into the footer.
+
+Requirements:
+- Keep the existing i18n/language switching logic.
+- Do not create a second separate language system.
+- Do not break saved language preference if one already exists.
+- The footer language selector should be clearly visible but not visually dominant.
+- Use labels such as:
+  - “Språk”
+  - “Language”
+- Available options should remain the same as today, likely Swedish and English.
+
+3. Header cleanup
+After moving the language selector:
+- Remove the old language selector from the header/top navigation.
+- Make sure spacing in the header still looks good.
+- Do not remove login, dashboard, workflow, account, or other important navigation items.
+
+4. Public homepage behavior
+On the public homepage:
+- Footer should be visible.
+- Disclaimer should be easy to find but not distract from the main CTA.
+- Language selector should be accessible from the footer.
+
+5. Logged-in app behavior
+In the logged-in app:
+- Add the footer where it fits naturally, preferably at the bottom of the app shell/page content.
+- Do not let the footer interfere with the annual-report workflow, sidebar, validation panels, import flow, or export preview.
+- On dense workflow pages, keep the footer compact.
+
+6. Demo/free-user wording
+Where relevant, include a short footer or legal note that free/demo previews are illustrative only and may contain dummy/sample values.
+
+Swedish:
+“Demoexempel och förhandsvisningar kan innehålla exempeldata och ska inte användas som färdig årsredovisning.”
+
+English:
+“Demo examples and previews may contain sample data and should not be used as a final annual report.”
+
+7. Styling requirements
+- Follow the existing “Financial Stripe + Swedish minimalism” direction.
+- Use a calm, trustworthy, professional footer.
+- Avoid a dark, heavy SaaS footer unless the current design already uses that.
+- Footer should work on desktop and mobile.
+- On mobile, stack the footer sections vertically.
+- Keep accessibility in mind:
+  - Links must be keyboard accessible.
+  - Language selector must have a clear accessible label.
+  - Text contrast must be readable.
+
+8. Suggested structure
+Prefer something like:
+
+Footer
+- Left column:
+  - Brand/logo
+  - Tagline
+  - Main disclaimer
+- Middle column:
+  - Legal/support links
+- Right column:
+  - Language selector
+  - Demo/legal note
+  - Copyright line
+
+Example copyright:
+“© {currentYear} Årsredovisningar. Alla rättigheter förbehållna.”
+
+9. Validation
+After implementation, verify:
+- Language selector works from the footer.
+- The old header language selector is removed.
+- Swedish/English UI language switching still works.
+- Footer appears correctly on homepage.
+- Footer does not break logged-in workflow pages.
+- Mobile layout looks clean.
+- Placeholder legal pages/routes open correctly.
+- No TypeScript/build errors.

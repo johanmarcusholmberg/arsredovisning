@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Menu, X } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui/button";
+import { SiteFooter } from "@/components/SiteFooter";
 
 interface LayoutProps {
   children: ReactNode;
@@ -12,7 +13,7 @@ const APP_LOGIN_URL = "/arsredovisningar/login";
 const APP_SIGNUP_URL = "/arsredovisningar/register";
 
 export function Layout({ children }: LayoutProps) {
-  const { t, language, setLanguage } = useLanguage();
+  const { t } = useLanguage();
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -23,8 +24,6 @@ export function Layout({ children }: LayoutProps) {
 
   const isActive = (href: string) =>
     location === href || (href !== "/" && location.startsWith(href));
-
-  const toggleLang = () => setLanguage(language === "sv" ? "en" : "sv");
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -61,14 +60,8 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             <div className="flex items-center gap-2">
-              <button
-                onClick={toggleLang}
-                aria-label={t("nav.lang.switch")}
-                className="hidden sm:flex items-center gap-1 rounded border border-border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-              >
-                {t("nav.lang.toggle")}
-              </button>
-
+              {/* Language selector intentionally moved to the footer.
+                  Login / Signup remain in the header. */}
               <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-sm">
                 <a href={APP_LOGIN_URL} target="_top" rel="noopener">{t("nav.login")}</a>
               </Button>
@@ -104,14 +97,6 @@ export function Layout({ children }: LayoutProps) {
                   {link.label}
                 </Link>
               ))}
-              <div className="pt-2 border-t border-border">
-                <button
-                  onClick={() => { toggleLang(); setMobileOpen(false); }}
-                  className="w-full text-left rounded border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
-                >
-                  {t("nav.mobile.lang_switch")}
-                </button>
-              </div>
               <a
                 href={APP_LOGIN_URL}
                 target="_top"
@@ -133,21 +118,7 @@ export function Layout({ children }: LayoutProps) {
 
       <main id="main-content" className="flex-1">{children}</main>
 
-      <footer className="border-t border-border bg-muted/30 py-6">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="size-5 rounded bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground text-[10px] font-bold">Å</span>
-              </div>
-              <span className="text-sm text-muted-foreground">Årsredovisningar</span>
-            </div>
-            <p className="text-xs text-muted-foreground text-center">
-              {t("landing.trust")}
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
