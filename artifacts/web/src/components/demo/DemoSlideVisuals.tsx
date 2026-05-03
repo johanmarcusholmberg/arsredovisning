@@ -277,15 +277,17 @@ function MiniRow({
 }) {
   return (
     <div
-      className={`grid grid-cols-[1fr_auto_auto] gap-x-[0.6em] items-center text-[0.95em] ${
+      className={`grid grid-cols-[1fr_auto_1.6em] gap-x-[0.5em] items-baseline text-[0.85em] leading-tight ${
         bold ? "font-semibold border-t border-neutral-300 pt-[0.25em] mt-[0.25em]" : ""
       }`}
     >
-      <span className="truncate text-neutral-800">{name}</span>
-      <span className="text-right tabular-nums text-neutral-800">{amount ?? ""}</span>
+      <span className="text-neutral-800 break-words min-w-0">{name}</span>
+      <span className="text-right tabular-nums text-neutral-800 whitespace-nowrap">
+        {amount ?? ""}
+      </span>
       <span className="text-right">
         {note ? (
-          <span className="inline-flex items-center justify-center min-w-[1.4em] rounded bg-amber-100 text-amber-800 text-[0.85em] font-mono px-[0.3em]">
+          <span className="inline-flex items-center justify-center min-w-[1.4em] rounded bg-amber-100 text-amber-800 text-[0.8em] font-mono px-[0.3em]">
             {note}
           </span>
         ) : (
@@ -371,7 +373,7 @@ const miniPages: MiniPage[] = [
           </div>
           <div>
             <p className="font-semibold">Flerårsöversikt (tkr)</p>
-            <div className="mt-[0.3em] grid grid-cols-4 gap-x-[0.5em] text-[0.95em] tabular-nums">
+            <div className="mt-[0.3em] grid grid-cols-[1fr_auto_auto_auto] gap-x-[0.5em] text-[0.8em] tabular-nums whitespace-nowrap leading-tight">
               <span className="text-neutral-500"></span>
               <span className="text-right text-neutral-500">2024</span>
               <span className="text-right text-neutral-500">2023</span>
@@ -554,9 +556,9 @@ function FlipReport({
   };
 
   // Base font size drives all em-relative sizes inside pages.
-  const pageFontSize = isLg ? 14 : 11;
-  const padding = isLg ? "p-5" : "p-3.5";
-  const watermarkSize = isLg ? 100 : 60;
+  const pageFontSize = isLg ? 14 : 10;
+  const padding = isLg ? "p-5" : "p-3";
+  const watermarkSize = isLg ? 100 : 56;
   const maxWidth = isLg ? 360 : 260;
 
   return (
