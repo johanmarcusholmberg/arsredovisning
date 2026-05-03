@@ -64,6 +64,40 @@ for (const { name, feature } of OPTIONAL_ENV_VARS) {
 }
 
 // ---------------------------------------------------------------------------
+// Supabase RLS deployment reminder
+// ---------------------------------------------------------------------------
+//
+// `docs/rls-policies.sql` documents the row-level security model, but it is
+// NOT applied automatically — a human must paste it into the Supabase SQL
+// Editor (see `docs/SUPABASE_DEPLOYMENT_CHECKLIST.md`).
+//
+// To suppress this warning after the policies have been applied AND verified
+// via `docs/rls-verify.sql`, set RLS_POLICIES_APPLIED=true in Replit Secrets
+// for the production deployment. This is a documentation flag only — the
+// server does NOT verify the live database state and does NOT crash if the
+// flag is missing. The goal is just to make the risk visible at startup.
+// ---------------------------------------------------------------------------
+
+const rlsApplied =
+  String(process.env.RLS_POLICIES_APPLIED ?? "").toLowerCase() === "true";
+const isProductionLike =
+  process.env.NODE_ENV === "production" ||
+  !!process.env.REPLIT_DEPLOYMENT;
+
+if (!rlsApplied) {
+  const msg =
+    "Supabase RLS policies in docs/rls-policies.sql may not be applied to " +
+    "the live database. Follow docs/SUPABASE_DEPLOYMENT_CHECKLIST.md and " +
+    "verify with docs/rls-verify.sql, then set RLS_POLICIES_APPLIED=true to " +
+    "silence this warning.";
+  if (isProductionLike) {
+    logger.warn({ rlsPoliciesApplied: false }, msg);
+  } else {
+    logger.info({ rlsPoliciesApplied: false }, msg);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Start server
 // ---------------------------------------------------------------------------
 

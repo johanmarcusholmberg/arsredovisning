@@ -199,3 +199,27 @@ pnpm run typecheck                                    # full repo typecheck
 pnpm --filter @workspace/db run db:check              # drift between schema and migrations
 pnpm --filter @workspace/api-spec run codegen         # regenerate Zod / hooks if the spec changed
 ```
+
+## 8. Production deployment
+
+The application-layer protections in this document are the **second**
+line of defence. The **first** line is Supabase RLS plus column-level
+grants in `docs/rls-policies.sql`. That SQL is **not** applied
+automatically by any deploy step — a human must paste it into the
+Supabase SQL Editor for each environment.
+
+Before publishing to production, complete:
+
+1. `docs/SUPABASE_DEPLOYMENT_CHECKLIST.md` — apply the policies and
+   verify table/column posture.
+2. `docs/rls-verify.sql` — run the read-only verification queries in
+   the Supabase SQL Editor and confirm every section returns the
+   expected result.
+3. `docs/SECURITY_TEST_CHECKLIST.md` — manually attempt the documented
+   bypasses as a normal (non-admin) user against the live deployment.
+4. Set `RLS_POLICIES_APPLIED=true` in the production Replit Secrets to
+   silence the startup warning emitted by
+   `artifacts/api-server/src/index.ts`.
+
+Do **not** set `RLS_POLICIES_APPLIED=true` until all three checklists
+have been completed for the target environment.
