@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   FileText, CheckCircle2, ArrowRight, Banknote, ScrollText,
-  Link2, ShieldCheck, FileDown, Sparkles, ChevronLeft, ChevronRight,
+  Link2, ShieldCheck, Sparkles, ChevronLeft, ChevronRight,
   Maximize2,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -825,7 +825,7 @@ export function FinishedVisual() {
   const [largePageIndex, setLargePageIndex] = useState(0);
 
   return (
-    <div className="w-full">
+    <div className="w-full flex flex-col items-center">
       <FlipReport
         variant="sm"
         pageIndex={pageIndex}
@@ -844,10 +844,6 @@ export function FinishedVisual() {
           <Maximize2 className="size-3" />
           {t("publicDemo.finished.viewLarger")}
         </button>
-        <p className="text-center text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-          <FileDown className="size-3" />
-          {t("publicDemo.finished.exportHint")}
-        </p>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
