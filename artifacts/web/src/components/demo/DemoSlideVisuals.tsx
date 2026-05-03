@@ -313,10 +313,23 @@ const miniPages: MiniPage[] = [
         <p className="mt-[0.3em] text-[0.85em] text-neutral-500">
           för räkenskapsåret 2024
         </p>
-        <div className="mt-auto pt-[1em] border-t border-neutral-300 text-[0.9em] text-neutral-600 space-y-[0.2em]">
+
+        {/* Centered decorative block fills the middle of the cover so it
+            doesn't look empty. Year + a thin divider + tagline. */}
+        <div className="flex-1 flex flex-col items-center justify-center text-center my-[1em]">
+          <p className="font-serif font-semibold text-neutral-900 text-[3.2em] leading-none tabular-nums">
+            2024
+          </p>
+          <div className="mt-[0.6em] h-px w-[40%] bg-neutral-300" />
+          <p className="mt-[0.6em] text-[0.8em] uppercase tracking-[0.25em] text-neutral-500">
+            Verksamhetsåret
+          </p>
+        </div>
+
+        <div className="pt-[0.6em] border-t border-neutral-300 text-[0.85em] text-neutral-600 space-y-[0.15em]">
           <p>Räkenskapsår 2024-01-01 – 2024-12-31</p>
           <p>Säte: Stockholm</p>
-          <p>Tillämpad regelverk: K3 (BFNAR 2012:1)</p>
+          <p>Tillämpat regelverk: K3 (BFNAR 2012:1)</p>
           <p>Upprättad: 2025-04-15</p>
         </div>
       </div>
@@ -449,6 +462,45 @@ const miniPages: MiniPage[] = [
     ),
   },
   {
+    label: "Kassaflödesanalys",
+    render: () => (
+      <div className="h-full flex flex-col">
+        <p className="text-[1.1em] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-[0.3em]">
+          Kassaflödesanalys
+        </p>
+        <p className="text-[0.8em] text-neutral-500 mt-[0.15em]">
+          2024-01-01 – 2024-12-31 (kr)
+        </p>
+        <div className="mt-[0.5em] space-y-[0.3em]">
+          <p className="text-[0.85em] uppercase tracking-wider text-neutral-500 mt-[0.2em]">
+            Den löpande verksamheten
+          </p>
+          <MiniRow name="Resultat före skatt" amount="1 145 000" />
+          <MiniRow name="Justering för avskrivningar" amount="410 000" note="3" />
+          <MiniRow name="Betald inkomstskatt" amount="-220 000" />
+          <MiniRow name="Förändring av kundfordringar" amount="-180 000" />
+          <MiniRow name="Förändring av kortfristiga skulder" amount="95 000" />
+          <MiniRow name="Kassaflöde löpande verksamhet" amount="1 250 000" bold />
+
+          <p className="text-[0.85em] uppercase tracking-wider text-neutral-500 mt-[0.4em]">
+            Investeringsverksamheten
+          </p>
+          <MiniRow name="Investeringar i inventarier" amount="-410 000" note="3" />
+
+          <p className="text-[0.85em] uppercase tracking-wider text-neutral-500 mt-[0.4em]">
+            Finansieringsverksamheten
+          </p>
+          <MiniRow name="Amortering av banklån" amount="-180 000" note="4" />
+          <MiniRow name="Utbetald utdelning" amount="-200 000" />
+
+          <MiniRow name="Årets kassaflöde" amount="460 000" bold />
+          <MiniRow name="Likvida medel vid årets början" amount="860 000" />
+          <MiniRow name="Likvida medel vid årets slut" amount="1 320 000" bold />
+        </div>
+      </div>
+    ),
+  },
+  {
     label: "Noter",
     render: () => (
       <div className="h-full flex flex-col">
@@ -568,7 +620,9 @@ function FlipReport({
     ? { perspective: "1600px", width: lgWidthCss, maxWidth: "92vw" }
     : { perspective: "1600px", width: "100%", maxWidth: 260 };
 
-  const padding = isLg ? "p-[5%]" : "p-3";
+  // Slightly more bottom padding so the absolutely-positioned page footer
+  // (Nordic Design AB · n/n) doesn't visually crowd the page content.
+  const padding = isLg ? "px-[6%] pt-[6%] pb-[9%]" : "px-3 pt-3 pb-5";
 
   const demoBadge = (
     <span
