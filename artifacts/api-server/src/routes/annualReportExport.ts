@@ -420,16 +420,74 @@ async function generateExport(
     text: data.watermark.text,
   };
 
+  // ── Cover-sheet bytes resolution (Phase 8) ────────────────────────────
+  // When the project is in "uploaded" cover mode and points at a real
+  // project_files row that we own, download the bytes from storage and
+  // hand them to the renderer so the upload becomes the literal first
+  // page (PDF) or full-page cover image (PDF/Word).
+  //
+  // We do this here rather than in `exportDataBuilder` so that:
+  //   - renderers stay pure functions of (data, optional override) and
+  //     don't depend on Supabase being reachable;
+  //   - the audit event `export.cover_merged` can be emitted with
+  //     accurate "did we actually splice it?" semantics.
+  let coverOverride: { bytes: Buffer; mimeType: string } | null = null;
+  if (
+    data.cover.mode === "uploaded" &&
+    data.cover.uploadedFileId &&
+    ctx.projectId
+  ) {
+    try {
+      const supa = getSupabaseAdmin();
+      if (supa) {
+        const { data: fileRow } = await supa
+          .from("project_files" as never)
+          .select("storage_bucket, storage_path, mime_type, project_id")
+          .eq("id", data.cover.uploadedFileId as never)
+          .eq("project_id", ctx.projectId as never)
+          .single();
+        if (fileRow) {
+          const row = fileRow as {
+            storage_bucket: string;
+            storage_path: string;
+            mime_type: string;
+          };
+          const { data: blob } = await supa.storage
+            .from(row.storage_bucket)
+            .download(row.storage_path);
+          if (blob) {
+            const ab = await blob.arrayBuffer();
+            coverOverride = {
+              bytes: Buffer.from(ab),
+              mimeType: row.mime_type,
+            };
+          }
+        }
+      }
+    } catch (err) {
+      req.log.warn({ err }, "Could not resolve uploaded cover bytes — falling back to auto cover");
+    }
+  }
+
   let bytes: Buffer;
   let mimeType: string;
   let extension: string;
+  // The renderer is the source of truth for whether the override was
+  // actually embedded/spliced. Do NOT infer this from "did we pass an
+  // override?" — image-decode fallbacks and PDF-in-Word both deliberately
+  // return coverMerged=false even though an override was supplied.
+  let coverMerged = false;
   try {
     if (format === "pdf") {
-      bytes = await renderAnnualReportPdf(data);
+      const result = await renderAnnualReportPdf(data, coverOverride);
+      bytes = result.bytes;
+      coverMerged = result.coverMerged;
       mimeType = "application/pdf";
       extension = "pdf";
     } else {
-      bytes = await renderAnnualReportWord(data);
+      const result = await renderAnnualReportWord(data, coverOverride);
+      bytes = result.bytes;
+      coverMerged = result.coverMerged;
       mimeType =
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
       extension = "docx";
@@ -541,6 +599,26 @@ async function generateExport(
         bytes: bytes.byteLength,
       },
     }),
+    // Phase 8: emit `export.cover_merged` only when the upload was actually
+    // spliced into the rendered output (PDF first-page splice or full-page
+    // image embed). PDF covers in Word do NOT count — see wordRenderer's
+    // pdfNotice path.
+    ...(coverMerged && coverOverride && data.cover.uploadedFileId
+      ? [
+          logAuditEvent({
+            eventType: AUDIT_EVENTS.EXPORT_COVER_MERGED,
+            projectId: ctx.projectId,
+            actorProfileId: ctx.profileId,
+            eventData: {
+              reportId: ctx.reportId,
+              exportId: exportRow.id,
+              format,
+              coverFileId: data.cover.uploadedFileId,
+              coverMimeType: coverOverride.mimeType,
+            },
+          }),
+        ]
+      : []),
   ]);
 
   // Mark the project as "exported" the first time a non-watermarked export

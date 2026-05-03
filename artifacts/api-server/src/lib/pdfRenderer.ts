@@ -11,6 +11,7 @@
  */
 
 import PDFDocument from "pdfkit";
+import { PDFDocument as PDFLibDocument } from "pdf-lib";
 import {
   type AnnualReportExportData,
   type RenderedNote,
@@ -24,13 +25,54 @@ import {
   PAGE_MARGIN_RIGHT_MM,
 } from "@workspace/export-contract";
 
+/**
+ * Optional pre-resolved cover-sheet override. The route layer fetches the
+ * uploaded file's bytes from storage when `data.cover.mode === "uploaded"`
+ * and passes them in here so the renderer can splice them into the output.
+ *
+ * Supported `mimeType` values:
+ *   - "application/pdf"  → first page of the PDF is prepended via pdf-lib
+ *   - "image/png" | "image/jpeg" → drawn full-page on the cover page
+ *
+ * Other MIME types are ignored and the auto-generated cover is used.
+ */
+export interface CoverOverride {
+  bytes: Buffer;
+  mimeType: string;
+}
+
 // ---------------------------------------------------------------------------
 // Public renderer
 // ---------------------------------------------------------------------------
 
+/**
+ * Result of rendering. `coverMerged` is the *renderer-confirmed* truth of
+ * whether the supplied `CoverOverride` was actually spliced/embedded into
+ * the output. The route uses this to decide whether to emit
+ * `export.cover_merged` — never infer the answer from "did we pass an
+ * override?", because some override paths (image decode failure, unsupported
+ * MIME) silently fall back to the auto cover.
+ */
+export interface RenderPdfResult {
+  bytes: Buffer;
+  coverMerged: boolean;
+}
+
 export async function renderAnnualReportPdf(
   data: AnnualReportExportData,
-): Promise<Buffer> {
+  coverOverride: CoverOverride | null = null,
+): Promise<RenderPdfResult> {
+  const isImageOverride =
+    coverOverride !== null &&
+    (coverOverride.mimeType === "image/png" ||
+      coverOverride.mimeType === "image/jpeg" ||
+      coverOverride.mimeType === "image/jpg");
+  const isPdfOverride =
+    coverOverride !== null && coverOverride.mimeType === "application/pdf";
+  // Tracks whether the override actually made it into the output. Mutated
+  // by the cover render block (image decode fallback flips it back to
+  // false) and by the post-process pdf-lib splice (only true on success).
+  let coverMerged = false;
   const margins = {
     top: mmToPt(PAGE_MARGIN_TOP_MM),
     bottom: mmToPt(PAGE_MARGIN_BOTTOM_MM),
@@ -55,7 +97,38 @@ export async function renderAnnualReportPdf(
   const done = new Promise<void>((resolve) => doc.on("end", () => resolve()));
 
   // ── Cover ───────────────────────────────────────────────────────────────
-  renderCover(doc, data);
+  // Three modes:
+  //   1. PDF override   → render an empty cover page (post-processed below
+  //                        with pdf-lib to splice in the uploaded first page).
+  //                        We still emit a placeholder page so subsequent
+  //                        page-number arithmetic stays consistent until we
+  //                        replace it; pdf-lib will substitute it at the end.
+  //   2. Image override → fill the whole cover page with the uploaded image.
+  //   3. Default        → auto-generated typographic cover.
+  if (isPdfOverride) {
+    // Placeholder page; will be removed and replaced with the uploaded
+    // first page during the post-processing pass.
+    doc.font("Helvetica").fontSize(1).text(" ", { align: "center" });
+  } else if (isImageOverride && coverOverride) {
+    const pageWidth = doc.page.width;
+    const pageHeight = doc.page.height;
+    try {
+      doc.image(coverOverride.bytes, 0, 0, {
+        fit: [pageWidth, pageHeight],
+        align: "center",
+        valign: "center",
+      });
+      coverMerged = true;
+    } catch {
+      // Fall back to the auto cover if pdfkit cannot decode the image
+      // (e.g. malformed PNG). Better than crashing the export.
+      // coverMerged stays false so the route does NOT emit
+      // `export.cover_merged` for this case.
+      renderCover(doc, data);
+    }
+  } else {
+    renderCover(doc, data);
+  }
 
   // ── Förvaltningsberättelse ──────────────────────────────────────────────
   doc.addPage();
@@ -115,7 +188,41 @@ export async function renderAnnualReportPdf(
 
   doc.end();
   await done;
-  return Buffer.concat(chunks);
+  let outBytes = Buffer.concat(chunks);
+
+  // ── PDF cover splice ───────────────────────────────────────────────────
+  // For an uploaded PDF cover, replace the placeholder cover page (page 0)
+  // with the first page of the uploaded PDF using pdf-lib. Done as a
+  // post-processing pass so we don't have to re-implement pdfkit's text /
+  // table rendering on top of pdf-lib.
+  if (isPdfOverride && coverOverride) {
+    try {
+      const [target, source] = await Promise.all([
+        PDFLibDocument.load(outBytes),
+        PDFLibDocument.load(coverOverride.bytes),
+      ]);
+      if (source.getPageCount() > 0) {
+        const [copiedCover] = await target.copyPages(source, [0]);
+        target.insertPage(0, copiedCover);
+        // Drop the placeholder page we emitted in pdfkit (now at index 1).
+        if (target.getPageCount() > 1) {
+          target.removePage(1);
+        }
+        outBytes = Buffer.from(await target.save({ useObjectStreams: false }));
+        coverMerged = true;
+      }
+      // If the source PDF has zero pages (effectively impossible but
+      // defensible), we leave the placeholder in place and report
+      // coverMerged=false. The export still succeeds.
+    } catch {
+      // Splicing failed (corrupt upload, encrypted PDF, etc.). Surface
+      // as a render error so the route can emit EXPORT_FAILED rather
+      // than silently delivering a document with a blank first page.
+      throw new Error("cover_pdf_splice_failed");
+    }
+  }
+
+  return { bytes: outBytes, coverMerged };
 }
 
 // ---------------------------------------------------------------------------

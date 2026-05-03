@@ -534,10 +534,12 @@ function CoverPanel({
                 Vald: {uploadedFileName ?? `(fil-id ${uploadedFileId.slice(0, 8)}…)`}
               </p>
             )}
-            <p className="text-[11px] text-amber-700">
-              Obs: Förhandsgranskningen visar fortfarande den autogenererade
-              försättssidan. Den uppladdade filen levereras med exporten men
-              sammanfogning av första sidan i PDF:en sker i Phase 8.
+            <p className="text-[11px] text-neutral-600">
+              Den uppladdade filen används som första sida i PDF-exporten
+              (PDF eller bild). I Word-versionen bäddas en bilduppladdning
+              in fullständigt; en uppladdad PDF-omslag visas endast i
+              PDF-versionen och Word-dokumentet behåller det autogenererade
+              omslaget med en hänvisning till PDF:en.
             </p>
           </div>
         )}

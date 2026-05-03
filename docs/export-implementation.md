@@ -130,12 +130,25 @@ The `cover-sheets` bucket is now wired end-to-end:
 3. The `/export/data` endpoint resolves a signed URL for the upload so
    the preview can show its presence.
 
-**Phase 8 limitation:** The renderers do not yet merge an uploaded PDF or
-image as the literal first page of the formal export. The upload is
-persisted, surfaced in the preview, and emitted via
-`cover_sheet.added` / `cover_sheet.removed` audit events, but the
-formal PDF/Word still uses the auto-generated cover. The UI displays a
-plain-language note about this on the cover panel.
+**Phase 8 — cover-sheet merging (shipped).** The route layer now downloads
+the uploaded file's bytes from storage at export time and hands them to
+the renderers as a `coverOverride`:
+
+- **PDF export, image cover** (`image/png`, `image/jpeg`): pdfkit draws the
+  image full-page on page 1.
+- **PDF export, PDF cover** (`application/pdf`): the report is rendered
+  with a placeholder first page, then post-processed by `pdf-lib` —
+  the first page of the upload is copied into the target document at
+  index 0 and the placeholder is removed.
+- **Word export, image cover**: embedded full-page via `docx`'s
+  `ImageRun`.
+- **Word export, PDF cover**: `.docx` cannot natively embed a PDF page,
+  so the auto-generated cover is kept and a small italic notice is
+  added pointing the reader to the PDF version.
+
+When the splice succeeds, `export.cover_merged` is emitted alongside
+the format-specific `export.pdf_created` / `export.word_created`
+event. PDF covers in Word do not emit `export.cover_merged`.
 
 ### Audit events added in Phase 7
 

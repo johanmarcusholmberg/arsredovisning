@@ -70,6 +70,11 @@ export const AUDIT_EVENTS = {
   PROJECT_MARKED_EXPORTED: "project.marked_exported",
   COVER_SHEET_ADDED: "cover_sheet.added",
   COVER_SHEET_REMOVED: "cover_sheet.removed",
+  // Phase 8 — fired when an uploaded cover (PDF page or image) was actually
+  // spliced into the rendered export. Distinct from `cover_sheet.added`
+  // (which fires on upload) so the audit trail records the *use* of the
+  // cover at export time.
+  EXPORT_COVER_MERGED: "export.cover_merged",
   FINAL_VALIDATION_RUN: "validation.final_run",
   NOTE_NUMBERING_CHECKED: "notes.numbering_checked_before_export",
   NOTE_REFERENCES_CHECKED: "notes.references_checked_before_export",

@@ -20,6 +20,7 @@
     "docx": "^9.0.3",
     "drizzle-orm": "catalog:",
     "express": "^5",
+    "pdf-lib": "^1.17.1",
     "pdfkit": "^0.15.2",
     "pino": "^9",
     "pino-http": "^10"

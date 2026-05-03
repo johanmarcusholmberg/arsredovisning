@@ -20,6 +20,7 @@ import {
   TableCell,
   WidthType,
   TextRun,
+  ImageRun,
   PageOrientation,
   Header,
   Footer,
@@ -39,10 +40,30 @@ import {
   PAGE_MARGIN_RIGHT_MM,
 } from "@workspace/export-contract";
 
+/**
+ * Optional pre-resolved cover-sheet override. Mirrors the shape used by the
+ * PDF renderer. Only image MIME types (`image/png`, `image/jpeg`) are
+ * embedded inline in Word; PDF covers cannot be natively embedded into
+ * `.docx` so we fall back to the auto-generated cover plus a small note.
+ */
+export interface WordCoverOverride {
+  bytes: Buffer;
+  mimeType: string;
+}
+
+export interface RenderWordResult {
+  bytes: Buffer;
+  /** True only when an image cover was actually embedded as the cover. PDF
+   *  covers in Word are noted via `pdfNotice` but never count as merged. */
+  coverMerged: boolean;
+}
+
 export async function renderAnnualReportWord(
   data: AnnualReportExportData,
-): Promise<Buffer> {
-  const cover = buildCover(data);
+  coverOverride: WordCoverOverride | null = null,
+): Promise<RenderWordResult> {
+  const coverResult = buildCover(data, coverOverride);
+  const cover = coverResult.paragraphs;
   const management = buildManagementReport(data);
   const statements = data.statements.flatMap((s) => buildStatement(s, data));
   const notes = buildNotes(data);
@@ -110,15 +131,81 @@ export async function renderAnnualReportWord(
     ],
   });
 
-  return await Packer.toBuffer(doc);
+  const bytes = await Packer.toBuffer(doc);
+  return { bytes, coverMerged: coverResult.coverMerged };
 }
 
 // ---------------------------------------------------------------------------
 // Sections
 // ---------------------------------------------------------------------------
 
-function buildCover(data: AnnualReportExportData): Paragraph[] {
-  return [
+interface BuildCoverResult {
+  paragraphs: Paragraph[];
+  /** True only when the override was actually embedded (image path). */
+  coverMerged: boolean;
+}
+
+function buildCover(
+  data: AnnualReportExportData,
+  override: WordCoverOverride | null,
+): BuildCoverResult {
+  // Image override → embed full-page image as the cover.
+  if (
+    override &&
+    (override.mimeType === "image/png" ||
+      override.mimeType === "image/jpeg" ||
+      override.mimeType === "image/jpg")
+  ) {
+    try {
+      const imageType = override.mimeType === "image/png" ? "png" : "jpg";
+      // A4 at 96 DPI ≈ 794 × 1123 px. Slight inset so the image doesn't
+      // bleed into Word's enforced page margins.
+      return {
+        paragraphs: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new ImageRun({
+                data: override.bytes,
+                transformation: { width: 540, height: 760 },
+                type: imageType,
+              }),
+            ],
+          }),
+          new Paragraph({ children: [], pageBreakBefore: true }),
+        ],
+        coverMerged: true,
+      };
+    } catch {
+      // Fall through to the auto cover on any embedding failure.
+      // coverMerged stays false.
+    }
+  }
+
+  // PDF override → keep the auto cover but flag that the user-uploaded PDF
+  // cover only ships in the PDF export (Word cannot natively embed a PDF
+  // page).
+  const pdfNotice =
+    override && override.mimeType === "application/pdf"
+      ? [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 240 },
+            children: [
+              new TextRun({
+                text:
+                  "Den uppladdade PDF-omslagssidan används som första sida i PDF-versionen. " +
+                  "I Word-versionen visas detta automatgenererade omslag istället.",
+                italics: true,
+                size: 16,
+                color: "666666",
+              }),
+            ],
+          }),
+        ]
+      : [];
+
+  const autoCover: Paragraph[] = [
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 1800, after: 240 },
@@ -160,8 +247,10 @@ function buildCover(data: AnnualReportExportData): Paragraph[] {
       children: [new TextRun({ text: data.period.label, italics: true, size: 18 })],
       pageBreakBefore: false,
     }),
+    ...pdfNotice,
     new Paragraph({ children: [], pageBreakBefore: true }),
   ];
+  return { paragraphs: autoCover, coverMerged: false };
 }
 
 function buildManagementReport(data: AnnualReportExportData): Paragraph[] {
