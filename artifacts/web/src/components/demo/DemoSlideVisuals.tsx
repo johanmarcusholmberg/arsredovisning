@@ -131,11 +131,6 @@ export function StatementsVisual() {
         ]}
       />
 
-      {/* Floating "Not"-link badge to make the connection explicit */}
-      <div className="absolute right-2 top-[42%] z-20 hidden sm:flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 text-[10px] font-medium shadow-sm">
-        <Link2 className="size-3" />
-        Not 3 · kopplad i båda
-      </div>
     </div>
   );
 }

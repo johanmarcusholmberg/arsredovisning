@@ -70,9 +70,9 @@ export function DemoCarousel({ slides }: DemoCarouselProps) {
               aria-roledescription="slide"
               aria-label={`${idx + 1} / ${slides.length}: ${slide.title}`}
             >
-              <article className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-                <div className="grid md:grid-cols-2 gap-0">
-                  <div className="p-6 md:p-10 flex flex-col justify-center bg-gradient-to-br from-primary/5 via-transparent to-transparent">
+              <article className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden h-[760px] md:h-[520px]">
+                <div className="grid md:grid-cols-2 gap-0 h-full">
+                  <div className="p-6 md:p-10 flex flex-col justify-center bg-gradient-to-br from-primary/5 via-transparent to-transparent overflow-hidden">
                     <span className="text-[11px] font-mono uppercase tracking-wider text-primary/80 mb-3">
                       {t("publicDemo.slide.label")} {idx + 1} / {slides.length}
                     </span>
@@ -86,8 +86,8 @@ export function DemoCarousel({ slides }: DemoCarouselProps) {
                       {slide.body}
                     </p>
                   </div>
-                  <div className="bg-muted/30 border-t md:border-t-0 md:border-l border-border p-5 md:p-8 flex items-center justify-center min-h-[300px] md:min-h-[420px]">
-                    <div className="w-full max-w-md">{slide.visual}</div>
+                  <div className="bg-muted/30 border-t md:border-t-0 md:border-l border-border p-5 md:p-8 flex items-center justify-center overflow-hidden">
+                    <div className="w-full max-w-md max-h-full overflow-auto">{slide.visual}</div>
                   </div>
                 </div>
               </article>
