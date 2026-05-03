@@ -77,6 +77,9 @@ export function NotesPage() {
 
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [recFilter, setRecFilter] = useState<
+    null | "ok" | "mismatch" | "missing_link" | "no_amounts"
+  >(null);
   const [newType, setNewType] = useState("other");
   const [newTitle, setNewTitle] = useState("");
   const [newRequirement, setNewRequirement] =
@@ -206,11 +209,26 @@ export function NotesPage() {
     );
   };
 
+  const recFilteredIds = useMemo(() => {
+    if (!recFilter || !reconciliation) return null;
+    return new Set(
+      reconciliation.items
+        .filter((i) => i.status === recFilter)
+        .map((i) => i.noteId),
+    );
+  }, [recFilter, reconciliation]);
+
   if (!reportId) return null;
 
   const notes = data?.notes ?? [];
-  const activeNotes = notes.filter((n) => n.status !== "not_applicable");
-  const naNotes = notes.filter((n) => n.status === "not_applicable");
+  const matchesRecFilter = (id: string) =>
+    recFilteredIds === null || recFilteredIds.has(id);
+  const activeNotes = notes
+    .filter((n) => n.status !== "not_applicable")
+    .filter((n) => matchesRecFilter(n.id));
+  const naNotes = notes
+    .filter((n) => n.status === "not_applicable")
+    .filter((n) => matchesRecFilter(n.id));
   const requiredMissing = activeNotes.filter(
     (n) =>
       n.requirementLevel === "required" &&
@@ -314,39 +332,91 @@ export function NotesPage() {
       {reconciliation && reconciliation.items.length > 0 && (
         <Card>
           <CardContent className="py-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold text-sm">Avstämning mot rapporten</h3>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <h3 className="font-semibold text-sm">Avstämning mot rapporten</h3>
+              </div>
+              {recFilter !== null && (
+                <button
+                  type="button"
+                  onClick={() => setRecFilter(null)}
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                  data-testid="button-reset-rec-filter"
+                >
+                  Visa alla
+                </button>
+              )}
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-              <div className="rounded border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
-                <div className="flex items-center gap-1 text-emerald-700">
-                  <CheckCircle2 className="h-3 w-3" />
-                  <span className="font-medium">Stämmer</span>
-                </div>
-                <div className="font-mono text-lg mt-0.5">{reconciliation.okCount}</div>
-              </div>
-              <div className="rounded border border-red-500/30 bg-red-500/5 px-3 py-2">
-                <div className="flex items-center gap-1 text-red-700">
-                  <AlertTriangle className="h-3 w-3" />
-                  <span className="font-medium">Differens</span>
-                </div>
-                <div className="font-mono text-lg mt-0.5">{reconciliation.mismatchCount}</div>
-              </div>
-              <div className="rounded border border-amber-500/30 bg-amber-500/5 px-3 py-2">
-                <div className="flex items-center gap-1 text-amber-700">
-                  <Link2Off className="h-3 w-3" />
-                  <span className="font-medium">Saknar koppling</span>
-                </div>
-                <div className="font-mono text-lg mt-0.5">{reconciliation.missingLinkCount}</div>
-              </div>
-              <div className="rounded border border-muted px-3 py-2">
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <CircleDashed className="h-3 w-3" />
-                  <span className="font-medium">Inga belopp</span>
-                </div>
-                <div className="font-mono text-lg mt-0.5">{reconciliation.noAmountsCount}</div>
-              </div>
+              {([
+                {
+                  key: "ok" as const,
+                  label: "Stämmer",
+                  count: reconciliation.okCount,
+                  Icon: CheckCircle2,
+                  ring: "ring-emerald-500",
+                  border: "border-emerald-500/30",
+                  bg: "bg-emerald-500/5",
+                  hover: "hover:bg-emerald-500/10",
+                  text: "text-emerald-700",
+                },
+                {
+                  key: "mismatch" as const,
+                  label: "Differens",
+                  count: reconciliation.mismatchCount,
+                  Icon: AlertTriangle,
+                  ring: "ring-red-500",
+                  border: "border-red-500/30",
+                  bg: "bg-red-500/5",
+                  hover: "hover:bg-red-500/10",
+                  text: "text-red-700",
+                },
+                {
+                  key: "missing_link" as const,
+                  label: "Saknar koppling",
+                  count: reconciliation.missingLinkCount,
+                  Icon: Link2Off,
+                  ring: "ring-amber-500",
+                  border: "border-amber-500/30",
+                  bg: "bg-amber-500/5",
+                  hover: "hover:bg-amber-500/10",
+                  text: "text-amber-700",
+                },
+                {
+                  key: "no_amounts" as const,
+                  label: "Inga belopp",
+                  count: reconciliation.noAmountsCount,
+                  Icon: CircleDashed,
+                  ring: "ring-muted-foreground",
+                  border: "border-muted",
+                  bg: "",
+                  hover: "hover:bg-muted/40",
+                  text: "text-muted-foreground",
+                },
+              ]).map(({ key, label, count, Icon, ring, border, bg, hover, text }) => {
+                const isActive = recFilter === key;
+                const isDisabled = count === 0;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={isActive}
+                    disabled={isDisabled}
+                    onClick={() => setRecFilter(isActive ? null : key)}
+                    className={`text-left rounded border ${border} ${bg} ${hover} px-3 py-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${ring} ${
+                      isActive ? `ring-2 ring-offset-1 ${ring}` : ""
+                    } ${isDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                    data-testid={`button-rec-filter-${key}`}
+                  >
+                    <div className={`flex items-center gap-1 ${text}`}>
+                      <Icon className="h-3 w-3" />
+                      <span className="font-medium">{label}</span>
+                    </div>
+                    <div className="font-mono text-lg mt-0.5">{count}</div>
+                  </button>
+                );
+              })}
             </div>
             {reconciliation.mismatchCount > 0 && (
               <div className="rounded border border-red-500/30 bg-red-500/5 divide-y text-xs">
