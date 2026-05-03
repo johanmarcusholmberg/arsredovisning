@@ -1,0 +1,113 @@
+Continue working on the Årsredovisningar application.
+
+I want to add a secure admin backend and admin area for internal management.
+
+Important:
+- Do not replace the existing app.
+- Build on the current authentication, Supabase/database and payment structure.
+- Admin access must be enforced server-side, not only hidden in the frontend.
+- The main admin user must never be deletable or removable from admin status through the frontend.
+- Use role-based access control with at least: admin, paid_user, demo_user, blocked.
+- Free/demo users must not be able to access real project creation or paid functionality through API calls.
+
+Implement:
+
+1. Admin access model
+- Add/verify a user role field in the database/user profile model.
+- Add server-side helpers/middleware for requireAdmin.
+- Add protected admin API routes.
+- Add Supabase RLS policies or backend checks so only admins can read admin data.
+- Make sure frontend-only checks are not the only protection.
+
+2. Admin dashboard route
+Create an admin area, for example /admin, visible only to admins.
+
+The admin dashboard should include:
+- total registered users
+- total demo/free users
+- total paid users
+- total real annual-report projects
+- total exports
+- recent users
+- recent projects
+- failed or incomplete payment/export states if available
+
+3. User management
+Create an admin user table with:
+- name/email
+- role/status
+- created date
+- last login if available
+- payment status if available
+- number of projects
+- actions: view details, block/unblock, change role
+
+Do not allow the protected main admin account to be deleted, blocked or demoted through the frontend.
+
+4. Project management
+Create an admin project overview with:
+- company name
+- organization number
+- financial year
+- owner/user
+- project type: demo or real
+- payment/unlock status
+- workflow status
+- validation status
+- export status
+- created/updated timestamps
+
+Admins should initially see metadata only. Do not expose full accounting data unless explicitly opened later behind an additional protected detail view.
+
+5. Payment overview
+Create an admin payment/status view showing:
+- Stripe customer/payment ID where available
+- user
+- project
+- amount
+- payment status
+- unlock/export status
+- webhook status if available
+- created date
+
+6. Demo content management preparation
+Prepare the admin structure so demo slides, demo PDF and sample data can later be managed from admin.
+If demo content already exists, move management/editing access to admin only.
+The public website should only display the published demo content.
+
+7. Security and audit logging
+Add simple audit logging for admin actions:
+- admin user
+- action type
+- target user/project
+- timestamp
+- before/after values where relevant
+
+Admin actions should include:
+- role change
+- block/unblock user
+- payment unlock override
+- demo content changes if implemented
+
+8. UX
+Keep the admin UI clean and minimal.
+Use clear tabs:
+- Overview
+- Users
+- Projects
+- Payments
+- Demo Content
+- Audit Log
+
+Use the current design system and color palette.
+Do not make the admin area look like a separate product.
+
+9. Acceptance criteria
+- Non-admin users cannot access /admin.
+- Non-admin users cannot access admin API routes directly.
+- Admin can view users and projects.
+- Admin can update user role/status safely.
+- Protected main admin cannot be deleted, blocked or demoted.
+- Admin dashboard shows useful statistics.
+- Audit log records admin actions.
+- Typecheck/build should pass.
