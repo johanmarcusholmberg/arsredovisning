@@ -67,11 +67,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     // Supabase needs an absolute URL for the recovery link's redirect.
+    // The URL we compute here MUST also exist in the Supabase project's
+    // "Redirect URLs" allowlist (Authentication → URL Configuration);
+    // otherwise Supabase silently falls back to the project's "Site URL"
+    // and the email link will appear broken.
+    //
+    // We prefer an explicit `VITE_PUBLIC_SITE_URL` (e.g. the production
+    // domain) over `window.location.origin`, because the latter resolves
+    // to whatever URL the SPA happens to be loaded from — in Replit dev
+    // that's a port-forwarded preview URL that can drift between sessions
+    // and be impractical to keep allowlisted.
+    const explicitOrigin = import.meta.env.VITE_PUBLIC_SITE_URL?.trim();
+    const origin = (explicitOrigin || window.location.origin).replace(/\/+$/, "");
+
     // Normalize BASE_URL defensively: vite usually delivers a slash-terminated
     // value (e.g. "/" or "/arsredovisningar/") but env drift could break the
     // assumption. Strip any trailing slash and join with a single "/".
     const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
-    const redirectTo = `${window.location.origin}${base}/reset-password`;
+    const redirectTo = `${origin}${base}/reset-password`;
+
+    // Surface the redirect URL once per call so the user can see exactly
+    // what Supabase needs to allow. Console-only — never shown in UI.
+    // eslint-disable-next-line no-console
+    console.info(
+      "[auth] password recovery redirect_to =",
+      redirectTo,
+      "(must be allowlisted in Supabase → Authentication → URL Configuration)"
+    );
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
     });

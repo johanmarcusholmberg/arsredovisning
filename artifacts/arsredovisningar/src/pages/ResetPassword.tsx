@@ -48,8 +48,33 @@ export function ResetPassword() {
   // (unknown) so we can show a loading shell briefly while supabase-js
   // parses the URL hash.
   const [recoveryReady, setRecoveryReady] = useState<boolean | null>(null);
+  // Captures Supabase-side errors that arrive on the URL itself
+  // (e.g. `?error=access_denied&error_code=otp_expired`). Without this
+  // the user just sees a generic "link invalid" message — surfacing the
+  // Supabase reason makes it easier to diagnose dashboard misconfigs.
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Supabase reports recovery-link problems via either the query string
+    // (`?error=...&error_description=...`) when using the PKCE/code flow,
+    // or the URL hash (`#error=...&error_description=...`) when using the
+    // implicit flow. Check both before deciding the link is valid.
+    const search = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const errCode = search.get("error_code") ?? hash.get("error_code");
+    const errDesc = search.get("error_description") ?? hash.get("error_description");
+    const err = search.get("error") ?? hash.get("error");
+    if (err || errCode || errDesc) {
+      setLinkError(
+        (errDesc ? decodeURIComponent(errDesc.replace(/\+/g, " ")) : null) ||
+          errCode ||
+          err ||
+          "Unknown error"
+      );
+      setRecoveryReady(false);
+      return;
+    }
+
     // If a session already exists at mount (either pre-authed user or
     // supabase-js has already finished hash parsing), accept it.
     if (session) {
@@ -143,7 +168,7 @@ export function ResetPassword() {
                   after they're sent and can only be used once.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
                 <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                   <span>
@@ -151,6 +176,11 @@ export function ResetPassword() {
                     most recent link.
                   </span>
                 </div>
+                {linkError && (
+                  <p className="text-xs text-muted-foreground">
+                    Supabase reported: <span className="font-mono">{linkError}</span>
+                  </p>
+                )}
               </CardContent>
               <CardFooter className="flex flex-col space-y-3">
                 <Button
