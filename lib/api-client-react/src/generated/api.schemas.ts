@@ -1397,6 +1397,16 @@ export const CashFlowLineItemSourceType = {
   imported_value: "imported_value",
 } as const;
 
+export interface CashFlowLineSourceAccount {
+  accountNumber: string;
+  accountName?: string | null;
+  opening?: number | null;
+  closing?: number | null;
+  movement?: number | null;
+  classification: string;
+  classificationSource: string;
+}
+
 export interface CashFlowLineItem {
   id: string;
   section: CashFlowLineItemSection;
@@ -1406,11 +1416,90 @@ export interface CashFlowLineItem {
   amountPreviousYear?: number | null;
   sourceType: CashFlowLineItemSourceType;
   calculationExplanationSv?: string | null;
+  /** Source accounts that contributed to this cash-flow line. Empty when
+the line is derived from aggregated financial-statement values
+rather than per-account staging data.
+ */
+  sourceAccounts: CashFlowLineSourceAccount[];
   isEditable: boolean;
   isRequired: boolean;
   isSubtotal: boolean;
   needsReview: boolean;
   sortOrder: number;
+}
+
+export type CashFlowAccountClassificationItemClassification =
+  (typeof CashFlowAccountClassificationItemClassification)[keyof typeof CashFlowAccountClassificationItemClassification];
+
+export const CashFlowAccountClassificationItemClassification = {
+  cash_and_cash_equivalents: "cash_and_cash_equivalents",
+  receivables: "receivables",
+  inventory: "inventory",
+  operating_liabilities: "operating_liabilities",
+  tax: "tax",
+  non_cash_adjustment: "non_cash_adjustment",
+  tangible_fixed_assets: "tangible_fixed_assets",
+  intangible_fixed_assets: "intangible_fixed_assets",
+  financial_fixed_assets: "financial_fixed_assets",
+  long_term_loans: "long_term_loans",
+  short_term_interest_bearing_loans: "short_term_interest_bearing_loans",
+  equity: "equity",
+  dividends: "dividends",
+  other_unclear: "other_unclear",
+  exclude: "exclude",
+} as const;
+
+export type CashFlowAccountClassificationItemClassificationSource =
+  (typeof CashFlowAccountClassificationItemClassificationSource)[keyof typeof CashFlowAccountClassificationItemClassificationSource];
+
+export const CashFlowAccountClassificationItemClassificationSource = {
+  bas_default: "bas_default",
+  report_mapping: "report_mapping",
+  manual_override: "manual_override",
+} as const;
+
+export type CashFlowAccountClassificationItemConfidence =
+  (typeof CashFlowAccountClassificationItemConfidence)[keyof typeof CashFlowAccountClassificationItemConfidence];
+
+export const CashFlowAccountClassificationItemConfidence = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+  unmapped: "unmapped",
+} as const;
+
+export interface CashFlowAccountClassificationItem {
+  accountNumber: string;
+  accountName?: string | null;
+  openingBalance?: number | null;
+  closingBalance?: number | null;
+  movement?: number | null;
+  fsReportLine?: string | null;
+  fsReportLineLabel?: string | null;
+  classification: CashFlowAccountClassificationItemClassification;
+  classificationSource: CashFlowAccountClassificationItemClassificationSource;
+  confidence: CashFlowAccountClassificationItemConfidence;
+  excludeFromCashFlow: boolean;
+  needsManualReview: boolean;
+  reviewReasonSv?: string | null;
+  isUserOverridden: boolean;
+}
+
+export interface CashFlowAccountClassificationListResponse {
+  hasAccountLevelData: boolean;
+  accounts: CashFlowAccountClassificationItem[];
+}
+
+export interface UpdateCashFlowAccountClassificationBody {
+  classification?: string;
+  excludeFromCashFlow?: boolean;
+  needsManualReview?: boolean;
+  reviewReasonSv?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateCashFlowAccountClassificationResponse {
+  account: CashFlowAccountClassificationItem;
 }
 
 export type CashFlowStatementSummaryStatus =

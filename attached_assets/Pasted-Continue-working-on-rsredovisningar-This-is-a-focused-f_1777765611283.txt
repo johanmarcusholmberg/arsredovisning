@@ -1,0 +1,270 @@
+Continue working on “Årsredovisningar”.
+
+This is a focused follow-up to the cash-flow statement implementation.
+
+Do not rebuild the export engine.
+Do not replace the PDF/Word templates.
+Do not redesign the full workflow.
+Do not implement direct-method cash flow.
+Do not make broad unrelated UI changes.
+
+GOAL:
+Strengthen the cash-flow statement so it is generated from underlying accounting data as accurately as possible, while still allowing the user to correct the result through account remapping or manual cash-flow adjustments.
+
+The cash-flow process must follow this principle:
+
+Imported accounting data
+→ account classification / mapping
+→ cash-flow derivation
+→ source-account traceability
+→ user review
+→ remapping or manual adjustment
+→ validation
+→ clean annual-report export
+
+The app must never silently guess uncertain cash-flow values.
+The app should derive as much as possible from accounting data, but ambiguous lines must be marked for review.
+
+PART 1 — CASH-FLOW SOURCE DATA LAYER
+
+Create or improve a cash-flow source data layer that reads from the best available underlying data, not only aggregated financial statement lines.
+
+Use available data sources in priority order:
+
+1. Raw imported account balances from SIE/CSV/Excel, if available
+2. Staging accounts / trial balance data
+3. Existing account mapping tables
+4. Existing financial statement line mappings
+5. Aggregated financial statement lines only as fallback
+
+For every relevant account, try to determine:
+- account number
+- account name
+- opening balance
+- closing balance
+- movement
+- mapped financial statement category
+- suggested cash-flow category
+- confidence level: high / medium / low
+- whether user review is required
+
+Do not fabricate account-level traceability if the underlying data is unavailable.
+
+PART 2 — CASH-FLOW ACCOUNT CLASSIFICATION
+
+Add or improve account classification for cash-flow purposes.
+
+Each relevant account should be classified into one of these cash-flow source categories where possible:
+
+- cash_and_cash_equivalents
+- receivables
+- inventory
+- operating_liabilities
+- tax
+- non_cash_adjustment
+- tangible_fixed_assets
+- intangible_fixed_assets
+- financial_fixed_assets
+- long_term_loans
+- short_term_interest_bearing_loans
+- equity
+- dividends
+- other_unclear
+
+Use BAS account ranges as a starting point, but allow project-specific mapping overrides.
+
+Important:
+The cash-flow classification must be separate from, but connected to, the financial-statement mapping.
+
+Example:
+An account may be mapped to “Kassa och bank” in the balance sheet and also classified as “cash_and_cash_equivalents” for cash-flow reconciliation.
+
+PART 3 — USER REMAPPING UX
+
+Add or improve a user-facing remapping option for cash-flow classifications.
+
+The user should be able to open a line item and see:
+- which accounts contributed to the line
+- how each account was classified
+- whether the classification came from automatic mapping, existing report mapping, BAS default, or manual override
+
+The user should be able to change the cash-flow classification of an account without destroying the ordinary income statement/balance sheet mapping.
+
+Examples:
+- Change account 1930 to “Likvida medel”
+- Change account 2350 to “Upptagna lån / amortering”
+- Change account 1220 to “Materiella anläggningstillgångar”
+- Mark an account as “Exclude from cash-flow calculation”
+- Mark an account as “Needs manual review”
+
+When the user remaps an account:
+- Recalculate affected cash-flow lines
+- Update source-account traceability
+- Keep an audit trail
+- Show that the value was affected by user mapping
+
+PART 4 — CASH-FLOW DERIVATION ENGINE
+
+Improve the cash-flow derivation engine using account-level movements.
+
+Operating activities:
+Derive where possible:
+- Resultat efter finansiella poster
+- Justeringar för poster som inte ingår i kassaflödet
+- Betald skatt
+- Förändring av varulager
+- Förändring av rörelsefordringar
+- Förändring av rörelseskulder
+
+Investing activities:
+Derive where possible:
+- Förvärv av materiella anläggningstillgångar
+- Försäljning av materiella anläggningstillgångar
+- Förvärv av immateriella anläggningstillgångar
+- Förvärv/försäljning av finansiella anläggningstillgångar
+
+Financing activities:
+Derive where possible:
+- Nyemission
+- Upptagna lån
+- Amortering av lån
+- Utbetald utdelning
+
+Be conservative.
+
+If a movement is detected but cannot be safely split, do not guess.
+Instead show the detected movement and ask the user to classify it.
+
+Examples:
+- If loan accounts increased by 500,000 SEK, suggest “Potential upptagna lån” but allow user confirmation.
+- If loan accounts decreased by 200,000 SEK, suggest “Potential amortering” but allow user confirmation.
+- If fixed assets increased, suggest “Potential förvärv av anläggningstillgångar”, but require review if depreciation/disposals make the movement ambiguous.
+- If equity changed, require user review unless the source clearly identifies new issue or dividend.
+
+PART 5 — REVIEW REQUIRED STATES
+
+Add clear review reasons for uncertain lines.
+
+Use Swedish messages such as:
+
+- “Källkonto saknas”
+- “Konto behöver klassificeras”
+- “Rörelsen kan inte delas upp mellan förvärv och försäljning”
+- “Lånerörelse kan inte delas upp mellan upptagna lån och amortering”
+- “Eget kapital-rörelse kräver manuell klassificering”
+- “Föregående års balans saknas”
+- “Beräkningen behöver granskas”
+- “Beloppet bygger på manuell justering”
+- “Beloppet bygger på användarändrad kassaflödesklassificering”
+
+For each review-required line, show:
+- detected account movement
+- suggested classification, if any
+- why the system is uncertain
+- recommended user action
+
+PART 6 — MANUAL CASH-FLOW ADJUSTMENTS
+
+Keep manual adjustments available, but they should be used after the user has had the chance to fix mapping/classification.
+
+Manual adjustment modal should include:
+- line item
+- original calculated amount
+- adjustment amount
+- adjusted amount
+- reason
+- optional note
+- confirmation checkbox
+
+The reason should be required.
+
+Store:
+- previous value
+- new value
+- adjustment amount
+- reason
+- user
+- timestamp
+
+Show manual adjustments in the review panel.
+
+PART 7 — SOURCE TRACEABILITY
+
+Every calculated or adjusted line should show source information.
+
+For each cash-flow line, show:
+- source accounts
+- opening balance
+- closing balance
+- movement
+- cash-flow effect
+- classification source:
+  - BAS default
+  - report mapping
+  - manual cash-flow mapping
+  - manual adjustment
+- calculation explanation in Swedish
+
+If the line is based on aggregated data only, clearly show:
+“Detaljerat källkonto saknas. Beloppet bygger på aggregerad rapportdata.”
+
+PART 8 — VALIDATION
+
+Do not loosen validation.
+
+Validation must still check:
+- Mandatory cash-flow statement exists
+- Cash-flow requirement has been assessed
+- Opening cash + årets kassaflöde = closing cash
+- Closing cash matches balance sheet cash/bank
+- Required review items are resolved
+- Manual adjustments have reasons
+- Optional enabled cash flow is valid
+- Optional disabled cash flow does not block export
+
+If unresolved cash-flow classifications remain, show blocking validation if the cash-flow statement is mandatory or enabled.
+
+PART 9 — EXPORT SAFETY
+
+Do not export internal source-account details, review badges, or calculation explanations.
+
+PDF/Word export should only include the clean cash-flow statement.
+
+The app UI may show:
+- source accounts
+- mapping
+- review status
+- calculations
+- manual adjustment reasons
+
+The exported annual report should only show:
+- Swedish cash-flow statement labels
+- amounts
+- normal annual-report formatting
+
+PART 10 — ACCEPTANCE CRITERIA
+
+The implementation is complete when:
+
+1. Cash-flow derivation uses underlying account-level data where available.
+2. Aggregated financial statement lines are only used as fallback.
+3. Cash-flow line items show source accounts when available.
+4. The user can adjust cash-flow classification/mapping without breaking income statement or balance sheet mapping.
+5. The user can manually adjust cash-flow lines with required explanation.
+6. Ambiguous investment and financing movements are detected and shown for review instead of ignored.
+7. The app explains why uncertain lines need review.
+8. Recalculations happen after cash-flow remapping.
+9. Mandatory or enabled cash-flow statements cannot be exported with unresolved blocking issues.
+10. Clean PDF/Word export remains unchanged except that it uses the validated cash-flow values.
+11. Existing notes, balance sheet, income statement, note numbering, payment unlock, and export logic are not broken.
+
+IMPLEMENTATION SUMMARY REQUIRED:
+After implementation, report:
+- Which underlying data source is used for cash-flow derivation
+- How cash-flow account classification works
+- How user remapping works
+- Which lines can now be derived automatically
+- Which lines still require manual review and why
+- How source-account traceability is shown
+- Files/components/tables touched
+- Any remaining limitations

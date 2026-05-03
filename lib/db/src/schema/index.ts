@@ -35,3 +35,4 @@ export * from "./cashFlowRequirementAssessments";
 export * from "./cashFlowStatements";
 export * from "./cashFlowLineItems";
 export * from "./cashFlowAdjustments";
+export * from "./cashFlowAccountClassifications";

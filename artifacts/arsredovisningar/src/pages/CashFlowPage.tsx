@@ -9,13 +9,23 @@ import {
   updateCashFlowLine,
   addCashFlowAdjustment,
   validateCashFlow,
+  updateCashFlowAccountClassification,
   type CashFlowAssessmentResponse,
   type CashFlowStatementResponse,
   type CashFlowLineItem,
+  type CashFlowLineSourceAccount,
   type CashFlowValidationResponse,
   type UpdateCashFlowAssessmentBody,
   type UpdateCashFlowLineBody,
+  type UpdateCashFlowAccountClassificationBody,
 } from "@workspace/api-client-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -142,6 +152,7 @@ export function CashFlowPage() {
   const [adjustOpen, setAdjustOpen] = useState<CFLine | null>(null);
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
+  const [remapAccount, setRemapAccount] = useState<CashFlowLineSourceAccount | null>(null);
 
   function openAdjust(line: CFLine) {
     setAdjustOpen(line);
@@ -368,6 +379,7 @@ export function CashFlowPage() {
                             })
                           }
                           onAdjust={openAdjust}
+                          onRemap={setRemapAccount}
                         />
                       );
                     })}
@@ -435,6 +447,13 @@ export function CashFlowPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <RemapAccountDialog
+        reportId={reportId}
+        account={remapAccount}
+        onClose={() => setRemapAccount(null)}
+        onSaved={() => qc.invalidateQueries({ queryKey: statementKey })}
+      />
     </div>
   );
 }
@@ -524,17 +543,38 @@ function SummaryTile({
   );
 }
 
+const CF_CLASSIFICATION_LABELS: Record<string, string> = {
+  cash_and_cash_equivalents: "Likvida medel",
+  receivables: "Rörelsefordringar",
+  inventory: "Varulager",
+  operating_liabilities: "Rörelseskulder",
+  tax: "Skatt",
+  non_cash_adjustment: "Ej kassaflödespåverkande (t.ex. avskrivningar)",
+  tangible_fixed_assets: "Materiella anläggningstillgångar",
+  intangible_fixed_assets: "Immateriella anläggningstillgångar",
+  financial_fixed_assets: "Finansiella anläggningstillgångar",
+  long_term_loans: "Långfristiga lån",
+  short_term_interest_bearing_loans: "Kortfristiga räntebärande lån",
+  equity: "Eget kapital",
+  dividends: "Utdelning",
+  other_unclear: "Ej klassificerad",
+  exclude: "Exkludera från kassaflödet",
+};
+
 function FragmentSection({
   label,
   lines,
   onConfirm,
   onAdjust,
+  onRemap,
 }: {
   label: string;
   lines: CFLine[];
   onConfirm: (l: CFLine) => void;
   onAdjust: (l: CFLine) => void;
+  onRemap: (account: CashFlowLineSourceAccount) => void;
 }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   return (
     <>
       <tr className="border-t">
@@ -542,43 +582,176 @@ function FragmentSection({
           {label}
         </td>
       </tr>
-      {lines.map((l) => (
-        <tr key={l.id} className={`border-b last:border-b-0 ${l.isSubtotal ? "font-semibold bg-muted/30" : ""}`}>
-          <td className="py-2 pr-2">
-            <div className="flex items-center gap-2">
-              <span>{l.labelSv}</span>
-              {l.needsReview && (
-                <Badge variant="outline" className="border-amber-400 text-amber-700 text-[10px]">
-                  Granska
-                </Badge>
-              )}
-              {l.sourceType === "manual_adjustment" && (
-                <Badge variant="outline" className="text-[10px]">Manuell</Badge>
-              )}
-            </div>
-            {l.calculationExplanationSv && !l.isSubtotal && (
-              <div className="text-[11px] text-muted-foreground mt-0.5">{l.calculationExplanationSv}</div>
-            )}
-          </td>
-          <td className="py-2 text-right tabular-nums">{fmt(l.amountCurrentYear)}</td>
-          <td className="py-2 text-right tabular-nums">{fmt(l.amountPreviousYear)}</td>
-          <td className="py-2 text-right">
-            {l.isEditable && !l.isSubtotal && (
-              <div className="flex justify-end gap-1">
-                {l.needsReview && (
-                  <Button size="sm" variant="ghost" onClick={() => onConfirm(l)} title="Bekräfta">
-                    <CheckCircle2 className="h-4 w-4" />
-                  </Button>
+      {lines.map((l) => {
+        const isOpen = !!expanded[l.id];
+        const sourceAccounts = l.sourceAccounts ?? [];
+        return (
+          <>
+            <tr key={l.id} className={`border-b last:border-b-0 ${l.isSubtotal ? "font-semibold bg-muted/30" : ""}`}>
+              <td className="py-2 pr-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span>{l.labelSv}</span>
+                  {l.needsReview && (
+                    <Badge variant="outline" className="border-amber-400 text-amber-700 text-[10px]">
+                      Granska
+                    </Badge>
+                  )}
+                  {l.sourceType === "manual_adjustment" && (
+                    <Badge variant="outline" className="text-[10px]">Manuell</Badge>
+                  )}
+                  {sourceAccounts.length > 0 && !l.isSubtotal && (
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((prev) => ({ ...prev, [l.id]: !prev[l.id] }))}
+                      className="text-[10px] text-primary underline"
+                    >
+                      {isOpen ? "Dölj källkonton" : `Visa källkonton (${sourceAccounts.length})`}
+                    </button>
+                  )}
+                </div>
+                {l.calculationExplanationSv && !l.isSubtotal && (
+                  <div className="text-[11px] text-muted-foreground mt-0.5">{l.calculationExplanationSv}</div>
                 )}
-                <Button size="sm" variant="ghost" onClick={() => onAdjust(l)} title="Justera">
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </div>
+              </td>
+              <td className="py-2 text-right tabular-nums">{fmt(l.amountCurrentYear)}</td>
+              <td className="py-2 text-right tabular-nums">{fmt(l.amountPreviousYear)}</td>
+              <td className="py-2 text-right">
+                {l.isEditable && !l.isSubtotal && (
+                  <div className="flex justify-end gap-1">
+                    {l.needsReview && (
+                      <Button size="sm" variant="ghost" onClick={() => onConfirm(l)} title="Bekräfta">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => onAdjust(l)} title="Justera">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </td>
+            </tr>
+            {isOpen && sourceAccounts.length > 0 && (
+              <tr key={`${l.id}-detail`} className="bg-muted/20 border-b">
+                <td colSpan={4} className="py-2 pl-4 pr-2">
+                  <table className="w-full text-[11px]">
+                    <thead className="text-muted-foreground">
+                      <tr>
+                        <th className="text-left py-1">Konto</th>
+                        <th className="text-left py-1">Klassificering</th>
+                        <th className="text-right py-1">IB</th>
+                        <th className="text-right py-1">UB</th>
+                        <th className="text-right py-1">Förändring</th>
+                        <th className="text-right py-1 w-[140px]">Åtgärd</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sourceAccounts.map((a) => (
+                        <tr key={a.accountNumber} className="border-t border-border/40">
+                          <td className="py-1 pr-2">
+                            <span className="font-mono">{a.accountNumber}</span>
+                            {a.accountName ? <span className="text-muted-foreground"> – {a.accountName}</span> : null}
+                          </td>
+                          <td className="py-1 pr-2">
+                            <span>{CF_CLASSIFICATION_LABELS[a.classification] ?? a.classification}</span>
+                            <span className="text-muted-foreground"> ({a.classificationSource})</span>
+                          </td>
+                          <td className="py-1 text-right tabular-nums">{fmt(a.opening ?? null)}</td>
+                          <td className="py-1 text-right tabular-nums">{fmt(a.closing ?? null)}</td>
+                          <td className="py-1 text-right tabular-nums">{fmt(a.movement ?? null)}</td>
+                          <td className="py-1 text-right">
+                            <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => onRemap(a)}>
+                              Klassificera om
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
             )}
-          </td>
-        </tr>
-      ))}
+          </>
+        );
+      })}
     </>
+  );
+}
+
+export function RemapAccountDialog({
+  reportId,
+  account,
+  onClose,
+  onSaved,
+}: {
+  reportId: string;
+  account: CashFlowLineSourceAccount | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { toast } = useToast();
+  const [classification, setClassification] = useState<string>(account?.classification ?? "other_unclear");
+  const [exclude, setExclude] = useState<boolean>(false);
+  const mutation = useMutation({
+    mutationFn: (body: UpdateCashFlowAccountClassificationBody) =>
+      updateCashFlowAccountClassification(reportId, account!.accountNumber, body),
+    onSuccess: () => {
+      toast({ title: "Klassificering uppdaterad", description: "Kassaflödesanalysen räknas om." });
+      onSaved();
+      onClose();
+    },
+    onError: () => {
+      toast({ title: "Kunde inte uppdatera klassificering", variant: "destructive" });
+    },
+  });
+
+  return (
+    <Dialog open={!!account} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Omklassificera konto {account?.accountNumber}</DialogTitle>
+          <DialogDescription>
+            {account?.accountName ?? "—"} · ändringen påverkar enbart kassaflödesanalysen.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Ny klassificering</Label>
+            <Select value={classification} onValueChange={setClassification}>
+              <SelectTrigger><SelectValue placeholder="Välj klassificering" /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(CF_CLASSIFICATION_LABELS).map(([v, label]) => (
+                  <SelectItem key={v} value={v}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={exclude}
+              onChange={(e) => setExclude(e.target.checked)}
+            />
+            Exkludera kontot helt från kassaflödesanalysen
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Avbryt</Button>
+          <Button
+            disabled={mutation.isPending}
+            onClick={() =>
+              mutation.mutate({
+                classification,
+                excludeFromCashFlow: exclude,
+                needsManualReview: false,
+                reviewReasonSv: null,
+              })
+            }
+          >
+            Spara
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

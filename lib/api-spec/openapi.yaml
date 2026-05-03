@@ -1949,6 +1949,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/CashFlowStatementResponse"
 
+  /reports/{reportId}/cash-flow/account-classifications:
+    get:
+      operationId: listCashFlowAccountClassifications
+      tags: [cashFlow]
+      parameters:
+        - in: path
+          name: reportId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Per-account cash-flow classifications for the project.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashFlowAccountClassificationListResponse"
+
+  /reports/{reportId}/cash-flow/account-classifications/{accountNumber}:
+    patch:
+      operationId: updateCashFlowAccountClassification
+      tags: [cashFlow]
+      parameters:
+        - in: path
+          name: reportId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: accountNumber
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCashFlowAccountClassificationBody"
+      responses:
+        "200":
+          description: Updated classification (statement is regenerated server-side).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateCashFlowAccountClassificationResponse"
+
   /reports/{reportId}/cash-flow/validate:
     post:
       operationId: validateCashFlow
@@ -3996,6 +4040,14 @@ components:
         calculationExplanationSv:
           type: string
           nullable: true
+        sourceAccounts:
+          type: array
+          description: |
+            Source accounts that contributed to this cash-flow line. Empty when
+            the line is derived from aggregated financial-statement values
+            rather than per-account staging data.
+          items:
+            $ref: "#/components/schemas/CashFlowLineSourceAccount"
         isEditable: { type: boolean }
         isRequired: { type: boolean }
         isSubtotal: { type: boolean }
@@ -4007,11 +4059,118 @@ components:
         - lineCode
         - labelSv
         - sourceType
+        - sourceAccounts
         - isEditable
         - isRequired
         - isSubtotal
         - needsReview
         - sortOrder
+
+    CashFlowLineSourceAccount:
+      type: object
+      properties:
+        accountNumber: { type: string }
+        accountName:
+          type: string
+          nullable: true
+        opening: { type: number, nullable: true }
+        closing: { type: number, nullable: true }
+        movement: { type: number, nullable: true }
+        classification: { type: string }
+        classificationSource: { type: string }
+      required:
+        - accountNumber
+        - classification
+        - classificationSource
+
+    CashFlowAccountClassificationItem:
+      type: object
+      properties:
+        accountNumber: { type: string }
+        accountName:
+          type: string
+          nullable: true
+        openingBalance: { type: number, nullable: true }
+        closingBalance: { type: number, nullable: true }
+        movement: { type: number, nullable: true }
+        fsReportLine:
+          type: string
+          nullable: true
+        fsReportLineLabel:
+          type: string
+          nullable: true
+        classification:
+          type: string
+          enum:
+            - cash_and_cash_equivalents
+            - receivables
+            - inventory
+            - operating_liabilities
+            - tax
+            - non_cash_adjustment
+            - tangible_fixed_assets
+            - intangible_fixed_assets
+            - financial_fixed_assets
+            - long_term_loans
+            - short_term_interest_bearing_loans
+            - equity
+            - dividends
+            - other_unclear
+            - exclude
+        classificationSource:
+          type: string
+          enum: [bas_default, report_mapping, manual_override]
+        confidence:
+          type: string
+          enum: [high, medium, low, unmapped]
+        excludeFromCashFlow: { type: boolean }
+        needsManualReview: { type: boolean }
+        reviewReasonSv:
+          type: string
+          nullable: true
+        isUserOverridden: { type: boolean }
+      required:
+        - accountNumber
+        - classification
+        - classificationSource
+        - confidence
+        - excludeFromCashFlow
+        - needsManualReview
+        - isUserOverridden
+
+    CashFlowAccountClassificationListResponse:
+      type: object
+      properties:
+        hasAccountLevelData: { type: boolean }
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashFlowAccountClassificationItem"
+      required:
+        - hasAccountLevelData
+        - accounts
+
+    UpdateCashFlowAccountClassificationBody:
+      type: object
+      properties:
+        classification:
+          type: string
+        excludeFromCashFlow: { type: boolean }
+        needsManualReview: { type: boolean }
+        reviewReasonSv:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    UpdateCashFlowAccountClassificationResponse:
+      type: object
+      properties:
+        account:
+          $ref: "#/components/schemas/CashFlowAccountClassificationItem"
+      required:
+        - account
 
     CashFlowStatementSummary:
       type: object

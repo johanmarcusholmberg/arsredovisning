@@ -25,6 +25,14 @@ import {
 } from "@workspace/db";
 import { resolveReportForProject } from "../helpers/projectReportLink.js";
 import { CASH_FLOW_RECONCILIATION_TOLERANCE_SEK } from "./complianceConfig.js";
+import {
+  loadAccountMovements,
+  sumClassificationMovement,
+  sumClassificationClosing,
+  sumClassificationOpening,
+  type AccountMovement,
+  type AccountMovementBundle,
+} from "./cashFlowSourceData.js";
 
 // ---------------------------------------------------------------------------
 // Canonical line template — Swedish indirect method
@@ -115,9 +123,321 @@ interface DerivedAmounts {
   current: number | null;
   previous: number | null;
   sourceType: SourceType;
+  /**
+   * JSON-serialised array of contributing source accounts. Each entry has:
+   *   { accountNumber, accountName, opening, closing, movement,
+   *     classification, classificationSource }.
+   * Stored in the existing text column on cash_flow_line_items.
+   */
   sourceAccounts: string | null;
   explanationSv: string;
   needsReview: boolean;
+}
+
+interface SourceAccountSummary {
+  accountNumber: string;
+  accountName: string | null;
+  opening: number | null;
+  closing: number | null;
+  movement: number | null;
+  classification: string;
+  classificationSource: string;
+}
+
+function summariseAccounts(accounts: AccountMovement[]): string | null {
+  if (accounts.length === 0) return null;
+  const summary: SourceAccountSummary[] = accounts.map((a) => ({
+    accountNumber: a.accountNumber,
+    accountName: a.accountName,
+    opening: a.openingBalance,
+    closing: a.closingBalance,
+    movement: a.movement,
+    classification: a.classification,
+    classificationSource: a.classificationSource,
+  }));
+  return JSON.stringify(summary);
+}
+
+/**
+ * Derive a cash-flow line from per-account movements when the source data
+ * layer has account-level data. Returns null when this line code cannot be
+ * derived from per-account data alone (caller should fall back to the
+ * aggregated heuristic).
+ */
+function deriveFromMovements(
+  lineCode: string,
+  bundle: AccountMovementBundle,
+): DerivedAmounts | null {
+  if (!bundle.hasAccountLevelData) return null;
+
+  const operatingChange = (
+    cls: Parameters<typeof sumClassificationMovement>[1],
+    label: string,
+    invert: boolean,
+  ): DerivedAmounts => {
+    const { total, accounts, hasMissing } = sumClassificationMovement(bundle, cls);
+    if (accounts.length === 0) return placeholderUnknown();
+    const value = total === null ? null : invert ? -total : total;
+    return {
+      current: value,
+      previous: null,
+      sourceType: "mapped_accounts",
+      sourceAccounts: summariseAccounts(accounts),
+      explanationSv: `${label} – beräknat från ${accounts.length} källkonton (rörelse = ${value === null ? "?" : value.toLocaleString("sv-SE")} kr).`,
+      needsReview: hasMissing,
+    };
+  };
+
+  const placeholderUnknown = (): DerivedAmounts => ({
+    current: null,
+    previous: null,
+    sourceType: "calculated",
+    sourceAccounts: null,
+    explanationSv:
+      "Inga klassificerade källkonton hittades för denna post – bekräfta noll eller fyll i manuellt.",
+    needsReview: true,
+  });
+
+  switch (lineCode) {
+    case "op_non_cash_adjustments": {
+      // Sum of depreciation accounts in the period — already a positive
+      // expense in P&L → add back as a positive number to the cash flow.
+      const dep = bundle.byClassification.get("non_cash_adjustment") ?? [];
+      if (dep.length === 0) return placeholderUnknown();
+      // Depreciation accounts in BAS 78xx have natural debit balances;
+      // the *closing* balance (period total in P&L sign) already reflects
+      // the year. We sum closing balances as the add-back amount.
+      const total = dep.reduce(
+        (s, a) => s + (a.closingBalance ?? 0),
+        0,
+      );
+      const hasMissing = dep.some((a) => a.closingBalance === null);
+      return {
+        current: hasMissing ? null : Math.abs(total),
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(dep),
+        explanationSv:
+          "Avskrivningar och andra ej kassaflödespåverkande poster återförs (positivt belopp). Bekräfta beloppet.",
+        needsReview: true, // always require user confirmation here
+      };
+    }
+    case "op_change_inventory":
+      return operatingChange(
+        "inventory",
+        "Förändring av varulager",
+        true /* increase = decrease in cash */,
+      );
+    case "op_change_receivables":
+      return operatingChange(
+        "receivables",
+        "Förändring av rörelsefordringar",
+        true,
+      );
+    case "op_change_payables": {
+      // Operating payables increase = cash inflow (no invert).
+      return operatingChange(
+        "operating_liabilities",
+        "Förändring av rörelseskulder",
+        false,
+      );
+    }
+    case "op_tax_paid": {
+      // Approx: -(tax expense from 89xx) adjusted by change in tax liability.
+      const taxAccounts = bundle.byClassification.get("tax") ?? [];
+      if (taxAccounts.length === 0) return placeholderUnknown();
+      const liabilityChange = taxAccounts
+        .filter((a) => a.accountNumber.startsWith("25"))
+        .reduce((s, a) => s + (a.movement ?? 0), 0);
+      const expense = taxAccounts
+        .filter((a) => a.accountNumber.startsWith("89"))
+        .reduce((s, a) => s + (a.closingBalance ?? 0), 0);
+      const hasMissing = taxAccounts.some((a) => a.movement === null);
+      const taxPaid = -(expense) + liabilityChange;
+      return {
+        current: hasMissing ? null : taxPaid,
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(taxAccounts),
+        explanationSv:
+          "Betald skatt = – årets skattekostnad ± förändring av skatteskuld. Bekräfta beloppet.",
+        needsReview: true,
+      };
+    }
+
+    // ── Investing ────────────────────────────────────────────────────────
+    case "inv_acq_tangible": {
+      const accs = bundle.byClassification.get("tangible_fixed_assets") ?? [];
+      if (accs.length === 0) return placeholderUnknown();
+      const total = accs.reduce((s, a) => s + (a.movement ?? 0), 0);
+      const hasMissing = accs.some((a) => a.movement === null);
+      // Increase in fixed assets = acquisition (cash outflow → negative).
+      const value = hasMissing ? null : total > 0 ? -total : 0;
+      return {
+        current: value,
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(accs),
+        explanationSv:
+          "Beräknad netto-rörelse på materiella anläggningstillgångar. Rörelsen kan inte delas upp mellan förvärv och försäljning – bekräfta uppdelningen om du har sålt anläggningar.",
+        needsReview: true,
+      };
+    }
+    case "inv_disp_tangible": {
+      const accs = bundle.byClassification.get("tangible_fixed_assets") ?? [];
+      if (accs.length === 0) return placeholderUnknown();
+      const total = accs.reduce((s, a) => s + (a.movement ?? 0), 0);
+      const hasMissing = accs.some((a) => a.movement === null);
+      const value = hasMissing ? null : total < 0 ? -total : 0;
+      return {
+        current: value,
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(accs),
+        explanationSv:
+          "Försäljning härleds som negativ del av netto-rörelsen på anläggningstillgångar. Rörelsen kan inte delas upp mellan förvärv och försäljning – bekräfta beloppet.",
+        needsReview: true,
+      };
+    }
+    case "inv_acq_intangible": {
+      const accs = bundle.byClassification.get("intangible_fixed_assets") ?? [];
+      if (accs.length === 0) return placeholderUnknown();
+      const total = accs.reduce((s, a) => s + (a.movement ?? 0), 0);
+      const hasMissing = accs.some((a) => a.movement === null);
+      const value = hasMissing ? null : total > 0 ? -total : 0;
+      return {
+        current: value,
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(accs),
+        explanationSv:
+          "Förvärv av immateriella anläggningstillgångar härleds från positiv rörelse på 10xx-konton. Bekräfta att inga avyttringar ingår.",
+        needsReview: true,
+      };
+    }
+    case "inv_financial": {
+      const accs = bundle.byClassification.get("financial_fixed_assets") ?? [];
+      if (accs.length === 0) return placeholderUnknown();
+      const total = accs.reduce((s, a) => s + (a.movement ?? 0), 0);
+      const hasMissing = accs.some((a) => a.movement === null);
+      return {
+        current: hasMissing ? null : -total,
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(accs),
+        explanationSv:
+          "Netto av förvärv/avyttring av finansiella anläggningstillgångar. Rörelsen kan inte delas upp mellan förvärv och försäljning – bekräfta beloppet.",
+        needsReview: true,
+      };
+    }
+
+    // ── Financing ────────────────────────────────────────────────────────
+    case "fin_loans_taken": {
+      const accs = [
+        ...(bundle.byClassification.get("long_term_loans") ?? []),
+        ...(bundle.byClassification.get("short_term_interest_bearing_loans") ?? []),
+      ];
+      if (accs.length === 0) return placeholderUnknown();
+      const increases = accs
+        .filter((a) => (a.movement ?? 0) > 0)
+        .reduce((s, a) => s + (a.movement ?? 0), 0);
+      const hasMissing = accs.some((a) => a.movement === null);
+      return {
+        current: hasMissing ? null : increases,
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(accs),
+        explanationSv:
+          "Summa positiv rörelse på lånekonton tolkas som upptagna lån. Lånerörelse kan inte delas upp mellan upptagna lån och amortering automatiskt – bekräfta beloppet.",
+        needsReview: true,
+      };
+    }
+    case "fin_loans_repaid": {
+      const accs = [
+        ...(bundle.byClassification.get("long_term_loans") ?? []),
+        ...(bundle.byClassification.get("short_term_interest_bearing_loans") ?? []),
+      ];
+      if (accs.length === 0) return placeholderUnknown();
+      const decreases = accs
+        .filter((a) => (a.movement ?? 0) < 0)
+        .reduce((s, a) => s + (a.movement ?? 0), 0);
+      const hasMissing = accs.some((a) => a.movement === null);
+      return {
+        current: hasMissing ? null : decreases,
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(accs),
+        explanationSv:
+          "Summa negativ rörelse på lånekonton tolkas som amortering. Lånerörelse kan inte delas upp mellan upptagna lån och amortering automatiskt – bekräfta beloppet.",
+        needsReview: true,
+      };
+    }
+    case "fin_new_share_issue": {
+      const accs = bundle.byClassification.get("equity") ?? [];
+      if (accs.length === 0) return placeholderUnknown();
+      const total = accs.reduce((s, a) => s + (a.movement ?? 0), 0);
+      const hasMissing = accs.some((a) => a.movement === null);
+      return {
+        current: hasMissing ? null : total > 0 ? total : 0,
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(accs),
+        explanationSv:
+          "Eget kapital-rörelse kräver manuell klassificering – beloppet visar netto-rörelsen, separera nyemission från utdelning innan validering.",
+        needsReview: true,
+      };
+    }
+    case "fin_dividends_paid": {
+      const accs = bundle.byClassification.get("dividends") ?? [];
+      if (accs.length === 0) return placeholderUnknown();
+      const total = accs.reduce((s, a) => s + (a.closingBalance ?? 0), 0);
+      const hasMissing = accs.some((a) => a.closingBalance === null);
+      return {
+        current: hasMissing ? null : -Math.abs(total),
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(accs),
+        explanationSv:
+          "Utbetald utdelning hämtas från konton klassificerade som utdelning. Bekräfta beloppet.",
+        needsReview: true,
+      };
+    }
+
+    // ── Reconciliation ───────────────────────────────────────────────────
+    case "rec_opening_cash": {
+      const { total, accounts } = sumClassificationOpening(
+        bundle,
+        "cash_and_cash_equivalents",
+      );
+      if (accounts.length === 0) return null; // fall back to fs lines (prev year BS)
+      return {
+        current: total,
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(accounts),
+        explanationSv:
+          "Likvida medel vid årets början = summa ingående saldo på alla 19xx-konton.",
+        needsReview: total === null,
+      };
+    }
+    case "rec_closing_cash": {
+      const { total, accounts } = sumClassificationClosing(
+        bundle,
+        "cash_and_cash_equivalents",
+      );
+      if (accounts.length === 0) return null;
+      return {
+        current: total,
+        previous: null,
+        sourceType: "mapped_accounts",
+        sourceAccounts: summariseAccounts(accounts),
+        explanationSv:
+          "Likvida medel vid årets slut = summa utgående saldo på alla 19xx-konton. Ska stämma mot balansräkningen.",
+        needsReview: total === null,
+      };
+    }
+  }
+  return null;
 }
 
 /**
@@ -328,6 +648,10 @@ export async function generateCashFlowStatement(
   );
 
   // Pull source data.
+  // Priority order:
+  //   1. Per-account staging balances (cashFlowSourceData) when available
+  //   2. Aggregated financial_statement_lines as fallback
+  const movementBundle = await loadAccountMovements(projectId);
   const fsLines = reportId
     ? await db
         .select()
@@ -372,7 +696,9 @@ export async function generateCashFlowStatement(
         needsReview: false,
       };
     } else {
-      derived = deriveLineAmounts(tpl.lineCode, fsLines);
+      // Try per-account derivation first; fall back to aggregated lines.
+      const fromAccounts = deriveFromMovements(tpl.lineCode, movementBundle);
+      derived = fromAccounts ?? deriveLineAmounts(tpl.lineCode, fsLines);
     }
 
     inserts.push({

@@ -24,6 +24,7 @@ import type {
   AnnualReport,
   AnnualReportProject,
   ApplyMappingTemplate200,
+  CashFlowAccountClassificationListResponse,
   CashFlowAdjustmentListResponse,
   CashFlowAssessmentResponse,
   CashFlowStatementResponse,
@@ -96,6 +97,8 @@ import type {
   StagingPreview,
   StatementLineDrilldown,
   SuggestNotesResponse,
+  UpdateCashFlowAccountClassificationBody,
+  UpdateCashFlowAccountClassificationResponse,
   UpdateCashFlowAssessmentBody,
   UpdateCashFlowLineBody,
   UpdateCompanyBody,
@@ -7302,6 +7305,216 @@ export const useAddCashFlowAdjustment = <
   TContext
 > => {
   return useMutation(getAddCashFlowAdjustmentMutationOptions(options));
+};
+
+export const getListCashFlowAccountClassificationsUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/cash-flow/account-classifications`;
+};
+
+export const listCashFlowAccountClassifications = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<CashFlowAccountClassificationListResponse> => {
+  return customFetch<CashFlowAccountClassificationListResponse>(
+    getListCashFlowAccountClassificationsUrl(reportId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListCashFlowAccountClassificationsQueryKey = (
+  reportId: string,
+) => {
+  return [
+    `/api/reports/${reportId}/cash-flow/account-classifications`,
+  ] as const;
+};
+
+export const getListCashFlowAccountClassificationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCashFlowAccountClassifications>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCashFlowAccountClassifications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListCashFlowAccountClassificationsQueryKey(reportId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCashFlowAccountClassifications>>
+  > = ({ signal }) =>
+    listCashFlowAccountClassifications(reportId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCashFlowAccountClassifications>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCashFlowAccountClassificationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCashFlowAccountClassifications>>
+>;
+export type ListCashFlowAccountClassificationsQueryError = ErrorType<unknown>;
+
+export function useListCashFlowAccountClassifications<
+  TData = Awaited<ReturnType<typeof listCashFlowAccountClassifications>>,
+  TError = ErrorType<unknown>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCashFlowAccountClassifications>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCashFlowAccountClassificationsQueryOptions(
+    reportId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getUpdateCashFlowAccountClassificationUrl = (
+  reportId: string,
+  accountNumber: string,
+) => {
+  return `/api/reports/${reportId}/cash-flow/account-classifications/${accountNumber}`;
+};
+
+export const updateCashFlowAccountClassification = async (
+  reportId: string,
+  accountNumber: string,
+  updateCashFlowAccountClassificationBody: UpdateCashFlowAccountClassificationBody,
+  options?: RequestInit,
+): Promise<UpdateCashFlowAccountClassificationResponse> => {
+  return customFetch<UpdateCashFlowAccountClassificationResponse>(
+    getUpdateCashFlowAccountClassificationUrl(reportId, accountNumber),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateCashFlowAccountClassificationBody),
+    },
+  );
+};
+
+export const getUpdateCashFlowAccountClassificationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCashFlowAccountClassification>>,
+    TError,
+    {
+      reportId: string;
+      accountNumber: string;
+      data: BodyType<UpdateCashFlowAccountClassificationBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCashFlowAccountClassification>>,
+  TError,
+  {
+    reportId: string;
+    accountNumber: string;
+    data: BodyType<UpdateCashFlowAccountClassificationBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateCashFlowAccountClassification"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCashFlowAccountClassification>>,
+    {
+      reportId: string;
+      accountNumber: string;
+      data: BodyType<UpdateCashFlowAccountClassificationBody>;
+    }
+  > = (props) => {
+    const { reportId, accountNumber, data } = props ?? {};
+
+    return updateCashFlowAccountClassification(
+      reportId,
+      accountNumber,
+      data,
+      requestOptions,
+    );
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCashFlowAccountClassificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCashFlowAccountClassification>>
+>;
+export type UpdateCashFlowAccountClassificationMutationBody =
+  BodyType<UpdateCashFlowAccountClassificationBody>;
+export type UpdateCashFlowAccountClassificationMutationError =
+  ErrorType<unknown>;
+
+export const useUpdateCashFlowAccountClassification = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCashFlowAccountClassification>>,
+    TError,
+    {
+      reportId: string;
+      accountNumber: string;
+      data: BodyType<UpdateCashFlowAccountClassificationBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCashFlowAccountClassification>>,
+  TError,
+  {
+    reportId: string;
+    accountNumber: string;
+    data: BodyType<UpdateCashFlowAccountClassificationBody>;
+  },
+  TContext
+> => {
+  return useMutation(
+    getUpdateCashFlowAccountClassificationMutationOptions(options),
+  );
 };
 
 /**

@@ -4,8 +4,16 @@
  */
 
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, annualReportProjectsTable } from "@workspace/db";
+import { eq, and, asc } from "drizzle-orm";
+import {
+  db,
+  annualReportProjectsTable,
+  cashFlowAccountClassificationsTable,
+} from "@workspace/db";
+import {
+  loadAccountMovements,
+  type AccountMovement,
+} from "../lib/cashFlowSourceData.js";
 import {
   getOrCreateAssessment,
   updateAssessment,
@@ -80,21 +88,33 @@ function shapeStatement(s: CashFlowStatementWithLines | null) {
       hasManualAdjustments: s.statement.hasManualAdjustments,
       validationStatus: s.statement.validationStatus,
     },
-    lines: s.lines.map((l) => ({
-      id: l.id,
-      section: l.section,
-      lineCode: l.lineCode,
-      labelSv: l.labelSv,
-      amountCurrentYear: num(l.amountCurrentYear),
-      amountPreviousYear: num(l.amountPreviousYear),
-      sourceType: l.sourceType,
-      calculationExplanationSv: l.calculationExplanationSv,
-      isEditable: l.isEditable,
-      isRequired: l.isRequired,
-      isSubtotal: l.isSubtotal,
-      needsReview: l.needsReview,
-      sortOrder: l.sortOrder,
-    })),
+    lines: s.lines.map((l) => {
+      let sourceAccounts: unknown[] = [];
+      if (l.sourceAccounts) {
+        try {
+          const parsed: unknown = JSON.parse(l.sourceAccounts);
+          if (Array.isArray(parsed)) sourceAccounts = parsed;
+        } catch {
+          // Tolerate legacy non-JSON values silently.
+        }
+      }
+      return {
+        id: l.id,
+        section: l.section,
+        lineCode: l.lineCode,
+        labelSv: l.labelSv,
+        amountCurrentYear: num(l.amountCurrentYear),
+        amountPreviousYear: num(l.amountPreviousYear),
+        sourceType: l.sourceType,
+        calculationExplanationSv: l.calculationExplanationSv,
+        sourceAccounts,
+        isEditable: l.isEditable,
+        isRequired: l.isRequired,
+        isSubtotal: l.isSubtotal,
+        needsReview: l.needsReview,
+        sortOrder: l.sortOrder,
+      };
+    }),
   };
 }
 
@@ -419,6 +439,185 @@ router.post(
       matchesBalanceSheet: result.matchesBalanceSheet,
       issues: result.issues,
       statement: shapeStatement({ statement: updated, lines: refreshed.lines }).statement,
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Per-account cash-flow classifications
+// ---------------------------------------------------------------------------
+
+function shapeMovement(m: AccountMovement) {
+  return {
+    accountNumber: m.accountNumber,
+    accountName: m.accountName,
+    openingBalance: m.openingBalance,
+    closingBalance: m.closingBalance,
+    movement: m.movement,
+    fsReportLine: m.fsReportLine,
+    fsReportLineLabel: m.fsReportLineLabel,
+    classification: m.classification,
+    classificationSource: m.classificationSource,
+    confidence: m.confidence,
+    excludeFromCashFlow: m.excludeFromCashFlow,
+    needsManualReview: m.needsManualReview,
+    reviewReasonSv: m.reviewReasonSv,
+    isUserOverridden: m.isUserOverridden,
+  };
+}
+
+router.get(
+  "/reports/:reportId/cash-flow/account-classifications",
+  async (req, res): Promise<void> => {
+    const profileId = req.profile?.id;
+    if (!profileId) { res.status(401).json({ error: "unauthorized" }); return; }
+    const { reportId } = req.params;
+    const access = await requireReportAccess(reportId, profileId, res, "view_only");
+    if (!access) return;
+
+    const projectId = await projectIdForReport(reportId);
+    if (!projectId) { res.status(404).json({ error: "project_not_found" }); return; }
+
+    const bundle = await loadAccountMovements(projectId);
+    res.json({
+      hasAccountLevelData: bundle.hasAccountLevelData,
+      accounts: bundle.all
+        .slice()
+        .sort((a, b) => a.accountNumber.localeCompare(b.accountNumber))
+        .map(shapeMovement),
+    });
+  },
+);
+
+router.patch(
+  "/reports/:reportId/cash-flow/account-classifications/:accountNumber",
+  async (req, res): Promise<void> => {
+    const profileId = req.profile?.id;
+    if (!profileId) { res.status(401).json({ error: "unauthorized" }); return; }
+    const { reportId, accountNumber } = req.params;
+    const access = await requireReportAccess(reportId, profileId, res, "edit_data");
+    if (!access) return;
+
+    const projectId = await projectIdForReport(reportId);
+    if (!projectId) { res.status(404).json({ error: "project_not_found" }); return; }
+
+    const body = req.body as {
+      classification?: string;
+      excludeFromCashFlow?: boolean;
+      needsManualReview?: boolean;
+      reviewReasonSv?: string | null;
+      notes?: string | null;
+    };
+
+    if (!body.classification && body.excludeFromCashFlow === undefined) {
+      res.status(400).json({ error: "classification_or_exclude_required" });
+      return;
+    }
+
+    const ALLOWED_CLASSIFICATIONS = new Set([
+      "cash_and_cash_equivalents",
+      "receivables",
+      "inventory",
+      "operating_liabilities",
+      "tax",
+      "non_cash_adjustment",
+      "tangible_fixed_assets",
+      "intangible_fixed_assets",
+      "financial_fixed_assets",
+      "long_term_loans",
+      "short_term_interest_bearing_loans",
+      "equity",
+      "dividends",
+      "other_unclear",
+      "exclude",
+    ]);
+    if (
+      body.classification !== undefined &&
+      !ALLOWED_CLASSIFICATIONS.has(body.classification)
+    ) {
+      res.status(400).json({ error: "invalid_classification" });
+      return;
+    }
+
+    const [existing] = await db
+      .select()
+      .from(cashFlowAccountClassificationsTable)
+      .where(
+        and(
+          eq(cashFlowAccountClassificationsTable.projectId, projectId),
+          eq(cashFlowAccountClassificationsTable.accountNumber, accountNumber),
+        ),
+      )
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ error: "account_not_found" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(cashFlowAccountClassificationsTable)
+      .set({
+        classification:
+          (body.classification as typeof existing.classification | undefined) ??
+          existing.classification,
+        classificationSource: "manual_override",
+        confidence: "high",
+        excludeFromCashFlow:
+          body.excludeFromCashFlow ?? existing.excludeFromCashFlow,
+        needsManualReview: body.needsManualReview ?? false,
+        reviewReasonSv:
+          body.reviewReasonSv === undefined
+            ? null
+            : body.reviewReasonSv,
+        notes: body.notes === undefined ? existing.notes : body.notes,
+        overriddenByProfileId: profileId,
+        overriddenAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(cashFlowAccountClassificationsTable.id, existing.id))
+      .returning();
+
+    await logAuditEvent({
+      eventType: "cash_flow.account_classification_overridden",
+      projectId,
+      companyId: access.company.id,
+      actorProfileId: profileId,
+      eventData: {
+        accountNumber,
+        classification: updated.classification,
+        excludeFromCashFlow: updated.excludeFromCashFlow,
+      },
+    });
+
+    // Regenerate statement so derivation reflects the override.
+    const stmt = await loadCashFlowStatementByReport(reportId);
+    if (stmt) {
+      await generateCashFlowStatement(projectId);
+      // If previously validated, downgrade to needs_review.
+      if (stmt.statement.status === "validated") {
+        await setStatementStatus(stmt.statement.id, "needs_review");
+      }
+    }
+
+    void asc; // keep import alive for future ordered queries
+    res.json({
+      account: shapeMovement({
+        accountNumber: updated.accountNumber,
+        accountName: updated.accountName,
+        openingBalance: null,
+        closingBalance: null,
+        movement: null,
+        fsReportLine: null,
+        fsReportLineLabel: null,
+        classification: updated.classification,
+        classificationSource: updated.classificationSource,
+        confidence: updated.confidence,
+        excludeFromCashFlow: updated.excludeFromCashFlow,
+        needsManualReview: updated.needsManualReview,
+        reviewReasonSv: updated.reviewReasonSv,
+        isUserOverridden: true,
+      }),
     });
   },
 );

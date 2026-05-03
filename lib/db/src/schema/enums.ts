@@ -214,3 +214,41 @@ export const cashFlowSourceTypeEnum = pgEnum("cash_flow_source_type", [
   "manual_adjustment",
   "imported_value",
 ]);
+
+/**
+ * Cash-flow account classification — the per-account category used to
+ * derive the indirect-method statement. Independent from the balance-sheet /
+ * income-statement mapping so the user can re-classify for cash-flow
+ * purposes without disturbing the ordinary report mapping.
+ */
+export const cashFlowAccountClassificationEnum = pgEnum(
+  "cash_flow_account_classification",
+  [
+    "cash_and_cash_equivalents",
+    "receivables",
+    "inventory",
+    "operating_liabilities",
+    "tax",
+    "non_cash_adjustment",
+    "tangible_fixed_assets",
+    "intangible_fixed_assets",
+    "financial_fixed_assets",
+    "long_term_loans",
+    "short_term_interest_bearing_loans",
+    "equity",
+    "dividends",
+    "other_unclear",
+    "exclude",
+  ],
+);
+
+/**
+ * Where an account's cash-flow classification came from.
+ *   bas_default        — derived from BAS account ranges
+ *   report_mapping     — inferred from the existing balance-sheet mapping
+ *   manual_override    — user explicitly chose / overrode it
+ */
+export const cashFlowClassificationSourceEnum = pgEnum(
+  "cash_flow_classification_source",
+  ["bas_default", "report_mapping", "manual_override"],
+);

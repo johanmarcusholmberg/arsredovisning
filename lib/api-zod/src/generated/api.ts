@@ -2543,6 +2543,21 @@ export const GetCashFlowStatementResponse = zod.object({
         "imported_value",
       ]),
       calculationExplanationSv: zod.string().nullish(),
+      sourceAccounts: zod
+        .array(
+          zod.object({
+            accountNumber: zod.string(),
+            accountName: zod.string().nullish(),
+            opening: zod.number().nullish(),
+            closing: zod.number().nullish(),
+            movement: zod.number().nullish(),
+            classification: zod.string(),
+            classificationSource: zod.string(),
+          }),
+        )
+        .describe(
+          "Source accounts that contributed to this cash-flow line. Empty when\nthe line is derived from aggregated financial-statement values\nrather than per-account staging data.\n",
+        ),
       isEditable: zod.boolean(),
       isRequired: zod.boolean(),
       isSubtotal: zod.boolean(),
@@ -2603,6 +2618,21 @@ export const GenerateCashFlowStatementResponse = zod.object({
         "imported_value",
       ]),
       calculationExplanationSv: zod.string().nullish(),
+      sourceAccounts: zod
+        .array(
+          zod.object({
+            accountNumber: zod.string(),
+            accountName: zod.string().nullish(),
+            opening: zod.number().nullish(),
+            closing: zod.number().nullish(),
+            movement: zod.number().nullish(),
+            classification: zod.string(),
+            classificationSource: zod.string(),
+          }),
+        )
+        .describe(
+          "Source accounts that contributed to this cash-flow line. Empty when\nthe line is derived from aggregated financial-statement values\nrather than per-account staging data.\n",
+        ),
       isEditable: zod.boolean(),
       isRequired: zod.boolean(),
       isSubtotal: zod.boolean(),
@@ -2671,6 +2701,21 @@ export const UpdateCashFlowLineResponse = zod.object({
         "imported_value",
       ]),
       calculationExplanationSv: zod.string().nullish(),
+      sourceAccounts: zod
+        .array(
+          zod.object({
+            accountNumber: zod.string(),
+            accountName: zod.string().nullish(),
+            opening: zod.number().nullish(),
+            closing: zod.number().nullish(),
+            movement: zod.number().nullish(),
+            classification: zod.string(),
+            classificationSource: zod.string(),
+          }),
+        )
+        .describe(
+          "Source accounts that contributed to this cash-flow line. Empty when\nthe line is derived from aggregated financial-statement values\nrather than per-account staging data.\n",
+        ),
       isEditable: zod.boolean(),
       isRequired: zod.boolean(),
       isSubtotal: zod.boolean(),
@@ -2762,6 +2807,21 @@ export const AddCashFlowAdjustmentResponse = zod.object({
         "imported_value",
       ]),
       calculationExplanationSv: zod.string().nullish(),
+      sourceAccounts: zod
+        .array(
+          zod.object({
+            accountNumber: zod.string(),
+            accountName: zod.string().nullish(),
+            opening: zod.number().nullish(),
+            closing: zod.number().nullish(),
+            movement: zod.number().nullish(),
+            classification: zod.string(),
+            classificationSource: zod.string(),
+          }),
+        )
+        .describe(
+          "Source accounts that contributed to this cash-flow line. Empty when\nthe line is derived from aggregated financial-statement values\nrather than per-account staging data.\n",
+        ),
       isEditable: zod.boolean(),
       isRequired: zod.boolean(),
       isSubtotal: zod.boolean(),
@@ -2769,6 +2829,104 @@ export const AddCashFlowAdjustmentResponse = zod.object({
       sortOrder: zod.number(),
     }),
   ),
+});
+
+export const ListCashFlowAccountClassificationsParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+});
+
+export const ListCashFlowAccountClassificationsResponse = zod.object({
+  hasAccountLevelData: zod.boolean(),
+  accounts: zod.array(
+    zod.object({
+      accountNumber: zod.string(),
+      accountName: zod.string().nullish(),
+      openingBalance: zod.number().nullish(),
+      closingBalance: zod.number().nullish(),
+      movement: zod.number().nullish(),
+      fsReportLine: zod.string().nullish(),
+      fsReportLineLabel: zod.string().nullish(),
+      classification: zod.enum([
+        "cash_and_cash_equivalents",
+        "receivables",
+        "inventory",
+        "operating_liabilities",
+        "tax",
+        "non_cash_adjustment",
+        "tangible_fixed_assets",
+        "intangible_fixed_assets",
+        "financial_fixed_assets",
+        "long_term_loans",
+        "short_term_interest_bearing_loans",
+        "equity",
+        "dividends",
+        "other_unclear",
+        "exclude",
+      ]),
+      classificationSource: zod.enum([
+        "bas_default",
+        "report_mapping",
+        "manual_override",
+      ]),
+      confidence: zod.enum(["high", "medium", "low", "unmapped"]),
+      excludeFromCashFlow: zod.boolean(),
+      needsManualReview: zod.boolean(),
+      reviewReasonSv: zod.string().nullish(),
+      isUserOverridden: zod.boolean(),
+    }),
+  ),
+});
+
+export const UpdateCashFlowAccountClassificationParams = zod.object({
+  reportId: zod.coerce.string().uuid(),
+  accountNumber: zod.coerce.string(),
+});
+
+export const UpdateCashFlowAccountClassificationBody = zod.object({
+  classification: zod.string().optional(),
+  excludeFromCashFlow: zod.boolean().optional(),
+  needsManualReview: zod.boolean().optional(),
+  reviewReasonSv: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateCashFlowAccountClassificationResponse = zod.object({
+  account: zod.object({
+    accountNumber: zod.string(),
+    accountName: zod.string().nullish(),
+    openingBalance: zod.number().nullish(),
+    closingBalance: zod.number().nullish(),
+    movement: zod.number().nullish(),
+    fsReportLine: zod.string().nullish(),
+    fsReportLineLabel: zod.string().nullish(),
+    classification: zod.enum([
+      "cash_and_cash_equivalents",
+      "receivables",
+      "inventory",
+      "operating_liabilities",
+      "tax",
+      "non_cash_adjustment",
+      "tangible_fixed_assets",
+      "intangible_fixed_assets",
+      "financial_fixed_assets",
+      "long_term_loans",
+      "short_term_interest_bearing_loans",
+      "equity",
+      "dividends",
+      "other_unclear",
+      "exclude",
+    ]),
+    classificationSource: zod.enum([
+      "bas_default",
+      "report_mapping",
+      "manual_override",
+    ]),
+    confidence: zod.enum(["high", "medium", "low", "unmapped"]),
+    excludeFromCashFlow: zod.boolean(),
+    needsManualReview: zod.boolean(),
+    reviewReasonSv: zod.string().nullish(),
+    isUserOverridden: zod.boolean(),
+  }),
 });
 
 /**
