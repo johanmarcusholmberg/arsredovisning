@@ -554,10 +554,10 @@ function FlipReport({
   };
 
   // Base font size drives all em-relative sizes inside pages.
-  const pageFontSize = isLg ? 17 : 11;
-  const padding = isLg ? "p-7" : "p-3.5";
-  const watermarkSize = isLg ? 140 : 60;
-  const maxWidth = isLg ? 520 : 260;
+  const pageFontSize = isLg ? 14 : 11;
+  const padding = isLg ? "p-5" : "p-3.5";
+  const watermarkSize = isLg ? 100 : 60;
+  const maxWidth = isLg ? 360 : 260;
 
   return (
     <div className={isLg ? "w-full flex flex-col items-center" : "w-full"}>
@@ -650,7 +650,7 @@ function FlipReport({
       {/* Flip controls */}
       <div
         className={`flex items-center justify-between gap-2 ${
-          isLg ? "mt-5 w-full max-w-[520px]" : "mt-3"
+          isLg ? "mt-4 w-full max-w-[360px]" : "mt-3"
         }`}
       >
         <button
@@ -741,11 +741,11 @@ export function FinishedVisual() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl p-6 sm:p-8">
-          <DialogTitle className="text-lg font-semibold">
+        <DialogContent className="sm:max-w-[440px] max-h-[92vh] overflow-y-auto p-5 sm:p-6">
+          <DialogTitle className="text-base font-semibold">
             {t("publicDemo.finished.dialog.title")}
           </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground -mt-1">
+          <DialogDescription className="text-xs text-muted-foreground -mt-1">
             {t("publicDemo.finished.dialog.subtitle")}
           </DialogDescription>
           <div className="mt-2 flex justify-center">
