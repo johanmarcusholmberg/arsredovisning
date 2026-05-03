@@ -15,6 +15,32 @@ type ExpectedCol = {
   hasAnyDefault: boolean;
 };
 
+type ExpectedFk = {
+  cols: string[];
+  refTable: string;
+  refCols: string[];
+};
+
+type ExpectedIndex = {
+  name: string | undefined;
+  cols: string[];
+  unique: boolean;
+};
+
+type ExpectedCheck = { name: string };
+
+type ExpectedTable = {
+  cols: ExpectedCol[];
+  /** Each entry is a sorted list of column names forming a PK (one entry per PK; usually 1). */
+  primaryKeys: string[][];
+  /** Each entry is a sorted list of column names with a unique constraint or unique index. */
+  uniques: string[][];
+  foreignKeys: ExpectedFk[];
+  /** Non-unique indexes only (uniques are tracked above). */
+  indexes: ExpectedIndex[];
+  checks: ExpectedCheck[];
+};
+
 type DriftItem = { table: string; kind: string; col?: string; detail?: string };
 
 const FLAGS = {
@@ -71,6 +97,16 @@ function normalizeDefault(raw: string | null | undefined): string | null {
   return s;
 }
 
+/** Sort + join column names into a stable key for set-style comparisons (PK/unique). */
+function colKey(cols: string[]): string {
+  return [...cols].sort().join(",");
+}
+
+/** Order-preserving join — for indexes and FKs where column order is semantic. */
+function orderedKey(cols: string[]): string {
+  return cols.join(",");
+}
+
 async function main() {
   if (!process.env.DATABASE_URL) {
     if (process.env.SKIP_SCHEMA_DRIFT_CHECK === "1") {
@@ -83,7 +119,7 @@ async function main() {
   }
 
   // ── 1. Build expected model from Drizzle schema ──────────────────────
-  const expected: Record<string, ExpectedCol[]> = {};
+  const expected: Record<string, ExpectedTable> = {};
   const expectedEnums: Record<string, string[]> = {};
   for (const value of Object.values(schema)) {
     if (!value) continue;
@@ -97,7 +133,8 @@ async function main() {
     try {
       const cfg = getTableConfig(value as PgTable);
       if (!cfg?.name) continue;
-      expected[cfg.name] = cfg.columns.map((c) => {
+
+      const cols: ExpectedCol[] = cfg.columns.map((c) => {
         const hasLiteral = c.default !== undefined && c.default !== null;
         const hasFn = !!c.defaultFn || !!(c as unknown as { hasDefault?: boolean }).hasDefault;
         let defaultRaw: string | null = null;
@@ -117,6 +154,63 @@ async function main() {
           hasAnyDefault: hasLiteral || hasFn,
         };
       });
+
+      // Primary keys: composite via cfg.primaryKeys + inline single-col via column.primary
+      const primaryKeys: string[][] = [];
+      for (const pk of cfg.primaryKeys) primaryKeys.push(pk.columns.map((c) => c.name));
+      const inlinePk = cfg.columns.filter((c) => c.primary).map((c) => c.name);
+      if (inlinePk.length > 0) primaryKeys.push(inlinePk);
+
+      // Uniques: cfg.uniqueConstraints + column.isUnique + uniqueIndex(...) entries
+      const uniques: string[][] = [];
+      for (const uq of cfg.uniqueConstraints) uniques.push(uq.columns.map((c) => c.name));
+      for (const c of cfg.columns) if (c.isUnique) uniques.push([c.name]);
+      for (const idx of cfg.indexes) {
+        if (!idx.config.unique) continue;
+        const cols: string[] = [];
+        for (const ic of idx.config.columns) {
+          const n = (ic as { name?: string } | undefined)?.name;
+          if (typeof n === "string") cols.push(n);
+          else cols.push("<expr>");
+        }
+        uniques.push(cols);
+      }
+
+      // Foreign keys: cfg.foreignKeys (covers both inline .references() and foreignKey())
+      const foreignKeys: ExpectedFk[] = [];
+      for (const fk of cfg.foreignKeys) {
+        const ref = fk.reference();
+        const refTableName = (() => {
+          try {
+            return getTableConfig(ref.foreignTable).name;
+          } catch {
+            return "<unknown>";
+          }
+        })();
+        foreignKeys.push({
+          cols: ref.columns.map((c) => c.name),
+          refTable: refTableName,
+          refCols: ref.foreignColumns.map((c) => c.name),
+        });
+      }
+
+      // Non-unique indexes only (unique ones are folded into `uniques`)
+      const indexes: ExpectedIndex[] = [];
+      for (const idx of cfg.indexes) {
+        if (idx.config.unique) continue;
+        const cols: string[] = [];
+        for (const ic of idx.config.columns) {
+          const n = (ic as { name?: string } | undefined)?.name;
+          if (typeof n === "string") cols.push(n);
+          else cols.push("<expr>");
+        }
+        indexes.push({ name: idx.config.name, cols, unique: false });
+      }
+
+      // Named check constraints (drizzle's check(name, value))
+      const checks: ExpectedCheck[] = cfg.checks.map((ch) => ({ name: ch.name }));
+
+      expected[cfg.name] = { cols, primaryKeys, uniques, foreignKeys, indexes, checks };
     } catch {
       /* not a table */
     }
@@ -161,6 +255,66 @@ async function main() {
     WHERE schemaname='public'
     ORDER BY tablename, policyname`);
 
+  // Constraints (PK / UNIQUE / FK / CHECK) with column lists
+  const conRes = await client.query<{
+    conname: string;
+    contype: "p" | "u" | "f" | "c";
+    table_name: string;
+    columns: string[] | null;
+    ref_table: string | null;
+    ref_columns: string[] | null;
+  }>(`
+    SELECT
+      c.conname,
+      c.contype::text AS contype,
+      tn.relname AS table_name,
+      CASE WHEN c.contype IN ('p','u','f') THEN (
+        SELECT array_agg(a.attname::text ORDER BY u.ord)
+        FROM unnest(c.conkey::int[]) WITH ORDINALITY AS u(attnum, ord)
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = u.attnum
+      ) END AS columns,
+      CASE WHEN c.contype='f' THEN fn.relname::text END AS ref_table,
+      CASE WHEN c.contype='f' THEN (
+        SELECT array_agg(fa.attname::text ORDER BY fu.ord)
+        FROM unnest(c.confkey::int[]) WITH ORDINALITY AS fu(attnum, ord)
+        JOIN pg_attribute fa ON fa.attrelid = c.confrelid AND fa.attnum = fu.attnum
+      ) END AS ref_columns
+    FROM pg_constraint c
+    JOIN pg_class tn ON tn.oid = c.conrelid
+    LEFT JOIN pg_class fn ON fn.oid = c.confrelid
+    JOIN pg_namespace n ON n.oid = c.connamespace
+    WHERE n.nspname='public'
+      AND c.contype IN ('p','u','f','c')
+      AND tn.relname <> '__drizzle_migrations'`);
+
+  // Indexes (covers unique indexes too). We exclude PK indexes to avoid double-reporting.
+  const idxRes = await client.query<{
+    index_name: string;
+    table_name: string;
+    is_unique: boolean;
+    is_primary: boolean;
+    columns: string[];
+  }>(`
+    SELECT
+      i.relname AS index_name,
+      t.relname AS table_name,
+      ix.indisunique AS is_unique,
+      ix.indisprimary AS is_primary,
+      (
+        SELECT array_agg(
+                 (CASE WHEN u.attnum = 0 THEN '<expr>'
+                       ELSE (SELECT a.attname::text FROM pg_attribute a WHERE a.attrelid = t.oid AND a.attnum = u.attnum)
+                  END)::text
+                 ORDER BY u.ord)
+        FROM unnest(ix.indkey::int[]) WITH ORDINALITY AS u(attnum, ord)
+      ) AS columns
+    FROM pg_index ix
+    JOIN pg_class i ON i.oid = ix.indexrelid
+    JOIN pg_class t ON t.oid = ix.indrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname='public'
+      AND t.relname <> '__drizzle_migrations'`);
+
   await client.end();
 
   // ── 3. Compare ────────────────────────────────────────────────────────
@@ -178,10 +332,10 @@ async function main() {
       continue;
     }
     if (exp && !liv) {
-      drift.push({ table: t, kind: "MISSING_TABLE", detail: `${exp.length} cols defined in schema` });
+      drift.push({ table: t, kind: "MISSING_TABLE", detail: `${exp.cols.length} cols defined in schema` });
       continue;
     }
-    const expByName = new Map(exp.map((c) => [c.name, c]));
+    const expByName = new Map(exp.cols.map((c) => [c.name, c]));
     const livByName = new Map(liv.map((c) => [c.column_name, c]));
     for (const [name, ec] of expByName) {
       const lc = livByName.get(name);
@@ -241,7 +395,93 @@ async function main() {
     }
   }
 
-  // 3c. RLS / policies — informational by default; surfaces drift if a table in the schema has policies
+  // 3c. constraints (PK, UNIQUE, FK, CHECK)
+  if (FLAGS.constraints) {
+    // Bucket live constraints per table.
+    const livePkByTable: Record<string, string[][]> = {};
+    const liveUqByTable: Record<string, string[][]> = {};
+    const liveFkByTable: Record<string, ExpectedFk[]> = {};
+    const liveCkByTable: Record<string, Set<string>> = {};
+    for (const r of conRes.rows) {
+      if (r.contype === "p" && r.columns) (livePkByTable[r.table_name] ||= []).push(r.columns);
+      else if (r.contype === "u" && r.columns) (liveUqByTable[r.table_name] ||= []).push(r.columns);
+      else if (r.contype === "f" && r.columns && r.ref_table && r.ref_columns)
+        (liveFkByTable[r.table_name] ||= []).push({ cols: r.columns, refTable: r.ref_table, refCols: r.ref_columns });
+      else if (r.contype === "c") (liveCkByTable[r.table_name] ||= new Set()).add(r.conname);
+    }
+    // Fold unique indexes (drizzle's uniqueIndex(...) produces these, not unique constraints)
+    // into the live-uniques bucket so we compare them against expected uniques uniformly.
+    for (const r of idxRes.rows) {
+      if (r.is_primary || !r.is_unique) continue;
+      // Skip any unique index whose column tuple is already covered by a UNIQUE constraint
+      const existing = liveUqByTable[r.table_name] ?? [];
+      const key = colKey(r.columns);
+      if (existing.some((c) => colKey(c) === key)) continue;
+      (liveUqByTable[r.table_name] ||= []).push(r.columns);
+    }
+
+    for (const [t, et] of Object.entries(expected)) {
+      // Primary keys
+      const livePks = livePkByTable[t] ?? [];
+      const expPkKeys = new Set(et.primaryKeys.map(colKey));
+      const livePkKeys = new Set(livePks.map(colKey));
+      for (const k of expPkKeys) if (!livePkKeys.has(k)) drift.push({ table: t, kind: "PK_MISSING", detail: `expected primary key on (${k})` });
+      for (const k of livePkKeys) if (!expPkKeys.has(k)) drift.push({ table: t, kind: "PK_EXTRA", detail: `live primary key on (${k}) not in schema` });
+
+      // Unique constraints / unique indexes (compared as a set of column-tuples)
+      const liveUqs = liveUqByTable[t] ?? [];
+      const expUqKeys = new Set(et.uniques.map(colKey));
+      const liveUqKeys = new Set(liveUqs.map(colKey));
+      for (const k of expUqKeys) if (!liveUqKeys.has(k)) drift.push({ table: t, kind: "UNIQUE_MISSING", detail: `expected unique on (${k})` });
+      for (const k of liveUqKeys) if (!expUqKeys.has(k)) drift.push({ table: t, kind: "UNIQUE_EXTRA", detail: `live unique on (${k}) not in schema` });
+
+      // Foreign keys — column order is positional/semantic, so compare order-aware.
+      const liveFks = liveFkByTable[t] ?? [];
+      const fkKey = (f: ExpectedFk) => `${orderedKey(f.cols)} -> ${f.refTable}(${orderedKey(f.refCols)})`;
+      const expFkKeys = new Set(et.foreignKeys.map(fkKey));
+      const liveFkKeys = new Set(liveFks.map(fkKey));
+      for (const k of expFkKeys) if (!liveFkKeys.has(k)) drift.push({ table: t, kind: "FK_MISSING", detail: `expected foreign key ${k}` });
+      for (const k of liveFkKeys) if (!expFkKeys.has(k)) drift.push({ table: t, kind: "FK_EXTRA", detail: `live foreign key ${k} not in schema` });
+
+      // Check constraints (compare named drizzle checks against live conname)
+      const liveCks = liveCkByTable[t] ?? new Set<string>();
+      for (const c of et.checks) if (!liveCks.has(c.name)) drift.push({ table: t, kind: "CHECK_MISSING", detail: `expected check constraint "${c.name}"` });
+      // Note: we deliberately do NOT report EXTRA check constraints. Drizzle does
+      // not surface anonymous defaults like NOT NULL implicit checks, and pg may
+      // synthesize check names we don't track in schema files.
+    }
+  }
+
+  // 3d. indexes (non-unique) — compared by name + columns
+  if (FLAGS.indexes) {
+    // Build live non-unique index map per table, keyed by index name.
+    const liveIdxByTable: Record<string, Map<string, string[]>> = {};
+    for (const r of idxRes.rows) {
+      if (r.is_primary || r.is_unique) continue;
+      (liveIdxByTable[r.table_name] ||= new Map()).set(r.index_name, r.columns);
+    }
+    for (const [t, et] of Object.entries(expected)) {
+      const live = liveIdxByTable[t] ?? new Map<string, string[]>();
+      const expByName = new Map<string, string[]>();
+      for (const idx of et.indexes) if (idx.name) expByName.set(idx.name, idx.cols);
+      for (const [name, cols] of expByName) {
+        const liveCols = live.get(name);
+        if (!liveCols) {
+          drift.push({ table: t, kind: "INDEX_MISSING", detail: `expected index "${name}" on (${cols.join(",")})` });
+          continue;
+        }
+        // Index column order is semantic (affects which queries can use the
+        // index), so compare order-aware rather than as a sorted set.
+        if (orderedKey(cols) !== orderedKey(liveCols))
+          drift.push({ table: t, kind: "INDEX_COLS_MISMATCH", detail: `index "${name}" expected (${cols.join(",")}), live (${liveCols.join(",")})` });
+      }
+      for (const [name] of live) {
+        if (!expByName.has(name)) drift.push({ table: t, kind: "INDEX_EXTRA", detail: `live index "${name}" not in schema` });
+      }
+    }
+  }
+
+  // 3e. RLS / policies — informational by default; surfaces drift if a table in the schema has policies
   // documented in lib/db/drizzle/*_rls.sql but pg_policies does not show them.
   if (FLAGS.rls) {
     const expectedRlsTables = new Set([
@@ -268,7 +508,7 @@ async function main() {
 
   // ── 4. Report ────────────────────────────────────────────────────────
   if (drift.length === 0) {
-    console.log("[schema-drift] OK — Drizzle schema matches Postgres (cols, types, nullability, defaults, enums, RLS).");
+    console.log("[schema-drift] OK — Drizzle schema matches Postgres (cols, types, nullability, defaults, enums, PK/UNIQUE/FK/CHECK, indexes, RLS).");
     process.exit(0);
   }
   console.error(`[schema-drift] FAIL — ${drift.length} drift item(s):`);
