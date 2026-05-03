@@ -621,6 +621,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /reports/{reportId}/output-estimate:
+    get:
+      operationId: getReportOutputEstimate
+      tags: [reports]
+      summary: Estimated page count and chosen output format for a report
+      description: |
+        Returns a small "X sidor · PDF" descriptor used on the report card.
+        `pageCount` is either the size of the most recent successful export
+        (when known) or a heuristic estimate derived from the number of
+        report notes. `outputFormat` is the format of the most recent export
+        for the underlying project, or "PDF" when no export exists yet.
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Output estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportOutputEstimate"
+        "404":
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -3087,6 +3118,21 @@ components:
             $ref: "#/components/schemas/Signatory"
       required:
         - signatories
+
+    ReportOutputEstimate:
+      type: object
+      properties:
+        pageCount:
+          type: integer
+          minimum: 1
+          description: Estimated page count for the rendered report.
+        outputFormat:
+          type: string
+          enum: [PDF, Word, Excel]
+          description: Display label for the chosen export format.
+      required:
+        - pageCount
+        - outputFormat
 
     SectionStatus:
       type: object

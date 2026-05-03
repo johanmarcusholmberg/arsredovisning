@@ -436,6 +436,28 @@ export interface ListSignatoriesResponse {
   signatories: Signatory[];
 }
 
+/**
+ * Display label for the chosen export format.
+ */
+export type ReportOutputEstimateOutputFormat =
+  (typeof ReportOutputEstimateOutputFormat)[keyof typeof ReportOutputEstimateOutputFormat];
+
+export const ReportOutputEstimateOutputFormat = {
+  PDF: "PDF",
+  Word: "Word",
+  Excel: "Excel",
+} as const;
+
+export interface ReportOutputEstimate {
+  /**
+   * Estimated page count for the rendered report.
+   * @minimum 1
+   */
+  pageCount: number;
+  /** Display label for the chosen export format. */
+  outputFormat: ReportOutputEstimateOutputFormat;
+}
+
 export interface DashboardSummary {
   totalCompanies: number;
   totalReports: number;

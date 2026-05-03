@@ -102,6 +102,7 @@ import type {
   ReclassificationListResponse,
   ReclassificationSuggestion,
   ReclassificationSuggestionListResponse,
+  ReportOutputEstimate,
   ReportSection,
   ReportStructureResponse,
   ReportSummary,
@@ -2332,6 +2333,107 @@ export function useListReportSignatories<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListReportSignatoriesQueryOptions(reportId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns a small "X sidor · PDF" descriptor used on the report card.
+`pageCount` is either the size of the most recent successful export
+(when known) or a heuristic estimate derived from the number of
+report notes. `outputFormat` is the format of the most recent export
+for the underlying project, or "PDF" when no export exists yet.
+
+ * @summary Estimated page count and chosen output format for a report
+ */
+export const getGetReportOutputEstimateUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/output-estimate`;
+};
+
+export const getReportOutputEstimate = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<ReportOutputEstimate> => {
+  return customFetch<ReportOutputEstimate>(
+    getGetReportOutputEstimateUrl(reportId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetReportOutputEstimateQueryKey = (reportId: string) => {
+  return [`/api/reports/${reportId}/output-estimate`] as const;
+};
+
+export const getGetReportOutputEstimateQueryOptions = <
+  TData = Awaited<ReturnType<typeof getReportOutputEstimate>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReportOutputEstimate>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetReportOutputEstimateQueryKey(reportId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getReportOutputEstimate>>
+  > = ({ signal }) =>
+    getReportOutputEstimate(reportId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getReportOutputEstimate>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetReportOutputEstimateQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getReportOutputEstimate>>
+>;
+export type GetReportOutputEstimateQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Estimated page count and chosen output format for a report
+ */
+
+export function useGetReportOutputEstimate<
+  TData = Awaited<ReturnType<typeof getReportOutputEstimate>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReportOutputEstimate>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetReportOutputEstimateQueryOptions(
+    reportId,
+    options,
+  );
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

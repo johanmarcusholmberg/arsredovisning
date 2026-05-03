@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
 import {
   db,
   companiesTable,
@@ -9,6 +9,8 @@ import {
   projectAccessTable,
   profilesTable,
   reportCollaboratorsTable,
+  reportNotesTable,
+  exportFilesTable,
 } from "@workspace/db";
 import {
   canCreateRealProject,
@@ -28,6 +30,8 @@ import {
   GetReportSummaryResponse,
   ListReportSignatoriesParams,
   ListReportSignatoriesResponse,
+  GetReportOutputEstimateParams,
+  GetReportOutputEstimateResponse,
 } from "@workspace/api-zod";
 import { logAuditEvent } from "../lib/auditLog.js";
 import { resolveProjectForReport } from "../helpers/projectReportLink.js";
@@ -543,6 +547,96 @@ router.get("/reports/:reportId/signatures", async (req, res): Promise<void> => {
   res.json(
     ListReportSignatoriesResponse.parse({
       signatories: [ownerSignatory, ...others],
+    }),
+  );
+});
+
+// ─── GET /reports/:reportId/output-estimate ──────────────────────────────────
+//
+// Powers the "X sidor · PDF" descriptor on the report card.
+//
+// Output format: most recent successful export's format on the underlying
+// project, or "PDF" when no export exists yet. Format is returned with the
+// display label the card renders ("PDF" / "Word" / "Excel").
+//
+// Page count: heuristic estimate from a fixed per-section baseline plus a
+// notes contribution (~1 page per 2 notes), clamped to a sensible range.
+// We don't yet store rendered page counts on `export_files`, so even after an
+// export the estimate stays heuristic — see the comment below if/when that
+// changes.
+
+const FORMAT_LABEL: Record<"pdf" | "word" | "excel", "PDF" | "Word" | "Excel"> = {
+  pdf: "PDF",
+  word: "Word",
+  excel: "Excel",
+};
+
+const BASE_PAGES = 9; // cover + förvaltning + resultat + balans + underskrifter
+
+function estimatePageCount(noteCount: number): number {
+  const notesPages = Math.ceil(Math.max(0, noteCount) / 2);
+  const total = BASE_PAGES + notesPages;
+  return Math.min(60, Math.max(4, total));
+}
+
+router.get("/reports/:reportId/output-estimate", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  const params = GetReportOutputEstimateParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "invalid_params", message: params.error.message });
+    return;
+  }
+
+  const [ownership] = await db
+    .select({ id: reportsTable.id })
+    .from(reportsTable)
+    .innerJoin(companiesTable, eq(reportsTable.companyId, companiesTable.id))
+    .where(
+      and(
+        eq(reportsTable.id, params.data.reportId),
+        eq(companiesTable.createdByProfileId, profileId),
+      ),
+    )
+    .limit(1);
+
+  if (!ownership) {
+    res.status(404).json({ error: "not_found", message: "Report not found" });
+    return;
+  }
+
+  const [{ count: noteCount } = { count: 0 }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(reportNotesTable)
+    .where(eq(reportNotesTable.reportId, params.data.reportId));
+
+  let outputFormat: "PDF" | "Word" | "Excel" = "PDF";
+  const resolved = await resolveProjectForReport(params.data.reportId);
+  if (resolved?.projectId) {
+    const [latestExport] = await db
+      .select({ format: exportFilesTable.format })
+      .from(exportFilesTable)
+      .where(
+        and(
+          eq(exportFilesTable.projectId, resolved.projectId),
+          eq(exportFilesTable.exportStatus, "completed"),
+        ),
+      )
+      .orderBy(desc(exportFilesTable.createdAt))
+      .limit(1);
+    if (latestExport) {
+      outputFormat = FORMAT_LABEL[latestExport.format];
+    }
+  }
+
+  res.json(
+    GetReportOutputEstimateResponse.parse({
+      pageCount: estimatePageCount(Number(noteCount ?? 0)),
+      outputFormat,
     }),
   );
 });

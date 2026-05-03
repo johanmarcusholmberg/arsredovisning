@@ -575,6 +575,29 @@ export const ListReportSignatoriesResponse = zod.object({
 });
 
 /**
+ * Returns a small "X sidor · PDF" descriptor used on the report card.
+`pageCount` is either the size of the most recent successful export
+(when known) or a heuristic estimate derived from the number of
+report notes. `outputFormat` is the format of the most recent export
+for the underlying project, or "PDF" when no export exists yet.
+
+ * @summary Estimated page count and chosen output format for a report
+ */
+export const GetReportOutputEstimateParams = zod.object({
+  reportId: zod.coerce.string(),
+});
+
+export const GetReportOutputEstimateResponse = zod.object({
+  pageCount: zod
+    .number()
+    .min(1)
+    .describe("Estimated page count for the rendered report."),
+  outputFormat: zod
+    .enum(["PDF", "Word", "Excel"])
+    .describe("Display label for the chosen export format."),
+});
+
+/**
  * @summary Get dashboard overview
  */
 export const GetDashboardSummaryResponse = zod.object({

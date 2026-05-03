@@ -3,6 +3,8 @@ import {
   getGetFinancialStatementsQueryKey,
   useListReportSignatories,
   getListReportSignatoriesQueryKey,
+  useGetReportOutputEstimate,
+  getGetReportOutputEstimateQueryKey,
   type AnnualReport,
   type AnnualReportStatus,
   type FinancialStatementLine,
@@ -240,7 +242,10 @@ function findLine(lines: FinancialStatementLine[], lineKey: string): FinancialSt
 }
 
 interface ConnectedReportSummaryCardProps
-  extends Omit<ReportSummaryCardProps, "metrics" | "metricsLoading" | "signatories"> {
+  extends Omit<
+    ReportSummaryCardProps,
+    "metrics" | "metricsLoading" | "signatories" | "pageCount" | "outputFormat"
+  > {
   reportId: string;
 }
 
@@ -265,6 +270,14 @@ export function ConnectedReportSummaryCard({ reportId, ...rest }: ConnectedRepor
     },
   });
 
+  const { data: outputEstimate } = useGetReportOutputEstimate(reportId, {
+    query: {
+      enabled: !!reportId,
+      queryKey: getGetReportOutputEstimateQueryKey(reportId),
+      staleTime: 30_000,
+    },
+  });
+
   const metrics: ReportSummaryMetric[] = METRIC_KEYS.map((key) => {
     const line = data ? findLine(data.incomeStatement, key) : undefined;
     return {
@@ -284,6 +297,8 @@ export function ConnectedReportSummaryCard({ reportId, ...rest }: ConnectedRepor
       metrics={metrics}
       metricsLoading={isLoading}
       signatories={signatories}
+      pageCount={outputEstimate?.pageCount ?? null}
+      outputFormat={outputEstimate?.outputFormat}
     />
   );
 }
