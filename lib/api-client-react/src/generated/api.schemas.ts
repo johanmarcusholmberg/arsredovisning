@@ -135,6 +135,29 @@ export interface UpdateCompanyBody {
   fiscalYearEnd?: string;
 }
 
+export type ResolvedProjectForReportFramework =
+  (typeof ResolvedProjectForReportFramework)[keyof typeof ResolvedProjectForReportFramework];
+
+export const ResolvedProjectForReportFramework = {
+  K2: "K2",
+  K3: "K3",
+} as const;
+
+/**
+ * Result of resolving a reportId → annual_report_projects row. The
+projectId is null when no matching project row exists yet (the report
+was created before the unified project model was rolled out).
+
+ */
+export interface ResolvedProjectForReport {
+  projectId: string | null;
+  companyId: string;
+  fiscalYearStart: string;
+  fiscalYearEnd: string;
+  framework: ResolvedProjectForReportFramework;
+  reportStatus: string;
+}
+
 export type AnnualReportProjectAccountingFramework =
   (typeof AnnualReportProjectAccountingFramework)[keyof typeof AnnualReportProjectAccountingFramework];
 

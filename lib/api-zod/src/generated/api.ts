@@ -280,6 +280,30 @@ export const UpdateReportResponse = zod.object({
 });
 
 /**
+ * Bridges the legacy reportId → modern projectId boundary so the UI
+(which is report-centric) can call import/mapping/file/audit endpoints
+(which are project-centric).
+
+ * @summary Resolve the annual_report_projects row for a given report
+ */
+export const GetProjectForReportParams = zod.object({
+  reportId: zod.coerce.string(),
+});
+
+export const GetProjectForReportResponse = zod
+  .object({
+    projectId: zod.string().uuid().nullable(),
+    companyId: zod.string().uuid(),
+    fiscalYearStart: zod.string(),
+    fiscalYearEnd: zod.string(),
+    framework: zod.enum(["K2", "K3"]),
+    reportStatus: zod.string(),
+  })
+  .describe(
+    "Result of resolving a reportId → annual_report_projects row. The\nprojectId is null when no matching project row exists yet (the report\nwas created before the unified project model was rolled out).\n",
+  );
+
+/**
  * @summary Get report completion summary
  */
 export const GetReportSummaryParams = zod.object({

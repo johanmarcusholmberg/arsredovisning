@@ -15,6 +15,7 @@ import {
   GetReportSummaryResponse,
 } from "@workspace/api-zod";
 import { logAuditEvent } from "../lib/auditLog.js";
+import { resolveProjectForReport } from "../helpers/projectReportLink.js";
 
 const REPORT_SECTIONS = [
   { key: "forvaltningsberattelse", label: "Förvaltningsberättelse", requiredFields: 5 },
@@ -132,6 +133,50 @@ router.post("/companies/:companyId/reports", async (req, res): Promise<void> => 
   });
 
   res.status(201).json(GetReportResponse.parse({ ...report, companyName: company.name }));
+});
+
+router.get("/reports/:reportId/project", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  const { reportId } = req.params;
+
+  // Enforce ownership: the report must belong to a company owned by the
+  // current profile. This mirrors the access model used by GET /reports/:id.
+  const [ownershipRow] = await db
+    .select({ id: reportsTable.id })
+    .from(reportsTable)
+    .innerJoin(companiesTable, eq(reportsTable.companyId, companiesTable.id))
+    .where(
+      and(
+        eq(reportsTable.id, reportId),
+        eq(companiesTable.createdByProfileId, profileId),
+      ),
+    )
+    .limit(1);
+
+  if (!ownershipRow) {
+    res.status(404).json({ error: "not_found", message: "Report not found" });
+    return;
+  }
+
+  const resolved = await resolveProjectForReport(reportId);
+  if (!resolved) {
+    res.status(404).json({ error: "not_found", message: "Report not found" });
+    return;
+  }
+
+  res.json({
+    projectId: resolved.projectId,
+    companyId: resolved.companyId,
+    fiscalYearStart: resolved.fiscalYearStart,
+    fiscalYearEnd: resolved.fiscalYearEnd,
+    framework: resolved.framework,
+    reportStatus: resolved.reportStatus,
+  });
 });
 
 router.get("/reports/:reportId", async (req, res): Promise<void> => {

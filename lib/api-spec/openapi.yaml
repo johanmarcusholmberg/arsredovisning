@@ -308,6 +308,35 @@ paths:
               schema:
                 $ref: "#/components/schemas/AnnualReport"
 
+  /reports/{reportId}/project:
+    get:
+      operationId: getProjectForReport
+      tags: [reports]
+      summary: Resolve the annual_report_projects row for a given report
+      description: |
+        Bridges the legacy reportId → modern projectId boundary so the UI
+        (which is report-centric) can call import/mapping/file/audit endpoints
+        (which are project-centric).
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Resolved project details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResolvedProjectForReport"
+        "404":
+          description: Report or matching project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /reports/{reportId}/summary:
     get:
       operationId: getReportSummary
@@ -2296,6 +2325,37 @@ components:
           type: string
         fiscalYearEnd:
           type: string
+
+    ResolvedProjectForReport:
+      type: object
+      description: |
+        Result of resolving a reportId → annual_report_projects row. The
+        projectId is null when no matching project row exists yet (the report
+        was created before the unified project model was rolled out).
+      properties:
+        projectId:
+          type: string
+          format: uuid
+          nullable: true
+        companyId:
+          type: string
+          format: uuid
+        fiscalYearStart:
+          type: string
+        fiscalYearEnd:
+          type: string
+        framework:
+          type: string
+          enum: [K2, K3]
+        reportStatus:
+          type: string
+      required:
+        - projectId
+        - companyId
+        - fiscalYearStart
+        - fiscalYearEnd
+        - framework
+        - reportStatus
 
     AnnualReportProject:
       type: object

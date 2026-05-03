@@ -15,6 +15,8 @@ import { ReportWorkspace } from "./pages/ReportWorkspace";
 import { ReportSummary } from "./pages/ReportSummary";
 import PreviewExport from "./pages/PreviewExport";
 import { FinancialStatements } from "./pages/FinancialStatements";
+import { ImportPage } from "./pages/ImportPage";
+import { MappingPage } from "./pages/MappingPage";
 import { NotesPage } from "./pages/NotesPage";
 import { ReclassificationReview } from "./pages/ReclassificationReview";
 import { ValidationView } from "./pages/ValidationView";
@@ -47,6 +49,8 @@ function AppRoutes() {
           <Route path="/companies/:companyId/edit" component={CompanyEdit} />
           <Route path="/companies/:companyId" component={CompanyDetail} />
           <Route path="/reports/:reportId" component={ReportWorkspace} />
+          <Route path="/reports/:reportId/import" component={ImportPage} />
+          <Route path="/reports/:reportId/mapping" component={MappingPage} />
           <Route path="/reports/:reportId/statements" component={FinancialStatements} />
           <Route path="/reports/:reportId/notes" component={NotesPage} />
           <Route

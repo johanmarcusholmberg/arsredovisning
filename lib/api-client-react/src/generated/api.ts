@@ -88,6 +88,7 @@ import type {
   ReportSection,
   ReportStructureResponse,
   ReportSummary,
+  ResolvedProjectForReport,
   SaveMappingOverrideBody,
   SaveMappingTemplateBody,
   SavePreviousYearBody,
@@ -1207,6 +1208,102 @@ export const useUpdateReport = <
 > => {
   return useMutation(getUpdateReportMutationOptions(options));
 };
+
+/**
+ * Bridges the legacy reportId → modern projectId boundary so the UI
+(which is report-centric) can call import/mapping/file/audit endpoints
+(which are project-centric).
+
+ * @summary Resolve the annual_report_projects row for a given report
+ */
+export const getGetProjectForReportUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/project`;
+};
+
+export const getProjectForReport = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<ResolvedProjectForReport> => {
+  return customFetch<ResolvedProjectForReport>(
+    getGetProjectForReportUrl(reportId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetProjectForReportQueryKey = (reportId: string) => {
+  return [`/api/reports/${reportId}/project`] as const;
+};
+
+export const getGetProjectForReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProjectForReport>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectForReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetProjectForReportQueryKey(reportId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getProjectForReport>>
+  > = ({ signal }) =>
+    getProjectForReport(reportId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProjectForReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProjectForReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectForReport>>
+>;
+export type GetProjectForReportQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Resolve the annual_report_projects row for a given report
+ */
+
+export function useGetProjectForReport<
+  TData = Awaited<ReturnType<typeof getProjectForReport>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectForReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectForReportQueryOptions(reportId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get report completion summary

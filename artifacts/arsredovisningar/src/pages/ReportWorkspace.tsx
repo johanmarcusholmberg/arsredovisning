@@ -19,6 +19,8 @@ import {
   ClipboardCheck,
   History,
   Shuffle,
+  Upload,
+  Map as MapIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -31,6 +33,20 @@ import {
 } from "@workspace/api-client-react";
 
 const SECTIONS = [
+  {
+    id: "import",
+    title: "Importera bokföringsdata",
+    icon: Upload,
+    desc: "Ladda upp SIE-, Excel- eller CSV-fil och granska staging",
+    href: "import",
+  },
+  {
+    id: "mappning",
+    title: "Kontomappning",
+    icon: MapIcon,
+    desc: "Granska BAS → K2/K3-mappning och justera vid behov",
+    href: "mapping",
+  },
   {
     id: "förvaltningsberättelse",
     title: "Förvaltningsberättelse",
