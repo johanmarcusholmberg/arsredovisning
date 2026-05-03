@@ -25,7 +25,9 @@ import { useLanguage } from "@/hooks/useLanguage";
  * consistent with /demo.
  */
 const SCENE_MS = 3400;
+const LAST_SCENE_BONUS_MS = 1000;
 const TOTAL_SCENES = 5;
+const LAST_SCENE: Scene = 4;
 
 type Scene = 0 | 1 | 2 | 3 | 4;
 
@@ -43,11 +45,13 @@ export function HeroAnimation() {
 
   useEffect(() => {
     if (reduce) return;
-    const id = window.setInterval(() => {
+    const delay =
+      scene === LAST_SCENE ? SCENE_MS + LAST_SCENE_BONUS_MS : SCENE_MS;
+    const id = window.setTimeout(() => {
       setScene((s) => ((s + 1) % TOTAL_SCENES) as Scene);
-    }, SCENE_MS);
-    return () => window.clearInterval(id);
-  }, [reduce]);
+    }, delay);
+    return () => window.clearTimeout(id);
+  }, [reduce, scene]);
 
   return (
     <div
