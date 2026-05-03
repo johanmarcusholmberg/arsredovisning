@@ -25,8 +25,11 @@ import {
   History,
   Info,
   Loader2,
+  Lock,
   ShieldAlert,
 } from "lucide-react";
+import { Link } from "wouter";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   fetchExportData,
   fetchExportHistory,
@@ -120,9 +123,56 @@ export default function PreviewExport() {
   }
 
   if (dataQ.isError || !dataQ.data) {
+    const raw = (dataQ.error as Error | undefined)?.message ?? "";
+    // The shared call() helper formats errors as "<status> <statusText>: <body.message>".
+    const statusMatch = raw.match(/^(\d{3})\b/);
+    const status = statusMatch ? Number(statusMatch[1]) : null;
+
+    let title = "Kunde inte ladda exportdata";
+    let description: React.ReactNode = "Ett oväntat fel inträffade. Försök igen om en stund.";
+    let icon = <AlertCircle className="h-4 w-4" />;
+    let tone: "destructive" | "default" = "destructive";
+
+    if (status === 409) {
+      // Report exists but has no paired annual_report_projects row.
+      title = "Inget projekt kopplat — export inte tillgänglig";
+      icon = <Lock className="h-4 w-4" />;
+      description = (
+        <>
+          Den här rapporten är ännu inte kopplad till ett betalt projekt, vilket krävs
+          för att kunna förhandsgranska och exportera årsredovisningen. Skapa eller
+          aktivera ett projekt för rapportens räkenskapsår — kontakta din
+          administratör om du är osäker.
+        </>
+      );
+      tone = "default";
+    } else if (status === 401 || status === 403) {
+      title = "Saknar behörighet";
+      description = "Du saknar behörighet till den här rapportens export.";
+    } else if (status === 404) {
+      title = "Rapporten hittades inte";
+      description = "Den begärda rapporten finns inte eller är inte längre tillgänglig.";
+    }
+
     return (
-      <div className="p-6 text-destructive">
-        Kunde inte ladda exportdata: {(dataQ.error as Error)?.message}
+      <div className="space-y-4 max-w-3xl mx-auto">
+        <Link
+          href={`/reports/${reportId}`}
+          className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+        >
+          ← Tillbaka till rapporten
+        </Link>
+        <Alert variant={tone}>
+          {icon}
+          <AlertTitle>{title}</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <div>{description}</div>
+            <details className="text-xs text-muted-foreground">
+              <summary className="cursor-pointer">Tekniska detaljer</summary>
+              <pre className="mt-1 whitespace-pre-wrap break-words">{raw || "okänt fel"}</pre>
+            </details>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
