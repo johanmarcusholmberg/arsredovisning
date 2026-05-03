@@ -73,7 +73,11 @@ const sectionGuidanceKeys: Record<SectionKey, string> = {
   example: "guidance.demo.example",
 };
 
-export default function DemoWorkspacePage() {
+interface DemoWorkspacePageProps {
+  basePath?: string;
+}
+
+export default function DemoWorkspacePage({ basePath = "/admin/demo-environment" }: DemoWorkspacePageProps) {
   const { section } = useParams<{ section?: string }>();
   const { t } = useLanguage();
   const currentSection = (section as SectionKey) || "overview";
@@ -84,7 +88,7 @@ export default function DemoWorkspacePage() {
     key,
     label: t(sectionStringKeys[key] as Parameters<typeof t>[0]),
     Icon: sectionIcons[key],
-    href: `/demo/${key}`,
+    href: `${basePath}/${key}`,
     isActive: currentSection === key,
   }));
 
@@ -130,7 +134,7 @@ export default function DemoWorkspacePage() {
               return (
                 <Link
                   key={key}
-                  href={`/demo/${key}`}
+                  href={`${basePath}/${key}`}
                   className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors group ${
                     isActive
                       ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"

@@ -7,7 +7,8 @@ import { Layout } from "@/components/Layout";
 import { RedirectToApp } from "@/components/RedirectToApp";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/LandingPage";
-import DemoWorkspacePage from "@/pages/DemoWorkspacePage";
+import PublicDemoPage from "@/pages/PublicDemoPage";
+import AdminDemoEnvironment from "@/pages/admin/AdminDemoEnvironment";
 import PricingPage from "@/pages/PricingPage";
 import PrivacyPage from "@/pages/legal/PrivacyPage";
 import TermsPage from "@/pages/legal/TermsPage";
@@ -37,7 +38,9 @@ function Router() {
         <Route path="/workspace">
           <RedirectToApp to="/arsredovisningar/" />
         </Route>
-        <Route path="/demo/:section?" component={DemoWorkspacePage} />
+        <Route path="/demo" component={PublicDemoPage} />
+        <Route path="/admin/demo-environment/:section?" component={AdminDemoEnvironment} />
+        <Route path="/admin/demo-environment" component={AdminDemoEnvironment} />
         <Route path="/pricing" component={PricingPage} />
         <Route path="/privacy" component={PrivacyPage} />
         <Route path="/terms" component={TermsPage} />
