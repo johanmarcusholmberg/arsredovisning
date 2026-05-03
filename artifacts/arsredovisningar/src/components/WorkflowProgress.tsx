@@ -14,17 +14,17 @@ export interface WorkflowStep {
 }
 
 const DEFAULT_STEPS: WorkflowStep[] = [
-  { id: "import", label: "Import accounting data", status: "not-started" },
-  { id: "mapping", label: "Review account mapping", status: "not-started" },
-  { id: "structure", label: "Generate report structure", status: "not-started" },
-  { id: "statements", label: "Review financial statements", status: "not-started" },
-  { id: "notes", label: "Review notes", status: "not-started" },
+  { id: "import", label: "Importera bokföring", status: "not-started" },
+  { id: "mapping", label: "Granska kontomappning", status: "not-started" },
+  { id: "structure", label: "Generera rapportstruktur", status: "not-started" },
+  { id: "statements", label: "Granska finansiella rapporter", status: "not-started" },
+  { id: "notes", label: "Granska noter", status: "not-started" },
   { id: "reclassification", label: "Omklassificering & nettning", status: "not-started" },
   { id: "cash-flow", label: "Kassaflödesanalys", status: "not-started" },
-  { id: "validate", label: "Validate", status: "not-started" },
-  { id: "collaborate", label: "Collaborate & review", status: "not-started" },
-  { id: "preview", label: "Preview", status: "not-started" },
-  { id: "export", label: "Final export", status: "not-started" },
+  { id: "validate", label: "Validera", status: "not-started" },
+  { id: "collaborate", label: "Samarbeta & granska", status: "not-started" },
+  { id: "preview", label: "Förhandsvisa & exportera", status: "not-started" },
+  { id: "export", label: "Slutgiltig export", status: "not-started" },
 ];
 
 function StepIcon({ status }: { status: StepStatus }) {

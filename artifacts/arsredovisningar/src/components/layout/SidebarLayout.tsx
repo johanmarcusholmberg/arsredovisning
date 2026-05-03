@@ -1,12 +1,14 @@
 import { Link, useLocation } from "wouter";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Building, Home, Settings, LogOut, Briefcase, ListChecks } from "lucide-react";
+import { Building, Home, Settings, LogOut, Briefcase, ListChecks, FileText } from "lucide-react";
 import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function SidebarLayout({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const { user, signOut } = useAuth();
+  const reportMatch = location.match(/^\/reports\/([^/]+)/);
+  const activeReportId = reportMatch ? reportMatch[1] : null;
 
   async function handleLogout() {
     await signOut();
@@ -47,6 +49,28 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            {activeReportId && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs font-mono uppercase tracking-wider mt-4 px-4">
+                  Aktiv rapport
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location === `/reports/${activeReportId}/preview`}
+                      >
+                        <Link href={`/reports/${activeReportId}/preview`}>
+                          <FileText className="h-4 w-4" />
+                          <span>Förhandsvisa & exportera</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            )}
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-sidebar-border/50 space-y-1">
             {user && (
