@@ -2278,6 +2278,11 @@ components:
       properties:
         name:
           type: string
+        orgNumber:
+          type: string
+        legalForm:
+          type: string
+          enum: [AB, HB, KB, EF, Ideell, Stiftelse]
         address:
           type: string
         zipCode:
@@ -2287,6 +2292,10 @@ components:
         accountingFramework:
           type: string
           enum: [K2, K3]
+        fiscalYearStart:
+          type: string
+        fiscalYearEnd:
+          type: string
 
     AnnualReportProject:
       type: object

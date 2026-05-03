@@ -21,6 +21,8 @@ export const companiesTable = pgTable("companies", {
   organizationNumber: text("organization_number").notNull().unique(),
   legalForm: text("legal_form").notNull().default("AB"),
   accountingFramework: accountingFrameworkEnum("accounting_framework").notNull().default("K3"),
+  fiscalYearStart: text("fiscal_year_start").notNull().default("01-01"),
+  fiscalYearEnd: text("fiscal_year_end").notNull().default("12-31"),
   address: text("address"),
   city: text("city"),
   postalCode: text("postal_code"),

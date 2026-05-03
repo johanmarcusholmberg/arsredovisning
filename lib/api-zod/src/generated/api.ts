@@ -164,10 +164,16 @@ export const UpdateCompanyParams = zod.object({
 
 export const UpdateCompanyBody = zod.object({
   name: zod.string().optional(),
+  orgNumber: zod.string().optional(),
+  legalForm: zod
+    .enum(["AB", "HB", "KB", "EF", "Ideell", "Stiftelse"])
+    .optional(),
   address: zod.string().optional(),
   zipCode: zod.string().optional(),
   city: zod.string().optional(),
   accountingFramework: zod.enum(["K2", "K3"]).optional(),
+  fiscalYearStart: zod.string().optional(),
+  fiscalYearEnd: zod.string().optional(),
 });
 
 export const UpdateCompanyResponse = zod.object({

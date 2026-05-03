@@ -27,6 +27,14 @@ import { logAuditEvent } from "../lib/auditLog.js";
 
 const router: IRouter = Router();
 
+function isValidMonthDay(v: string): boolean {
+  if (!/^\d{2}-\d{2}$/.test(v)) return false;
+  const [m, d] = v.split("-").map((n) => parseInt(n, 10));
+  if (m < 1 || m > 12 || d < 1) return false;
+  const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return d <= daysInMonth[m - 1];
+}
+
 /**
  * Map a DB Company row to the API response shape.
  * DB uses organizationNumber/postalCode; OpenAPI/frontend uses orgNumber/zipCode.
@@ -39,6 +47,8 @@ function toApiCompany(c: Company) {
     orgNumber: c.organizationNumber,
     legalForm: c.legalForm,
     accountingFramework: c.accountingFramework as "K2" | "K3",
+    fiscalYearStart: c.fiscalYearStart,
+    fiscalYearEnd: c.fiscalYearEnd,
     address: c.address ?? undefined,
     zipCode: c.postalCode ?? undefined,
     city: c.city ?? undefined,
@@ -77,6 +87,11 @@ router.post("/companies", async (req, res): Promise<void> => {
     return;
   }
 
+  if (!isValidMonthDay(parsed.data.fiscalYearStart) || !isValidMonthDay(parsed.data.fiscalYearEnd)) {
+    res.status(400).json({ error: "invalid_input", message: "fiscalYearStart/fiscalYearEnd must be valid MM-DD" });
+    return;
+  }
+
   const { orgNumber, zipCode, ...rest } = parsed.data;
 
   let company;
@@ -90,6 +105,7 @@ router.post("/companies", async (req, res): Promise<void> => {
         createdByProfileId: profileId,
       })
       .returning();
+    if (!company) throw new Error("insert_failed");
   } catch (err: unknown) {
     const pgErr = err as { code?: string; constraint?: string };
     if (pgErr?.code === "23505") {
@@ -164,22 +180,46 @@ router.patch("/companies/:companyId", async (req, res): Promise<void> => {
     return;
   }
 
-  const { zipCode, ...rest } = parsed.data;
+  if (parsed.data.fiscalYearStart !== undefined && !isValidMonthDay(parsed.data.fiscalYearStart)) {
+    res.status(400).json({ error: "invalid_input", message: "fiscalYearStart must be valid MM-DD" });
+    return;
+  }
+  if (parsed.data.fiscalYearEnd !== undefined && !isValidMonthDay(parsed.data.fiscalYearEnd)) {
+    res.status(400).json({ error: "invalid_input", message: "fiscalYearEnd must be valid MM-DD" });
+    return;
+  }
 
-  const [company] = await db
-    .update(companiesTable)
-    .set({
-      ...rest,
-      ...(zipCode !== undefined && { postalCode: zipCode }),
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(companiesTable.id, params.data.companyId),
-        eq(companiesTable.createdByProfileId, profileId),
-      ),
-    )
-    .returning();
+  const { zipCode, orgNumber, ...rest } = parsed.data;
+
+  let company;
+  try {
+    [company] = await db
+      .update(companiesTable)
+      .set({
+        ...rest,
+        ...(orgNumber !== undefined && { organizationNumber: orgNumber }),
+        ...(zipCode !== undefined && { postalCode: zipCode }),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(companiesTable.id, params.data.companyId),
+          eq(companiesTable.createdByProfileId, profileId),
+        ),
+      )
+      .returning();
+  } catch (err: unknown) {
+    const pgErr = err as { code?: string };
+    if (pgErr?.code === "23505") {
+      res.status(409).json({
+        error: "duplicate_org_number",
+        field: "orgNumber",
+        message: `A company with organisation number ${orgNumber} already exists.`,
+      });
+      return;
+    }
+    throw err;
+  }
 
   if (!company) {
     res.status(404).json({ error: "not_found", message: "Company not found" });

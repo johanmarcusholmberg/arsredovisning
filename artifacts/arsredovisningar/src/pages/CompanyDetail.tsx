@@ -8,7 +8,6 @@ import { FileText, Building2, Plus, Calendar, Settings, ArrowRight, Loader2, Ref
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,22 +35,36 @@ export function CompanyDetail() {
 
   const createReport = useCreateReport();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newReportYearStart, setNewReportYearStart] = useState("");
-  const [newReportYearEnd, setNewReportYearEnd] = useState("");
-  const [newReportFramework, setNewReportFramework] = useState<"K2" | "K3">("K2");
+  const currentYear = new Date().getFullYear();
+  const [fiscalYear, setFiscalYear] = useState<string>(String(currentYear - 1));
+
+  const computeReportDates = (year: number): { start: string; end: string } | null => {
+    const startMMDD = company?.fiscalYearStart ?? "01-01";
+    const endMMDD = company?.fiscalYearEnd ?? "12-31";
+    if (!/^\d{2}-\d{2}$/.test(startMMDD) || !/^\d{2}-\d{2}$/.test(endMMDD)) return null;
+    const startYear = year;
+    const endYear = startMMDD <= endMMDD ? year : year + 1;
+    return { start: `${startYear}-${startMMDD}`, end: `${endYear}-${endMMDD}` };
+  };
 
   const handleCreateReport = () => {
-    if (!newReportYearStart || !newReportYearEnd) {
-      toast({ title: "Validation Error", description: "Please provide both start and end dates.", variant: "destructive" });
+    const yearNum = parseInt(fiscalYear, 10);
+    if (!fiscalYear || Number.isNaN(yearNum)) {
+      toast({ title: "Validation Error", description: "Please provide a fiscal year.", variant: "destructive" });
       return;
     }
-    
+    const dates = computeReportDates(yearNum);
+    if (!dates || !company) {
+      toast({ title: "Error", description: "Company fiscal period is invalid. Please update the company first.", variant: "destructive" });
+      return;
+    }
+
     createReport.mutate({
       companyId,
       data: {
-        fiscalYearStart: newReportYearStart,
-        fiscalYearEnd: newReportYearEnd,
-        accountingFramework: newReportFramework
+        fiscalYearStart: dates.start,
+        fiscalYearEnd: dates.end,
+        accountingFramework: company.accountingFramework,
       }
     }, {
       onSuccess: (newReport) => {
@@ -109,35 +122,27 @@ export function CompanyDetail() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Start Date</Label>
-                  <Input 
-                    type="date" 
-                    value={newReportYearStart} 
-                    onChange={(e) => setNewReportYearStart(e.target.value)} 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>End Date</Label>
-                  <Input 
-                    type="date" 
-                    value={newReportYearEnd} 
-                    onChange={(e) => setNewReportYearEnd(e.target.value)} 
-                  />
-                </div>
-              </div>
               <div className="space-y-2">
-                <Label>Accounting Framework</Label>
-                <Select value={newReportFramework} onValueChange={(v: "K2" | "K3") => setNewReportFramework(v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="K2">K2 (Mindre företag)</SelectItem>
-                    <SelectItem value="K3">K3 (Huvudregelverket)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Fiscal Year</Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1900}
+                  max={2999}
+                  value={fiscalYear}
+                  onChange={(e) => setFiscalYear(e.target.value)}
+                  placeholder={String(currentYear - 1)}
+                />
+                {(() => {
+                  const yr = parseInt(fiscalYear, 10);
+                  const dates = !Number.isNaN(yr) ? computeReportDates(yr) : null;
+                  return (
+                    <p className="text-xs text-muted-foreground">
+                      Uses company defaults: framework <span className="font-medium">{company.accountingFramework}</span>
+                      {dates ? <> · period <span className="font-mono">{dates.start} → {dates.end}</span></> : null}
+                    </p>
+                  );
+                })()}
               </div>
             </div>
             <DialogFooter>
@@ -184,7 +189,9 @@ export function CompanyDetail() {
             </div>
           </CardContent>
           <CardFooter className="border-t bg-muted/10 p-4">
-             <Button variant="ghost" className="w-full text-muted-foreground">Edit Company Details</Button>
+             <Button variant="ghost" className="w-full text-muted-foreground" asChild>
+               <Link href={`/companies/${companyId}/edit`}>Edit Company Details</Link>
+             </Button>
           </CardFooter>
         </Card>
 

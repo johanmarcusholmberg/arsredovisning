@@ -9,6 +9,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Dashboard } from "./pages/Dashboard";
 import { Companies } from "./pages/Companies";
 import { CompanyNew } from "./pages/CompanyNew";
+import { CompanyEdit } from "./pages/CompanyEdit";
 import { CompanyDetail } from "./pages/CompanyDetail";
 import { ReportWorkspace } from "./pages/ReportWorkspace";
 import { ReportSummary } from "./pages/ReportSummary";
@@ -43,6 +44,7 @@ function AppRoutes() {
           <Route path="/" component={Dashboard} />
           <Route path="/companies" component={Companies} />
           <Route path="/companies/new" component={CompanyNew} />
+          <Route path="/companies/:companyId/edit" component={CompanyEdit} />
           <Route path="/companies/:companyId" component={CompanyDetail} />
           <Route path="/reports/:reportId" component={ReportWorkspace} />
           <Route path="/reports/:reportId/statements" component={FinancialStatements} />

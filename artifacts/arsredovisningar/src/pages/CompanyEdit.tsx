@@ -1,10 +1,14 @@
-import { useState } from "react";
-import { useLocation, Link } from "wouter";
-import { useCreateCompany, ApiError } from "@workspace/api-client-react";
+import { useEffect } from "react";
+import { useLocation, Link, useRoute } from "wouter";
+import {
+  useGetCompany,
+  useUpdateCompany,
+  getGetCompanyQueryKey,
+  ApiError,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Building2, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +16,8 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQueryClient } from "@tanstack/react-query";
 
 const isValidMonthDay = (v: string): boolean => {
   if (!/^\d{2}-\d{2}$/.test(v)) return false;
@@ -35,10 +41,17 @@ const companySchema = z.object({
 
 type CompanyFormValues = z.infer<typeof companySchema>;
 
-export function CompanyNew() {
+export function CompanyEdit() {
+  const [, params] = useRoute("/companies/:companyId/edit");
+  const companyId = params?.companyId || "";
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
+  const queryClient = useQueryClient();
+
+  const { data: company, isLoading } = useGetCompany(companyId, {
+    query: { enabled: !!companyId, queryKey: getGetCompanyQueryKey(companyId) },
+  });
+
   const form = useForm<CompanyFormValues>({
     resolver: zodResolver(companySchema),
     defaultValues: {
@@ -50,22 +63,39 @@ export function CompanyNew() {
       fiscalYearEnd: "12-31",
       address: "",
       zipCode: "",
-      city: ""
-    }
+      city: "",
+    },
   });
 
-  const createCompany = useCreateCompany();
+  useEffect(() => {
+    if (company) {
+      form.reset({
+        name: company.name,
+        orgNumber: company.orgNumber,
+        legalForm: (company.legalForm as CompanyFormValues["legalForm"]) ?? "AB",
+        accountingFramework: company.accountingFramework,
+        fiscalYearStart: company.fiscalYearStart ?? "01-01",
+        fiscalYearEnd: company.fiscalYearEnd ?? "12-31",
+        address: company.address ?? "",
+        zipCode: company.zipCode ?? "",
+        city: company.city ?? "",
+      });
+    }
+  }, [company, form]);
+
+  const updateCompany = useUpdateCompany();
 
   const onSubmit = (data: CompanyFormValues) => {
-    createCompany.mutate(
-      { data },
+    updateCompany.mutate(
+      { companyId, data },
       {
-        onSuccess: (company) => {
+        onSuccess: (updated) => {
           toast({
-            title: "Company created",
-            description: `${company.name} has been added successfully.`
+            title: "Company updated",
+            description: `${updated.name} has been saved.`,
           });
-          setLocation(`/companies/${company.id}`);
+          queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey(companyId) });
+          setLocation(`/companies/${companyId}`);
         },
         onError: (err) => {
           if (err instanceof ApiError) {
@@ -79,39 +109,48 @@ export function CompanyNew() {
                 title: "Organisation number already in use",
                 description:
                   data.message ??
-                  "A company with this organisation number already exists. Please use a different number.",
+                  "A company with this organisation number already exists.",
                 variant: "destructive",
               });
               return;
             }
             toast({
-              title: "Error creating company",
+              title: "Error updating company",
               description: data?.message ?? err.message,
               variant: "destructive",
             });
             return;
           }
           toast({
-            title: "Error creating company",
+            title: "Error updating company",
             description: "An unexpected error occurred. Please try again.",
             variant: "destructive",
           });
-        }
+        },
       }
     );
   };
+
+  if (isLoading || !company) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <Skeleton className="h-12 w-1/3" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-300">
       <div className="flex items-center gap-4 mb-8">
         <Button variant="outline" size="icon" asChild className="h-10 w-10 shrink-0 rounded-full">
-          <Link href="/">
+          <Link href={`/companies/${companyId}`}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">New Company</h1>
-          <p className="text-muted-foreground">Register a client to begin preparing reports.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Edit Company</h1>
+          <p className="text-muted-foreground">Update the company's registered details.</p>
         </div>
       </div>
 
@@ -125,7 +164,7 @@ export function CompanyNew() {
                 </div>
                 <div>
                   <CardTitle>Company Details</CardTitle>
-                  <CardDescription>Enter the official registered details of the company.</CardDescription>
+                  <CardDescription>All fields below can be updated.</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -133,15 +172,15 @@ export function CompanyNew() {
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem className="col-span-2">
                   <FormLabel>Company Name</FormLabel>
-                  <FormControl><Input placeholder="Acme AB" {...field} className="h-11" /></FormControl>
+                  <FormControl><Input {...field} className="h-11" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
-              
+
               <FormField control={form.control} name="orgNumber" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Organization Number</FormLabel>
-                  <FormControl><Input placeholder="556000-1234" {...field} className="h-11 font-mono" /></FormControl>
+                  <FormControl><Input {...field} className="h-11 font-mono" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -149,9 +188,9 @@ export function CompanyNew() {
               <FormField control={form.control} name="legalForm" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Legal Form</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="h-11"><SelectValue placeholder="Select form" /></SelectTrigger>
+                      <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="AB">Aktiebolag (AB)</SelectItem>
@@ -169,9 +208,9 @@ export function CompanyNew() {
               <FormField control={form.control} name="accountingFramework" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Accounting Framework</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="h-11"><SelectValue placeholder="Select framework" /></SelectTrigger>
+                      <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="K2">K2 (Mindre företag)</SelectItem>
@@ -185,15 +224,15 @@ export function CompanyNew() {
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="fiscalYearStart" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Fiscal Start</FormLabel>
-                    <FormControl><Input placeholder="MM-DD" {...field} className="h-11 font-mono" /></FormControl>
+                    <FormLabel>Fiscal Start (MM-DD)</FormLabel>
+                    <FormControl><Input {...field} className="h-11 font-mono" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="fiscalYearEnd" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Fiscal End</FormLabel>
-                    <FormControl><Input placeholder="MM-DD" {...field} className="h-11 font-mono" /></FormControl>
+                    <FormLabel>Fiscal End (MM-DD)</FormLabel>
+                    <FormControl><Input {...field} className="h-11 font-mono" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -206,7 +245,7 @@ export function CompanyNew() {
               <FormField control={form.control} name="address" render={({ field }) => (
                 <FormItem className="col-span-2">
                   <FormLabel>Street Address</FormLabel>
-                  <FormControl><Input placeholder="Storgatan 1" {...field} className="h-11" /></FormControl>
+                  <FormControl><Input {...field} className="h-11" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -214,7 +253,7 @@ export function CompanyNew() {
               <FormField control={form.control} name="zipCode" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Postal Code</FormLabel>
-                  <FormControl><Input placeholder="123 45" {...field} className="h-11" /></FormControl>
+                  <FormControl><Input {...field} className="h-11" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -222,19 +261,18 @@ export function CompanyNew() {
               <FormField control={form.control} name="city" render={({ field }) => (
                 <FormItem>
                   <FormLabel>City</FormLabel>
-                  <FormControl><Input placeholder="Stockholm" {...field} className="h-11" /></FormControl>
+                  <FormControl><Input {...field} className="h-11" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
-
             </CardContent>
             <CardFooter className="flex justify-end gap-4 border-t bg-muted/20 py-4 mt-6">
               <Button variant="ghost" asChild type="button">
-                <Link href="/">Cancel</Link>
+                <Link href={`/companies/${companyId}`}>Cancel</Link>
               </Button>
-              <Button type="submit" disabled={createCompany.isPending} className="px-8">
-                {createCompany.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Save Company
+              <Button type="submit" disabled={updateCompany.isPending} className="px-8">
+                {updateCompany.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Changes
               </Button>
             </CardFooter>
           </Card>

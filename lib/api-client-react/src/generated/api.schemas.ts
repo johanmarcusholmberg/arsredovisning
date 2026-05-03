@@ -103,6 +103,18 @@ export interface CreateCompanyBody {
   fiscalYearEnd: string;
 }
 
+export type UpdateCompanyBodyLegalForm =
+  (typeof UpdateCompanyBodyLegalForm)[keyof typeof UpdateCompanyBodyLegalForm];
+
+export const UpdateCompanyBodyLegalForm = {
+  AB: "AB",
+  HB: "HB",
+  KB: "KB",
+  EF: "EF",
+  Ideell: "Ideell",
+  Stiftelse: "Stiftelse",
+} as const;
+
 export type UpdateCompanyBodyAccountingFramework =
   (typeof UpdateCompanyBodyAccountingFramework)[keyof typeof UpdateCompanyBodyAccountingFramework];
 
@@ -113,10 +125,14 @@ export const UpdateCompanyBodyAccountingFramework = {
 
 export interface UpdateCompanyBody {
   name?: string;
+  orgNumber?: string;
+  legalForm?: UpdateCompanyBodyLegalForm;
   address?: string;
   zipCode?: string;
   city?: string;
   accountingFramework?: UpdateCompanyBodyAccountingFramework;
+  fiscalYearStart?: string;
+  fiscalYearEnd?: string;
 }
 
 export type AnnualReportProjectAccountingFramework =
