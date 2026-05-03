@@ -1,0 +1,79 @@
+Continue working on the Årsredovisningar project.
+
+The access-control audit passed and one gap was fixed. Before implementing Stripe Checkout, do a small hardening pass for the remaining residual risks.
+
+Do not implement Stripe Checkout yet.
+Do not change the project-license model.
+Do not reintroduce Credits as a user-facing concept.
+
+Goal:
+Make the current entitlement/access model safer and more production-ready before payment integration.
+
+Tasks:
+
+1. Demo seed reliability
+The demo workspace depends on a hard-coded demo project UUID:
+00000000-0000-0000-0000-000000000001
+
+Make sure the production/demo seed process guarantees that this demo project and required demo data exist.
+
+Add or verify:
+- demo company
+- demo project
+- demo report
+- demo accounting/import sample data
+- demo financial statements
+- demo notes
+- demo cash-flow examples if applicable
+- demo export/sample PDF linkage if applicable
+
+The demo project must be clearly marked as demo/sample data and must not be treated as a real customer project.
+
+If the seed is missing, the app should fail gracefully with a clear message instead of crashing.
+
+2. Bootstrap admin hardening
+Review the bootstrap admin promotion by email allowlist in auth.ts.
+
+Keep it working for development/testing, but make it safer and clearer.
+
+Preferred approach:
+- move bootstrap admin emails to an environment variable if possible
+- document clearly that removing an admin requires removing the email from the bootstrap allowlist and revoking admin status in the database
+- make sure normal users cannot become admin through frontend or API manipulation
+- keep requireSiteAdmin returning 404 to non-admins
+
+Do not expose bootstrap admin information in normal user UI.
+
+3. Admin terminology
+It is acceptable that Admin.tsx uses internal “Krediter” terminology, but make sure it is only visible to site admins.
+
+Add a short admin-only helper text explaining that internal credits/manual grants are only a testing/admin mechanism and that the customer-facing model is “projektlicens”.
+
+4. Collaborator backlog note
+Do not fix collaboration in this task unless it is very small and safe.
+
+But add a TODO or backlog note that current owner-only GET queries for:
+- notes
+- note rows
+- financial statements
+- reclassifications
+
+may prevent collaborators from viewing data even when they have a valid project role.
+
+This is a UX/collaboration follow-up, not a payment blocker.
+
+5. Acceptance criteria
+This hardening pass is complete when:
+- demo seed requirements are verified or implemented
+- demo workspace does not fail silently if seed data is missing
+- bootstrap admin behavior is safer and documented
+- admin-only credit terminology remains hidden from normal users
+- no Stripe Checkout is implemented yet
+- no entitlement checks are weakened
+- normal users still cannot access real project functionality without project entitlement
+
+After completion, provide a short report:
+- what was changed
+- whether demo seed exists and how it is guaranteed
+- how bootstrap admin is configured
+- any remaining risks before Stripe
