@@ -590,6 +590,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReportSummary"
 
+  /reports/{reportId}/signatures:
+    get:
+      operationId: listReportSignatories
+      tags: [reports]
+      summary: List signatories (board members and auditor) for a report
+      description: |
+        Returns the people expected to sign the annual report — derived from
+        the report's collaborators (the company owner plus any board / auditor
+        roles invited via the collaborators endpoint). The `signed` flag is
+        derived from the report status: when the report is `complete` or
+        `exported` all signatories are considered signed; otherwise none are.
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Signatories for the report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListSignatoriesResponse"
+        "404":
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -3020,6 +3051,42 @@ components:
         - status
         - completionPercent
         - sections
+
+    Signatory:
+      type: object
+      properties:
+        profileId:
+          type: string
+          nullable: true
+          description: Profile id of the signatory, if the invitee has signed up.
+        name:
+          type: string
+          description: Display name (falls back to email local-part if no display name is set).
+        role:
+          type: string
+          description: Localized Swedish role label (e.g. "Ordförande", "Styrelseledamot", "Revisor").
+        roleKey:
+          type: string
+          enum: [owner, admin, accountant, reviewer, auditor]
+          description: Underlying collaborator role key.
+        signed:
+          type: boolean
+          description: True when the report status is complete or exported.
+      required:
+        - name
+        - role
+        - roleKey
+        - signed
+
+    ListSignatoriesResponse:
+      type: object
+      properties:
+        signatories:
+          type: array
+          items:
+            $ref: "#/components/schemas/Signatory"
+      required:
+        - signatories
 
     SectionStatus:
       type: object

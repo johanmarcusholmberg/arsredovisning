@@ -535,6 +535,46 @@ export const GetReportSummaryResponse = zod.object({
 });
 
 /**
+ * Returns the people expected to sign the annual report — derived from
+the report's collaborators (the company owner plus any board / auditor
+roles invited via the collaborators endpoint). The `signed` flag is
+derived from the report status: when the report is `complete` or
+`exported` all signatories are considered signed; otherwise none are.
+
+ * @summary List signatories (board members and auditor) for a report
+ */
+export const ListReportSignatoriesParams = zod.object({
+  reportId: zod.coerce.string(),
+});
+
+export const ListReportSignatoriesResponse = zod.object({
+  signatories: zod.array(
+    zod.object({
+      profileId: zod
+        .string()
+        .nullish()
+        .describe("Profile id of the signatory, if the invitee has signed up."),
+      name: zod
+        .string()
+        .describe(
+          "Display name (falls back to email local-part if no display name is set).",
+        ),
+      role: zod
+        .string()
+        .describe(
+          'Localized Swedish role label (e.g. \"Ordförande\", \"Styrelseledamot\", \"Revisor\").',
+        ),
+      roleKey: zod
+        .enum(["owner", "admin", "accountant", "reviewer", "auditor"])
+        .describe("Underlying collaborator role key."),
+      signed: zod
+        .boolean()
+        .describe("True when the report status is complete or exported."),
+    }),
+  ),
+});
+
+/**
  * @summary Get dashboard overview
  */
 export const GetDashboardSummaryResponse = zod.object({

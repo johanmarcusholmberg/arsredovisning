@@ -83,6 +83,7 @@ import type {
   ListSectionComments200,
   ListSectionCommentsParams,
   ListSectionReviews200,
+  ListSignatoriesResponse,
   ListValidationDismissals200,
   MappingAssistantScanResult,
   MappingAssistantSuggestion,
@@ -2233,6 +2234,104 @@ export function useGetReportSummary<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetReportSummaryQueryOptions(reportId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns the people expected to sign the annual report — derived from
+the report's collaborators (the company owner plus any board / auditor
+roles invited via the collaborators endpoint). The `signed` flag is
+derived from the report status: when the report is `complete` or
+`exported` all signatories are considered signed; otherwise none are.
+
+ * @summary List signatories (board members and auditor) for a report
+ */
+export const getListReportSignatoriesUrl = (reportId: string) => {
+  return `/api/reports/${reportId}/signatures`;
+};
+
+export const listReportSignatories = async (
+  reportId: string,
+  options?: RequestInit,
+): Promise<ListSignatoriesResponse> => {
+  return customFetch<ListSignatoriesResponse>(
+    getListReportSignatoriesUrl(reportId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListReportSignatoriesQueryKey = (reportId: string) => {
+  return [`/api/reports/${reportId}/signatures`] as const;
+};
+
+export const getListReportSignatoriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listReportSignatories>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReportSignatories>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListReportSignatoriesQueryKey(reportId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listReportSignatories>>
+  > = ({ signal }) =>
+    listReportSignatories(reportId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!reportId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listReportSignatories>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListReportSignatoriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listReportSignatories>>
+>;
+export type ListReportSignatoriesQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List signatories (board members and auditor) for a report
+ */
+
+export function useListReportSignatories<
+  TData = Awaited<ReturnType<typeof listReportSignatories>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  reportId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReportSignatories>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReportSignatoriesQueryOptions(reportId, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

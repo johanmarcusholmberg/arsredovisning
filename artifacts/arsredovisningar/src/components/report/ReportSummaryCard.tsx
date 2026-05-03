@@ -1,6 +1,8 @@
 import {
   useGetFinancialStatements,
   getGetFinancialStatementsQueryKey,
+  useListReportSignatories,
+  getListReportSignatoriesQueryKey,
   type AnnualReport,
   type AnnualReportStatus,
   type FinancialStatementLine,
@@ -238,7 +240,7 @@ function findLine(lines: FinancialStatementLine[], lineKey: string): FinancialSt
 }
 
 interface ConnectedReportSummaryCardProps
-  extends Omit<ReportSummaryCardProps, "metrics" | "metricsLoading"> {
+  extends Omit<ReportSummaryCardProps, "metrics" | "metricsLoading" | "signatories"> {
   reportId: string;
 }
 
@@ -255,6 +257,14 @@ export function ConnectedReportSummaryCard({ reportId, ...rest }: ConnectedRepor
     },
   );
 
+  const { data: signaturesData } = useListReportSignatories(reportId, {
+    query: {
+      enabled: !!reportId,
+      queryKey: getListReportSignatoriesQueryKey(reportId),
+      staleTime: 30_000,
+    },
+  });
+
   const metrics: ReportSummaryMetric[] = METRIC_KEYS.map((key) => {
     const line = data ? findLine(data.incomeStatement, key) : undefined;
     return {
@@ -264,11 +274,16 @@ export function ConnectedReportSummaryCard({ reportId, ...rest }: ConnectedRepor
     };
   });
 
+  const signatories: ReportSummarySignatory[] | undefined = signaturesData?.signatories.map(
+    (s) => ({ name: s.name, role: s.role, signed: s.signed }),
+  );
+
   return (
     <ReportSummaryCard
       {...rest}
       metrics={metrics}
       metricsLoading={isLoading}
+      signatories={signatories}
     />
   );
 }

@@ -405,6 +405,37 @@ export interface ReportSummary {
   sections: SectionStatus[];
 }
 
+/**
+ * Underlying collaborator role key.
+ */
+export type SignatoryRoleKey =
+  (typeof SignatoryRoleKey)[keyof typeof SignatoryRoleKey];
+
+export const SignatoryRoleKey = {
+  owner: "owner",
+  admin: "admin",
+  accountant: "accountant",
+  reviewer: "reviewer",
+  auditor: "auditor",
+} as const;
+
+export interface Signatory {
+  /** Profile id of the signatory, if the invitee has signed up. */
+  profileId?: string | null;
+  /** Display name (falls back to email local-part if no display name is set). */
+  name: string;
+  /** Localized Swedish role label (e.g. "Ordförande", "Styrelseledamot", "Revisor"). */
+  role: string;
+  /** Underlying collaborator role key. */
+  roleKey: SignatoryRoleKey;
+  /** True when the report status is complete or exported. */
+  signed: boolean;
+}
+
+export interface ListSignatoriesResponse {
+  signatories: Signatory[];
+}
+
 export interface DashboardSummary {
   totalCompanies: number;
   totalReports: number;

@@ -8,6 +8,7 @@ import {
   projectEntitlementsTable,
   projectAccessTable,
   profilesTable,
+  reportCollaboratorsTable,
 } from "@workspace/db";
 import {
   canCreateRealProject,
@@ -25,6 +26,8 @@ import {
   UpdateReportResponse,
   ListReportsResponse,
   GetReportSummaryResponse,
+  ListReportSignatoriesParams,
+  ListReportSignatoriesResponse,
 } from "@workspace/api-zod";
 import { logAuditEvent } from "../lib/auditLog.js";
 import { resolveProjectForReport } from "../helpers/projectReportLink.js";
@@ -412,6 +415,136 @@ router.patch("/reports/:reportId", async (req, res): Promise<void> => {
     .where(eq(companiesTable.id, row.companyId));
 
   res.json(UpdateReportResponse.parse({ ...row, companyName: company?.name ?? "" }));
+});
+
+// ─── GET /reports/:reportId/signatures ───────────────────────────────────────
+//
+// Returns the list of signatories (board members + auditor) for a report.
+//
+// Data sources:
+//   * The company owner (createdByProfileId) is implicitly the chairperson.
+//   * Other rows come from `report_collaborators` filtered to signing roles
+//     (admin, accountant, reviewer → board members; auditor → auditor).
+// `read_only` collaborators are excluded — they are not expected to sign.
+//
+// `signed` is derived from the report status: when the report is `complete` or
+// `exported` we treat all signatories as signed (matches the marketing
+// HeroAnimation Scene 4 visual). There is no per-signatory signed-at column
+// today; introducing one is tracked separately.
+
+const ROLE_LABEL_SV: Record<string, string> = {
+  owner: "Ordförande",
+  admin: "Styrelseledamot",
+  accountant: "Styrelseledamot",
+  reviewer: "Styrelseledamot",
+  auditor: "Revisor",
+};
+
+const SIGNING_ROLES = new Set([
+  "owner",
+  "admin",
+  "accountant",
+  "reviewer",
+  "auditor",
+]);
+
+function nameFromProfile(
+  displayName: string | null,
+  email: string | null,
+): string {
+  if (displayName && displayName.trim().length > 0) return displayName;
+  if (email && email.trim().length > 0) return email.split("@")[0];
+  return "Okänd";
+}
+
+router.get("/reports/:reportId/signatures", async (req, res): Promise<void> => {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  const params = ListReportSignatoriesParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "invalid_params", message: params.error.message });
+    return;
+  }
+
+  const [row] = await db
+    .select({
+      reportId: reportsTable.id,
+      status: reportsTable.status,
+      ownerProfileId: companiesTable.createdByProfileId,
+    })
+    .from(reportsTable)
+    .innerJoin(companiesTable, eq(reportsTable.companyId, companiesTable.id))
+    .where(
+      and(
+        eq(reportsTable.id, params.data.reportId),
+        eq(companiesTable.createdByProfileId, profileId),
+      ),
+    );
+
+  if (!row) {
+    res.status(404).json({ error: "not_found", message: "Report not found" });
+    return;
+  }
+
+  const signedAll = row.status === "complete" || row.status === "exported";
+
+  const collaborators = await db
+    .select({
+      profileId: reportCollaboratorsTable.profileId,
+      role: reportCollaboratorsTable.role,
+      inviteEmail: reportCollaboratorsTable.inviteEmail,
+      displayName: profilesTable.displayName,
+      email: profilesTable.email,
+    })
+    .from(reportCollaboratorsTable)
+    .leftJoin(
+      profilesTable,
+      eq(reportCollaboratorsTable.profileId, profilesTable.id),
+    )
+    .where(eq(reportCollaboratorsTable.reportId, params.data.reportId));
+
+  const ownerInfo = row.ownerProfileId
+    ? await db
+        .select({
+          displayName: profilesTable.displayName,
+          email: profilesTable.email,
+        })
+        .from(profilesTable)
+        .where(eq(profilesTable.id, row.ownerProfileId))
+        .limit(1)
+    : [];
+
+  const ownerSignatory = {
+    profileId: row.ownerProfileId,
+    name: nameFromProfile(
+      ownerInfo[0]?.displayName ?? null,
+      ownerInfo[0]?.email ?? null,
+    ),
+    role: ROLE_LABEL_SV.owner,
+    roleKey: "owner" as const,
+    signed: signedAll,
+  };
+
+  const others = collaborators
+    .filter((c) => c.profileId !== row.ownerProfileId)
+    .filter((c) => SIGNING_ROLES.has(c.role) && c.role !== "owner")
+    .map((c) => ({
+      profileId: c.profileId,
+      name: nameFromProfile(c.displayName, c.email ?? c.inviteEmail ?? null),
+      role: ROLE_LABEL_SV[c.role] ?? c.role,
+      roleKey: c.role as "admin" | "accountant" | "reviewer" | "auditor",
+      signed: signedAll,
+    }));
+
+  res.json(
+    ListReportSignatoriesResponse.parse({
+      signatories: [ownerSignatory, ...others],
+    }),
+  );
 });
 
 router.get("/reports/:reportId/summary", async (req, res): Promise<void> => {
