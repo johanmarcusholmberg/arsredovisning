@@ -1,0 +1,286 @@
+Continue working on the “Årsredovisningar” project.
+
+Goal:
+Redesign the public Demo experience on the website so it feels like a lightweight, polished product preview instead of a separate mini-version of the product.
+
+The current Demo functionality should NOT be deleted. Move the current interactive demo functionality into Admin so it can later be used as an internal/customer demo environment.
+
+Important product direction:
+- The public website demo should feel like part of the homepage/marketing site.
+- It should be easy to understand for accountants and small business owners.
+- It should not feel like a fake workspace or a separate product mode.
+- The purpose is to quickly show what the system can do and encourage users to register/pay/start a real annual report project.
+- Free/demo users should still not get access to real editing, importing, validation, collaboration, or clean export.
+
+Build on the current app structure.
+Do not replace the whole app.
+Reuse existing routes, components, design tokens, layout system and styling where possible.
+Do not change the real annual-report workflow.
+Do not build final real PDF export logic here.
+Do not connect Stripe/payment logic in this phase unless already required by existing architecture.
+
+---
+
+## 1. Public Demo redesign
+
+Replace the current public-facing Demo page/section with a simpler demo carousel / slide experience.
+
+The new Demo should contain a small number of polished slides that users can move between in a user-friendly way.
+
+Requirements:
+- Create a demo slide carousel.
+- Users must be able to navigate using:
+  - next/previous arrows
+  - dots/progress indicators
+  - keyboard navigation if simple to support
+  - swipe/drag support if existing UI libraries support it cleanly
+- The carousel should work well on desktop and mobile.
+- It should feel calm, modern, and trustworthy.
+- It should use the current “Financial Stripe + Swedish minimalism” direction.
+- It should clearly show that this is only a preview/demo, not a real project workspace.
+- Add short explanatory text for each slide.
+- Add clear CTA buttons:
+  - “Starta årsredovisning”
+  - “Ladda ner DEMO-PDF”
+  - optional secondary CTA: “Se hur det fungerar”
+
+The Demo section/page should be part of the public website experience and not require login.
+
+---
+
+## 2. Required demo slides
+
+Create demo slides for the following areas:
+
+### Slide 1: Dataimport – SIE
+Show how the user can import accounting data.
+
+Content direction:
+- Show SIE import as the main example.
+- Mention Excel/CSV as supported/coming depending on existing product wording.
+- Show a clean visual of uploaded accounting data being interpreted.
+- Include plain-language text:
+  “Importera bokföringsdata från SIE och låt systemet föreslå struktur, mappning och årsredovisningsunderlag.”
+
+Suggested visual elements:
+- SIE file card
+- import status
+- account mapping preview
+- “Konto 3001 → Nettoomsättning”
+- “Konto 1930 → Bank”
+- simple progress/check states
+
+### Slide 2: Balansräkning & resultaträkning
+Show BR/RR together in a polished way.
+
+Content direction:
+- Balance sheet and income statement can overlap visually in a clean stacked-card layout.
+- The purpose is to show that imported accounting data becomes financial statements.
+- Include the “Not” column visibly.
+- Show that note references are connected to rows.
+
+Suggested visual elements:
+- two overlapping document/table cards:
+  - Resultaträkning
+  - Balansräkning
+- visible columns:
+  - Belopp
+  - Föregående år
+  - Not
+- examples:
+  - Nettoomsättning — Not 1
+  - Materiella anläggningstillgångar — Not 3
+  - Eget kapital — Not 5
+
+Text:
+“Se hur bokföringen omvandlas till balansräkning och resultaträkning med tydliga notkopplingar.”
+
+### Slide 3: Kassaflödesanalys
+Show cash flow statement support.
+
+Content direction:
+- Explain that the system can assess whether a cash flow statement is needed and help build it from underlying data.
+- The user must later be able to review and adjust.
+- Do not imply the system guarantees correctness.
+
+Suggested visual elements:
+- assessment card:
+  - “Kassaflödesanalys: Obligatorisk / Frivillig / Behöver bedömas”
+- cash flow sections:
+  - Löpande verksamhet
+  - Investeringsverksamhet
+  - Finansieringsverksamhet
+- adjustment hint:
+  - “Manuell justering möjlig”
+  - “Källa: importerade konton + omklassificering”
+
+Text:
+“Systemet hjälper till att bedöma, skapa och granska kassaflödesanalysen – med möjlighet till manuell justering.”
+
+### Slide 4: Noter
+Show notes and note numbering.
+
+Content direction:
+- This slide is important.
+- Demonstrate that notes are connected to BR/RR rows.
+- Show that note numbering is automatic and validated.
+- Show that the user can review, include/exclude where appropriate, and edit content.
+
+Suggested visual elements:
+- note list:
+  - Not 1 Nettoomsättning
+  - Not 2 Anställda och personalkostnader
+  - Not 3 Materiella anläggningstillgångar
+  - Not 4 Långfristiga skulder
+- linked financial statement row:
+  - “Materiella anläggningstillgångar → Not 3”
+- validation badge:
+  - “Notreferenser matchar”
+  - “Inga brutna hänvisningar”
+
+Text:
+“Noter kopplas till rätt rader i rapporten och kontrolleras så att numrering och hänvisningar stämmer.”
+
+### Optional Slide 5: Färdig årsredovisning
+If it fits naturally, add a final slide showing the finished annual report preview.
+
+Suggested visual elements:
+- cover page
+- table of contents / sections
+- export preview
+- watermark “DEMO”
+
+Text:
+“Förhandsgranska en färdig svensk årsredovisning och ladda ner ett demoexempel.”
+
+---
+
+## 3. DEMO-PDF download
+
+Add a clear button to download a finished DEMO-PDF.
+
+Requirements:
+- The file should be clearly named something like:
+  `arsredovisning-demo.pdf`
+- The PDF must be a demo/sample file only.
+- It should not require login.
+- It should not be confused with a real export.
+- It should include visible demo/watermark language, for example:
+  “DEMO – ej giltig årsredovisning”
+- Use an existing static asset/public file approach if available.
+- If no demo PDF exists yet, create a placeholder implementation that expects the file in a clear public path and add a TODO/comment for where the real demo PDF should be placed.
+- Do not build the final paid PDF export engine in this phase.
+
+The Demo page/section should include:
+- primary button: “Ladda ner DEMO-PDF”
+- supporting text:
+  “Ladda ner ett exempel på hur en färdig årsredovisning kan se ut. Filen är endast ett demoexempel.”
+
+---
+
+## 4. Move current Demo functionality to Admin
+
+The existing current Demo functionality should be moved behind Admin access.
+
+Purpose:
+This should become a potential internal/customer demo environment for future sales, onboarding, or controlled previews.
+
+Requirements:
+- Preserve the existing demo functionality as much as possible.
+- Move it to an Admin route, for example:
+  `/admin/demo-environment`
+  or an existing admin route pattern if one already exists.
+- Add it to the admin navigation if there is one.
+- The page should clearly be labelled:
+  “Demomiljö”
+- Add description:
+  “Intern demomiljö för test, kundvisning och framtida demoanpassningar.”
+- Admin-only access must be enforced using the existing auth/admin guard pattern.
+- Do not expose this route publicly.
+- Do not make this part of the normal user annual-report workflow.
+
+If admin auth is not fully implemented yet:
+- Use the existing best available admin guard pattern.
+- Add a clear TODO/security note in code.
+- Do not leave the route openly accessible if the app already has role/access control.
+
+---
+
+## 5. UX and content requirements
+
+The new public demo should be simple and marketing-friendly.
+
+Design requirements:
+- Use cards, soft shadows, clear spacing, rounded corners.
+- Avoid dense tables unless simplified.
+- Avoid too many buttons.
+- Use short text blocks.
+- Make each slide instantly understandable.
+- Use Swedish as the main language.
+- Support existing language system if the website already supports Swedish/English.
+- Annual report examples should be Swedish.
+- Avoid fake overpromises such as “100% korrekt” or “garanterat godkänd”.
+- Use wording such as:
+  - “hjälper dig”
+  - “föreslår”
+  - “granska och justera”
+  - “demoexempel”
+  - “ej giltig årsredovisning”
+
+The Demo must clearly communicate:
+- import accounting data
+- review mapping/structure
+- generate BR/RR
+- handle cash flow assessment/statement
+- connect notes correctly
+- preview/download demo annual report
+
+---
+
+## 6. Suggested component structure
+
+Use existing structure if better, but a clean implementation could be:
+
+- `components/demo/DemoCarousel.tsx`
+- `components/demo/DemoSlide.tsx`
+- `components/demo/DemoPdfDownload.tsx`
+- `pages/Demo.tsx` or existing public demo route
+- `pages/admin/AdminDemoEnvironment.tsx`
+
+If the app uses a different routing/component structure, adapt to it.
+
+---
+
+## 7. Acceptance criteria
+
+After implementation:
+
+1. The public Demo page/section no longer looks like a mini product workspace.
+2. The public Demo is a clean carousel/slide-based product preview.
+3. The slides include at minimum:
+   - Dataimport/SIE
+   - Balansräkning & resultaträkning
+   - Kassaflödesanalys
+   - Noter
+4. The BR/RR slide clearly shows the “Not” column.
+5. The Notes slide clearly shows matching note references and validation.
+6. The Cash Flow slide clearly shows assessment + user adjustment concept.
+7. A user can download a DEMO-PDF from the public demo.
+8. The DEMO-PDF is clearly marked as demo/sample.
+9. The old/current demo functionality still exists but is moved to Admin.
+10. The old/current demo functionality is not publicly accessible.
+11. The new demo works on mobile and desktop.
+12. The implementation does not create or expose real annual-report projects for free/demo users.
+13. No final paid PDF/Word export logic is built in this phase.
+14. No existing real annual-report workflow is broken.
+
+---
+
+## 8. Final response from Replit
+
+When done, summarize:
+- which public demo route/component was changed
+- where the old demo functionality was moved
+- where the DEMO-PDF file should live
+- any remaining TODOs
+- how to test the demo carousel and admin demomiljö
