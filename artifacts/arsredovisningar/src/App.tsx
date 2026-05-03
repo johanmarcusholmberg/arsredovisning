@@ -27,6 +27,8 @@ import { Settings } from "./pages/Settings";
 import { LaunchChecklist } from "./pages/LaunchChecklist";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
+import { ForgotPassword } from "./pages/ForgotPassword";
+import { ResetPassword } from "./pages/ResetPassword";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -88,6 +90,13 @@ function Router() {
       <Route path="/register">
         <AuthRedirect component={Register} />
       </Route>
+      <Route path="/forgot-password">
+        <AuthRedirect component={ForgotPassword} />
+      </Route>
+      {/* Recovery landing page: do NOT bounce away on auth — the magic
+          link itself creates a session, and the page needs that session
+          to call updateUser. */}
+      <Route path="/reset-password" component={ResetPassword} />
       <Route component={AppRoutes} />
     </Switch>
   );

@@ -10,6 +10,12 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  /** Send a password-recovery email. Supabase will deliver a magic link
+   *  pointing at `/reset-password` where the user can set a new password. */
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  /** Set a new password for the currently authenticated user. Used both
+   *  by the reset-password recovery flow and by Settings → Change Password. */
+  updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -59,8 +65,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const resetPassword = async (email: string) => {
+    // Supabase needs an absolute URL for the recovery link's redirect.
+    // Normalize BASE_URL defensively: vite usually delivers a slash-terminated
+    // value (e.g. "/" or "/arsredovisningar/") but env drift could break the
+    // assumption. Strip any trailing slash and join with a single "/".
+    const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+    const redirectTo = `${window.location.origin}${base}/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+    return { error };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    return { error };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading,
+        signIn,
+        signUp,
+        signOut,
+        resetPassword,
+        updatePassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
