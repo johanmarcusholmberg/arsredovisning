@@ -79,15 +79,30 @@ router.post("/companies", async (req, res): Promise<void> => {
 
   const { orgNumber, zipCode, ...rest } = parsed.data;
 
-  const [company] = await db
-    .insert(companiesTable)
-    .values({
-      ...rest,
-      organizationNumber: orgNumber,
-      postalCode: zipCode ?? null,
-      createdByProfileId: profileId,
-    })
-    .returning();
+  let company;
+  try {
+    [company] = await db
+      .insert(companiesTable)
+      .values({
+        ...rest,
+        organizationNumber: orgNumber,
+        postalCode: zipCode ?? null,
+        createdByProfileId: profileId,
+      })
+      .returning();
+  } catch (err: unknown) {
+    const pgErr = err as { code?: string; constraint?: string };
+    if (pgErr?.code === "23505") {
+      req.log.warn({ orgNumber }, "Duplicate organisation number on company create");
+      res.status(409).json({
+        error: "duplicate_org_number",
+        field: "orgNumber",
+        message: `A company with organisation number ${orgNumber} already exists.`,
+      });
+      return;
+    }
+    throw err;
+  }
 
   await logAuditEvent({
     eventType: "company.created",

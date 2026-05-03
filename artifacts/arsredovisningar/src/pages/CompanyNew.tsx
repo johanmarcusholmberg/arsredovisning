@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useCreateCompany } from "@workspace/api-client-react";
+import { useCreateCompany, ApiError } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,10 +60,33 @@ export function CompanyNew() {
           setLocation(`/companies/${company.id}`);
         },
         onError: (err) => {
+          if (err instanceof ApiError) {
+            const data = err.data as { error?: string; field?: string; message?: string } | null;
+            if (data?.field === "orgNumber" || data?.error === "duplicate_org_number") {
+              form.setError("orgNumber", {
+                type: "server",
+                message: data.message ?? "This organisation number is already used by another company.",
+              });
+              toast({
+                title: "Organisation number already in use",
+                description:
+                  data.message ??
+                  "A company with this organisation number already exists. Please use a different number.",
+                variant: "destructive",
+              });
+              return;
+            }
+            toast({
+              title: "Error creating company",
+              description: data?.message ?? err.message,
+              variant: "destructive",
+            });
+            return;
+          }
           toast({
             title: "Error creating company",
-            description: "An unexpected error occurred.",
-            variant: "destructive"
+            description: "An unexpected error occurred. Please try again.",
+            variant: "destructive",
           });
         }
       }
