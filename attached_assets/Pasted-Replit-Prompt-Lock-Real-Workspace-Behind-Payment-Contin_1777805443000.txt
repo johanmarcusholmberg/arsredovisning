@@ -1,0 +1,363 @@
+Replit Prompt — Lock Real Workspace Behind Payment
+
+Continue working on the “Årsredovisningar” project.
+
+I want to change the access model so that a free account does not get access to the full product with only build/create disabled.
+
+The current/future product must have very clear boundaries between:
+
+Public visitor
+Free/demo account
+Paid user with access to a real annual-report project
+
+The goal is to avoid:
+
+users creating multiple free accounts to access functionality,
+users creating companies/projects before payment,
+users uploading real accounting data before payment,
+users using the system without paying,
+unclear product boundaries,
+unpaid data being stored as real workspaces.
+
+Important product rule:
+
+A user may be allowed to register before payment, but registration alone must not unlock the real app workspace.
+
+Payment is required before the user can create or work on a real annual-report project.
+
+Required Access Model
+
+Implement or adjust the app so it follows this model:
+
+1. Public visitor
+
+A public visitor can access:
+
+homepage
+pricing
+demo slides
+downloadable demo PDF
+product explanation
+login/register page
+legal/footer/disclaimer pages
+
+A public visitor must not be able to:
+
+create a company
+create an annual-report project
+upload SIE/Excel/CSV files
+access real mapping tools
+access real report builder
+access real notes/cash-flow tools
+access collaboration tools
+access validation tools
+export a real report
+2. Free/demo account
+
+A registered but unpaid user can access only:
+
+account/profile page
+billing/upgrade page
+demo workspace with sample data only
+demo slides
+watermarked sample/demo PDF
+product explanation and guidance
+
+A free/demo user must not be able to:
+
+create a real company
+create a real annual-report project
+import real accounting data
+upload SIE files
+upload Excel/CSV accounting files
+save real mapping changes
+save manual financial statement edits
+create real notes
+create a real cash-flow statement
+invite collaborators
+run real validation
+generate a clean export
+access paid project routes by direct URL
+
+The demo workspace must use fixed seeded/sample data only.
+
+The demo workspace should clearly show labels such as:
+
+“Demo”
+“Sample data”
+“Upgrade to create your real annual report”
+“Real company projects require payment”
+
+Do not make demo data look like a real customer workspace.
+
+3. Paid user
+
+A paid user can create and access real annual-report projects.
+
+For MVP, payment should unlock:
+
+one real company
+one financial year
+one annual-report project
+
+This means the payment/license should be linked to a specific project entitlement, not just a vague user flag.
+
+A paid entitlement should include at least:
+
+user_id
+company_id or project_id
+financial_year
+payment_status
+entitlement_status
+stripe_checkout_session_id / stripe_customer_id where applicable
+created_at
+expires_at if needed later
+
+Only users with an active paid entitlement for the selected project should be able to access the real workspace.
+
+Required Backend Rules
+
+Do not rely only on frontend hiding.
+
+Add backend/server-side access checks for all protected actions.
+
+Protected actions include:
+
+creating a company
+creating a project
+uploading accounting files
+importing SIE/Excel/CSV
+saving account mappings
+saving financial statement changes
+saving notes
+saving cash-flow data
+running real validation
+inviting collaborators
+exporting clean PDF/Word files
+accessing real project data
+
+Every backend action should check:
+
+Is the user authenticated?
+Does the user have an active paid entitlement for this company/project/financial year?
+Is the requested resource inside the entitlement scope?
+
+If not, return a clear locked/upgrade response.
+
+Example response logic:
+
+unauthenticated → redirect to login
+authenticated but unpaid → redirect to upgrade/billing
+paid but wrong project/year → deny access
+paid and valid entitlement → allow action
+Required Frontend Rules
+
+Update the UI so free/demo users are never shown a misleading full workspace.
+
+They should not see a full active workspace with disabled buttons everywhere.
+
+Instead, they should see:
+
+demo page
+upgrade prompts
+sample report preview
+product walkthrough
+clear “Start real annual report” button that leads to payment
+
+When a free user tries to start real work, show a payment/upgrade screen before project creation.
+
+Suggested text:
+
+“Create your real annual report”
+
+“To import accounting data, map accounts, generate financial statements and export a clean annual report, you need to unlock a paid annual-report project.”
+
+Button:
+
+“Unlock project”
+
+Secondary link:
+
+“View demo first”
+
+Route Protection
+
+Add route protection for real workspace routes.
+
+Examples of protected routes:
+
+/dashboard
+/companies
+/companies/:id
+/projects/:id
+/workspace/:projectId
+/import
+/mapping
+/reports
+/notes
+/cash-flow
+/validation
+/export
+/collaboration
+
+If the user is unpaid, redirect to:
+
+/demo if they are exploring
+/upgrade if they tried to create/access real work
+
+Do not allow direct URL access to paid functionality.
+
+Data Model / Entitlements
+
+Add or adjust database tables so access is based on project entitlements.
+
+Recommended tables or equivalent existing structure:
+
+user_profiles
+
+Fields:
+
+id
+user_id
+email
+name
+role
+created_at
+projects
+
+Fields:
+
+id
+user_id
+company_id
+financial_year
+status
+created_at
+project_entitlements
+
+Fields:
+
+id
+user_id
+project_id
+company_id
+financial_year
+status: pending, active, expired, cancelled, refunded
+source: stripe, admin, demo
+stripe_customer_id
+stripe_checkout_session_id
+stripe_payment_intent_id
+created_at
+updated_at
+
+Important:
+
+A real project should not become editable until entitlement status is active.
+
+If the app currently creates the project before payment, then project status should be pending_payment, and no import/editing should be allowed until payment is confirmed.
+
+Recommended Flow
+
+Implement this flow:
+
+User visits website.
+User can view demo slides and download demo PDF without payment.
+User clicks “Create real annual report”.
+User registers/logs in.
+User sees payment page.
+User pays for one company + one financial year.
+Stripe payment success creates/activates project entitlement.
+User is redirected to the real project setup flow.
+Only then can the user create/import/work on the real annual report.
+
+Alternative accepted flow:
+
+User registers.
+User lands on account/demo page.
+User clicks “Unlock real project”.
+Payment happens.
+Real workspace becomes available.
+
+Do not allow unpaid users to create real project data before payment.
+
+Admin Exceptions
+
+Admin users may be allowed to:
+
+view all users
+view all projects
+grant manual entitlements
+revoke entitlements
+create demo/customer test projects
+
+But admin-only tools must be protected by admin role checks.
+
+The frontend must never allow a normal user to make themselves paid/admin.
+
+Demo Workspace Rules
+
+The demo workspace should be clearly separated from the real workspace.
+
+Demo workspace:
+
+uses seeded sample company
+uses seeded sample SIE/accounting values
+uses seeded balance sheet/income statement
+uses seeded notes/cash-flow examples
+allows UI exploration only if safe
+does not write to real project tables
+does not create real customer data
+does not create real exports except watermarked demo export
+
+If demo interactions are allowed, store them only in temporary local state or demo-only tables, not as real projects.
+
+Security Requirements
+
+Add checks to avoid abuse:
+
+A user cannot create unlimited projects without payment.
+A user cannot access another user’s project.
+A user cannot upload accounting data before payment.
+A user cannot use direct URLs to bypass payment.
+A user cannot manipulate frontend state to unlock paid features.
+Export endpoints must check entitlement before generating files.
+Import endpoints must check entitlement before storing files.
+Storage buckets/files should be scoped to paid projects only.
+Row-level security or backend authorization should enforce ownership and entitlement.
+UI Copy Guidance
+
+Use clear Swedish/English-friendly product copy.
+
+Examples:
+
+Swedish:
+
+“Demo – exempeldata”
+“För att skapa en riktig årsredovisning behöver du låsa upp ett projekt.”
+“Betalning krävs innan du kan importera bokföringsdata.”
+“Ett köp gäller för ett bolag och ett räkenskapsår.”
+
+English:
+
+“Demo – sample data”
+“To create a real annual report, unlock a paid project.”
+“Payment is required before importing accounting data.”
+“One purchase unlocks one company and one financial year.”
+
+Acceptance Criteria
+
+The implementation is complete when:
+
+A new visitor can view the website and demo but cannot access real workspace.
+A registered unpaid user cannot create real companies/projects.
+A registered unpaid user cannot upload/import accounting data.
+A registered unpaid user cannot access real workspace routes by URL.
+A registered unpaid user only sees demo/account/upgrade areas.
+A paid user can create/access one real project for one company and one financial year.
+Backend checks prevent unpaid access even if frontend is bypassed.
+Export/import endpoints are entitlement-protected.
+Demo data is clearly marked and separated from real project data.
+Admin can manage entitlements if an admin area exists.
+The UI clearly explains what requires payment and why.
+
+Do not make this a UI-only lock. The payment boundary must be enforced in backend/database authorization as well.
