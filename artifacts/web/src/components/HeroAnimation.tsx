@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Loader2,
   Sparkles,
+  BookOpen,
 } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -16,7 +17,7 @@ import { useLanguage } from "@/hooks/useLanguage";
  * final scene statically). Visuals reuse the same chrome as DemoSlideVisuals
  * so the look stays consistent with /demo.
  */
-const SCENE_MS = 2400;
+const SCENE_MS = 3400;
 const TOTAL_SCENES = 4;
 
 type Scene = 0 | 1 | 2 | 3;
@@ -51,12 +52,21 @@ export function HeroAnimation() {
       <div className="absolute -inset-6 rounded-3xl bg-gradient-to-tr from-primary/10 via-primary/5 to-transparent blur-2xl pointer-events-none" />
 
       <div className="relative rounded-2xl border border-border bg-card shadow-xl overflow-hidden">
-        {/* Faux browser chrome */}
-        <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border bg-muted/40">
-          <span className="size-2.5 rounded-full bg-red-400/80" />
-          <span className="size-2.5 rounded-full bg-amber-400/80" />
-          <span className="size-2.5 rounded-full bg-emerald-400/80" />
-          <div className="ml-3 h-4 flex-1 rounded bg-background/70 border border-border/60" />
+        {/* Product header — neutral, no macOS traffic lights */}
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-muted/40">
+          <div className="size-5 rounded bg-primary/10 flex items-center justify-center">
+            <BookOpen className="size-3 text-primary" />
+          </div>
+          <p className="text-xs font-medium text-foreground">
+            Nordic Design AB
+          </p>
+          <span className="text-xs text-muted-foreground">·</span>
+          <p className="text-xs font-mono text-muted-foreground tabular-nums">
+            2024
+          </p>
+          <span className="ml-auto text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+            K3
+          </span>
         </div>
 
         {/* Stage — fixed height so cards don't shift the layout */}
