@@ -29,6 +29,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useToast } from "@/hooks/use-toast";
 import type { StringKey } from "@/i18n/strings";
 import { useEffect } from "react";
+import { useEntitlement } from "@/hooks/useEntitlement";
+import { Sparkles, Lock } from "lucide-react";
 
 const STATUS_KEY: Record<string, StringKey> = {
   draft: "report.status.draft",
@@ -36,6 +38,66 @@ const STATUS_KEY: Record<string, StringKey> = {
   complete: "report.status.complete",
   exported: "report.status.exported",
 };
+
+/**
+ * Renders the primary "New Company" CTA. For paid users this is a normal
+ * link to the create form. For free users we still render it (so the page
+ * looks the same) but the click takes them to /upgrade and the icon
+ * switches to a lock — a visible signal that this is a gated action.
+ */
+function NewCompanyCTA() {
+  const { t } = useLanguage();
+  const { isLoading, isPaid } = useEntitlement();
+  if (isLoading) return null;
+  const target = isPaid ? "/companies/new" : "/upgrade";
+  return (
+    <Button asChild className="shrink-0 h-11 px-6 shadow-sm">
+      <Link href={target}>
+        {isPaid ? (
+          <Plus className="mr-2 h-4 w-4" />
+        ) : (
+          <Lock className="mr-2 h-4 w-4" />
+        )}
+        {t("dashboard.new_company")}
+      </Link>
+    </Button>
+  );
+}
+
+/**
+ * Banner shown to free users explaining that the real workspace is
+ * paywalled and pointing them at /upgrade. Hidden for paid users so
+ * we don't nag.
+ */
+function PaywallBanner() {
+  const { isLoading, isFree, availableProjectCredits, isAdmin } = useEntitlement();
+  if (isLoading || !isFree) return null;
+  return (
+    <Card className="border-primary/40 bg-primary/5">
+      <CardContent className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 py-4">
+        <div className="flex items-start gap-3">
+          <div className="bg-primary/10 text-primary p-2 rounded-md">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-semibold">Lås upp din riktiga årsredovisning</p>
+            <p className="text-sm text-muted-foreground">
+              {isAdmin
+                ? "Du är admin — alla åtgärder är upplåsta."
+                : `Du har ${availableProjectCredits} projektkrediter. Köp en kredit för att skapa ett bolag och ett räkenskapsår.`}
+            </p>
+          </div>
+        </div>
+        <Button asChild>
+          <Link href="/upgrade">
+            Visa upplägg
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function Dashboard() {
   const { t } = useLanguage();
@@ -103,14 +165,11 @@ export function Dashboard() {
             {t("dashboard.subtitle")}
           </p>
         </div>
-        {!showWelcome && (
-          <Button asChild className="shrink-0 h-11 px-6 shadow-sm">
-            <Link href="/companies/new">
-              <Plus className="mr-2 h-4 w-4" /> {t("dashboard.new_company")}
-            </Link>
-          </Button>
-        )}
+        {!showWelcome && <NewCompanyCTA />}
       </div>
+
+      <PaywallBanner />
+
 
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

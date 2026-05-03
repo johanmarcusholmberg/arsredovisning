@@ -1,12 +1,18 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import {
   db,
   companiesTable,
   reportsTable,
   annualReportProjectsTable,
   projectEntitlementsTable,
+  projectAccessTable,
+  profilesTable,
 } from "@workspace/db";
+import {
+  canCreateRealProject,
+  requireProjectEdit,
+} from "../helpers/permissions.js";
 import {
   CreateReportBody,
   CreateReportParams,
@@ -118,25 +124,15 @@ router.post("/companies/:companyId/reports", async (req, res): Promise<void> => 
       ? (parsed.data.fiscalYearEnd as unknown as Date).toISOString().slice(0, 10)
       : String(parsed.data.fiscalYearEnd);
 
-  const [report] = await db
-    .insert(reportsTable)
-    .values({
-      companyId: params.data.companyId,
-      fiscalYearStart,
-      fiscalYearEnd,
-      accountingFramework: parsed.data.accountingFramework,
-      status: "draft",
-      completionPercent: 0,
-      sectionsCompleted: 0,
-      sectionsTotal: REPORT_SECTIONS.length,
-    })
-    .returning();
-
-  // Auto-create the matching annual_report_projects row + a manual_grant
-  // entitlement so the report can immediately import SIE / CSV / Excel files.
-  // Previously this step was missing — every newly created report opened the
-  // import page with "Inget projekt kopplat" and was effectively blocked.
-  // We deduplicate by (company, fiscalYear) so re-runs are safe.
+  // Entitlement gate. Creating a report implicitly creates (or attaches to)
+  // an annual_report_project, which is the unit we sell. Two cases:
+  //  (a) A project already exists for this (company, fiscalYear). The user
+  //      must have an active paid entitlement on it — same rule as every
+  //      other write to that project. We do NOT spend a new credit.
+  //  (b) No project exists yet. We require canCreateRealProject, then
+  //      atomically spend one credit (unless admin) and create the project,
+  //      entitlement, owner-access, and report in a single transaction so
+  //      we never leak credits into an orphan or vice versa.
   const [existingProject] = await db
     .select({ id: annualReportProjectsTable.id })
     .from(annualReportProjectsTable)
@@ -149,40 +145,119 @@ router.post("/companies/:companyId/reports", async (req, res): Promise<void> => 
     )
     .limit(1);
 
-  let projectId: string | null = existingProject?.id ?? null;
-  if (!projectId) {
-    try {
-      const [project] = await db
-        .insert(annualReportProjectsTable)
-        .values({
-          companyId: params.data.companyId,
-          fiscalYearStart,
-          fiscalYearEnd,
-          accountingFramework: parsed.data.accountingFramework,
-          status: "draft",
-          noteNumberingScheme: "sequential",
-          createdByProfileId: profileId,
-        })
-        .returning({ id: annualReportProjectsTable.id });
-      projectId = project?.id ?? null;
+  let projectId: string | null = null;
+  let report: typeof reportsTable.$inferSelect;
 
-      if (projectId) {
-        await db.insert(projectEntitlementsTable).values({
-          projectId,
+  if (existingProject) {
+    // Re-using an existing real project — must already be paid for.
+    const ok = await requireProjectEdit(req, res, existingProject.id);
+    if (!ok) return;
+    projectId = existingProject.id;
+
+    const [created] = await db
+      .insert(reportsTable)
+      .values({
+        companyId: params.data.companyId,
+        fiscalYearStart,
+        fiscalYearEnd,
+        accountingFramework: parsed.data.accountingFramework,
+        status: "draft",
+        completionPercent: 0,
+        sectionsCompleted: 0,
+        sectionsTotal: REPORT_SECTIONS.length,
+      })
+      .returning();
+    report = created;
+  } else {
+    if (!(await canCreateRealProject(profileId))) {
+      res.status(402).json({
+        error: "payment_required",
+        message:
+          "A paid project credit is required to create a real annual-report project.",
+      });
+      return;
+    }
+
+    try {
+      const result = await db.transaction(async (tx) => {
+        const [profile] = await tx
+          .select({
+            isAdmin: profilesTable.isAdmin,
+            credits: profilesTable.availableProjectCredits,
+          })
+          .from(profilesTable)
+          .where(eq(profilesTable.id, profileId))
+          .for("update")
+          .limit(1);
+
+        if (!profile) throw new Error("profile_missing");
+        if (!profile.isAdmin) {
+          if (profile.credits < 1) throw new Error("insufficient_credits");
+          await tx
+            .update(profilesTable)
+            .set({
+              availableProjectCredits: sql`${profilesTable.availableProjectCredits} - 1`,
+              updatedAt: new Date(),
+            })
+            .where(eq(profilesTable.id, profileId));
+        }
+
+        const [createdProject] = await tx
+          .insert(annualReportProjectsTable)
+          .values({
+            companyId: params.data.companyId,
+            fiscalYearStart,
+            fiscalYearEnd,
+            accountingFramework: parsed.data.accountingFramework,
+            status: "draft",
+            noteNumberingScheme: "sequential",
+            createdByProfileId: profileId,
+          })
+          .returning({ id: annualReportProjectsTable.id });
+
+        await tx.insert(projectEntitlementsTable).values({
+          projectId: createdProject.id,
           profileId,
           entitlementType: "manual_grant",
-          source: "auto_grant_on_report_create",
+          source: profile.isAdmin ? "admin_grant" : "credit_redeemed",
           isActive: true,
         });
-      }
+
+        await tx.insert(projectAccessTable).values({
+          projectId: createdProject.id,
+          profileId,
+          role: "owner",
+          grantedByProfileId: profileId,
+        });
+
+        const [createdReport] = await tx
+          .insert(reportsTable)
+          .values({
+            companyId: params.data.companyId,
+            fiscalYearStart,
+            fiscalYearEnd,
+            accountingFramework: parsed.data.accountingFramework,
+            status: "draft",
+            completionPercent: 0,
+            sectionsCompleted: 0,
+            sectionsTotal: REPORT_SECTIONS.length,
+          })
+          .returning();
+
+        return { projectId: createdProject.id, report: createdReport };
+      });
+      projectId = result.projectId;
+      report = result.report;
     } catch (err) {
-      // Best-effort: report row is already persisted. Log and continue so the
-      // user gets their report; they can still revisit the import page once
-      // the project is created out-of-band.
-      req.log.warn(
-        { err, reportId: report.id, companyId: params.data.companyId },
-        "Failed to auto-create annual_report_projects row for new report",
-      );
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === "insufficient_credits" || msg === "profile_missing") {
+        res.status(402).json({
+          error: "payment_required",
+          message: "No project credits available. Purchase a project to continue.",
+        });
+        return;
+      }
+      throw err;
     }
   }
 

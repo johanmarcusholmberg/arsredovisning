@@ -12,7 +12,7 @@
  * NEVER import this module in frontend/browser code.
  */
 
-import { eq, and } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   profilesTable,
@@ -161,14 +161,179 @@ export async function hasPaidProjectEntitlement(projectId: string): Promise<bool
 
 /**
  * Returns true if the profile is allowed to create a new real (non-demo) project.
- * For now this is a simple check — the user must exist.
- * Phase 4 will add Stripe subscription/payment checks here.
+ * Conditions (any one is sufficient):
+ *   - The user is a site admin (isAdmin = true).
+ *   - The user has at least one unredeemed project credit
+ *     (profiles.availableProjectCredits > 0).
  *
- * TODO (Phase 4): Check for an active subscription or available project credits.
+ * Credits are spent (decremented) inside POST /projects when a real project
+ * is created; one credit unlocks one real company+project pair via an
+ * auto-issued manual_grant entitlement on that new project.
+ *
+ * Stripe Checkout (future phase) will deposit credits via webhook instead
+ * of admins doing it manually.
  */
 export async function canCreateRealProject(profileId: string): Promise<boolean> {
   const user = await getCurrentUser(profileId);
-  return user !== null;
+  if (!user) return false;
+  if (user.isAdmin) return true;
+  return user.availableProjectCredits > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Aggregate entitlement context (used by GET /entitlement and admin views)
+// ---------------------------------------------------------------------------
+
+export type EntitlementTier = "free" | "paid" | "admin";
+
+export interface EntitlementContext {
+  tier: EntitlementTier;
+  isAdmin: boolean;
+  availableProjectCredits: number;
+  paidProjectIds: string[];
+  companyCount: number;
+  canCreateCompany: boolean;
+  canCreateProject: boolean;
+}
+
+/**
+ * Build the canonical entitlement context for a profile. Used by the
+ * GET /entitlement endpoint and any server-side place that needs to
+ * understand "what is this user allowed to do right now".
+ */
+export async function getEntitlementContext(profileId: string): Promise<EntitlementContext> {
+  const [profile] = await db
+    .select({
+      isAdmin: profilesTable.isAdmin,
+      availableProjectCredits: profilesTable.availableProjectCredits,
+    })
+    .from(profilesTable)
+    .where(eq(profilesTable.id, profileId))
+    .limit(1);
+
+  const isAdmin = profile?.isAdmin === true;
+  const credits = profile?.availableProjectCredits ?? 0;
+
+  // Find every project the user has any role on, then intersect with
+  // active entitlements. We resolve via projectAccess (not by createdBy)
+  // so that collaborators on paid projects also see them as paid.
+  const access = await db
+    .select({ projectId: projectAccessTable.projectId })
+    .from(projectAccessTable)
+    .where(eq(projectAccessTable.profileId, profileId));
+
+  const accessibleIds = access.map((a) => a.projectId);
+  const now = new Date();
+
+  let paidProjectIds: string[] = [];
+  if (accessibleIds.length > 0) {
+    const ents = await db
+      .select({
+        projectId: projectEntitlementsTable.projectId,
+        validUntil: projectEntitlementsTable.validUntil,
+        entitlementType: projectEntitlementsTable.entitlementType,
+        isActive: projectEntitlementsTable.isActive,
+      })
+      .from(projectEntitlementsTable);
+    const accessibleSet = new Set(accessibleIds);
+    paidProjectIds = ents
+      .filter(
+        (e) =>
+          accessibleSet.has(e.projectId) &&
+          e.isActive &&
+          (e.entitlementType === "stripe_payment" ||
+            e.entitlementType === "subscription" ||
+            e.entitlementType === "manual_grant") &&
+          (e.validUntil === null || e.validUntil > now),
+      )
+      .map((e) => e.projectId);
+  }
+
+  // Count distinct companies the user owns. We deliberately query the
+  // companies table directly so the number reflects what's in the DB,
+  // even if a user has unfinished projects.
+  const { companiesTable } = await import("@workspace/db");
+  const [{ count: companyCount }] = await db
+    .select({ count: count() })
+    .from(companiesTable)
+    .where(eq(companiesTable.createdByProfileId, profileId));
+
+  const canCreateProject = isAdmin || credits > 0;
+  // Free users can't even create a company — that's "real workspace"
+  // territory and must be paid for. Admins always can.
+  const canCreateCompany = canCreateProject;
+
+  let tier: EntitlementTier;
+  if (isAdmin) tier = "admin";
+  else if (paidProjectIds.length > 0 || credits > 0) tier = "paid";
+  else tier = "free";
+
+  return {
+    tier,
+    isAdmin,
+    availableProjectCredits: credits,
+    paidProjectIds,
+    companyCount: Number(companyCount),
+    canCreateCompany,
+    canCreateProject,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Inline middleware-style helper for write routes (legacy pattern)
+// ---------------------------------------------------------------------------
+
+/**
+ * Run the standard "edit a real project" check used by every mutating
+ * project-scoped endpoint. Returns true if the caller may proceed; if it
+ * returns false the response has already been written and the caller must
+ * `return` immediately.
+ *
+ * Order of checks:
+ *   1. Authenticated (req.profile.id)
+ *   2. Has at least viewer/accountant/owner role on the project
+ *   3. Has accountant/owner role (edit level)
+ *   4. Project has an active paid entitlement (skipped for demo projects)
+ *
+ * Demo projects intentionally allow edits without entitlement so users can
+ * play with the demo workspace, but they're sandboxed elsewhere (uploads
+ * go to demo-assets bucket, exports are watermarked).
+ */
+export async function requireProjectEdit(
+  req: { profile?: { id: string } },
+  res: {
+    status: (code: number) => { json: (body: unknown) => void };
+  },
+  projectId: string,
+): Promise<boolean> {
+  const profileId = req.profile?.id;
+  if (!profileId) {
+    res.status(401).json({ error: "unauthorized", message: "Authentication required" });
+    return false;
+  }
+
+  const role = await getUserProjectRole(profileId, projectId);
+  if (!role) {
+    res.status(404).json({ error: "not_found", message: "Project not found" });
+    return false;
+  }
+  if (role !== "owner" && role !== "accountant") {
+    res.status(403).json({ error: "forbidden", message: "Insufficient permissions for this project" });
+    return false;
+  }
+
+  const { isDemoProject } = await import("./demo.js");
+  const isDemo = await isDemoProject(projectId);
+  if (isDemo) return true;
+
+  if (!(await hasPaidProjectEntitlement(projectId))) {
+    res.status(402).json({
+      error: "payment_required",
+      message: "A paid entitlement is required to modify this project.",
+    });
+    return false;
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------

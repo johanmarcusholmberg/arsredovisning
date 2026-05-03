@@ -1,14 +1,22 @@
 import { Router, type IRouter } from "express";
-import { eq, count } from "drizzle-orm";
-import { db, companiesTable } from "@workspace/db";
+import { getEntitlementContext } from "../helpers/permissions.js";
 
 const router: IRouter = Router();
 
 /**
- * GET /entitlement — return the current user's entitlement tier.
+ * GET /entitlement — return the current user's entitlement context.
  *
- * Phase 2: All authenticated users receive "paid" entitlement.
- * Stripe-gated entitlement (per-report payment) is wired in Phase 4.
+ * Tier semantics:
+ *   - "free":  no active project entitlement and no project credits.
+ *              The user is restricted to demo / account / billing routes
+ *              and cannot create real companies or projects.
+ *   - "paid":  has at least one paid (manual_grant / stripe_payment /
+ *              subscription) entitlement on a project they can access,
+ *              or has unredeemed credits to spend.
+ *   - "admin": site administrator. Bypasses all entitlement gates.
+ *
+ * Stripe Checkout (future phase) will deposit credits via webhook;
+ * until then admins grant credits manually via /admin/users/:id/grant-credits.
  */
 router.get("/entitlement", async (req, res): Promise<void> => {
   const profileId = req.profile?.id;
@@ -17,18 +25,8 @@ router.get("/entitlement", async (req, res): Promise<void> => {
     return;
   }
 
-  const [{ count: companyCount }] = await db
-    .select({ count: count() })
-    .from(companiesTable)
-    .where(eq(companiesTable.createdByProfileId, profileId));
-
-  res.json({
-    tier: "paid",
-    canCreateCompany: true,
-    canCreateProject: true,
-    companyCount: Number(companyCount),
-    // STRIPE_REQUIRED: replace tier logic with Stripe entitlement check in Phase 4
-  });
+  const ctx = await getEntitlementContext(profileId);
+  res.json(ctx);
 });
 
 export default router;

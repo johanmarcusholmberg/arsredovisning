@@ -20,23 +20,50 @@ export interface NotImplemented {
 }
 
 /**
- * demo_only: no real projects; paid: per-report; subscription: unlimited
+ * free: no paid project, locked out of real workspace; paid: at least one active entitlement or unredeemed credit; admin: site administrator, bypasses all gates.
  */
 export type EntitlementInfoTier =
   (typeof EntitlementInfoTier)[keyof typeof EntitlementInfoTier];
 
 export const EntitlementInfoTier = {
-  demo_only: "demo_only",
+  free: "free",
   paid: "paid",
-  subscription: "subscription",
+  admin: "admin",
 } as const;
 
 export interface EntitlementInfo {
-  /** demo_only: no real projects; paid: per-report; subscription: unlimited */
+  /** free: no paid project, locked out of real workspace; paid: at least one active entitlement or unredeemed credit; admin: site administrator, bypasses all gates. */
   tier: EntitlementInfoTier;
+  /** True if the profile has the site-admin flag. */
+  isAdmin: boolean;
+  /** Unredeemed project credits the user can spend on POST /projects. */
+  availableProjectCredits: number;
+  /** Project ids the caller currently has an active paid entitlement on. */
+  paidProjectIds: string[];
   canCreateCompany: boolean;
   canCreateProject: boolean;
   companyCount: number;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  displayName?: string | null;
+  isAdmin: boolean;
+  availableProjectCredits: number;
+  createdAt: string;
+}
+
+export interface AdminProject {
+  id: string;
+  companyName: string;
+  fiscalYearStart: string;
+  fiscalYearEnd: string;
+  status: string;
+  isDemo: boolean;
+  ownerEmail?: string | null;
+  hasActiveEntitlement: boolean;
+  createdAt: string;
 }
 
 /**
@@ -1791,6 +1818,41 @@ export interface ChangePasswordBody {
 export interface ChangeEmailBody {
   newEmail: string;
 }
+
+export type AdminListUsers200 = {
+  users: AdminUser[];
+};
+
+export type AdminGrantCreditsBody = {
+  /** Non-zero integer to add to (or subtract from) the credit balance. */
+  delta: number;
+};
+
+export type AdminGrantCredits200 = {
+  profileId: string;
+  availableProjectCredits: number;
+};
+
+export type AdminSetAdminBody = {
+  isAdmin: boolean;
+};
+
+export type AdminSetAdmin200 = {
+  id: string;
+  isAdmin: boolean;
+};
+
+export type AdminListProjects200 = {
+  projects: AdminProject[];
+};
+
+export type AdminGrantProjectEntitlement201 = {
+  ok: boolean;
+};
+
+export type AdminRevokeProjectEntitlement200 = {
+  ok: boolean;
+};
 
 export type GetFinancialStatementsParams = {
   statementType?: GetFinancialStatementsStatementType;

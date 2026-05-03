@@ -9,11 +9,14 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SidebarLayout } from "./components/layout/SidebarLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RequirePaid } from "./components/RequirePaid";
 import { Dashboard } from "./pages/Dashboard";
 import { Companies } from "./pages/Companies";
 import { CompanyNew } from "./pages/CompanyNew";
 import { CompanyEdit } from "./pages/CompanyEdit";
 import { CompanyDetail } from "./pages/CompanyDetail";
+import { Upgrade } from "./pages/Upgrade";
+import { Admin } from "./pages/Admin";
 import { ReportWorkspace } from "./pages/ReportWorkspace";
 import { ReportSummary } from "./pages/ReportSummary";
 import { ImportPage } from "./pages/ImportPage";
@@ -72,25 +75,59 @@ function AppRoutes() {
         <Suspense fallback={<PageFallback />}>
           <Switch>
             <Route path="/" component={Dashboard} />
+            <Route path="/upgrade" component={Upgrade} />
+            <Route path="/admin" component={Admin} />
             <Route path="/companies" component={Companies} />
-            <Route path="/companies/new" component={CompanyNew} />
-            <Route path="/companies/:companyId/edit" component={CompanyEdit} />
-            <Route path="/companies/:companyId" component={CompanyDetail} />
-            <Route path="/reports/:reportId" component={ReportWorkspace} />
-            <Route path="/reports/:reportId/import" component={ImportPage} />
-            <Route path="/reports/:reportId/mapping" component={MappingPage} />
-            <Route path="/reports/:reportId/statements" component={FinancialStatements} />
-            <Route path="/reports/:reportId/notes" component={NotesPage} />
-            <Route
-              path="/reports/:reportId/reclassifications"
-              component={ReclassificationReview}
-            />
-            <Route path="/reports/:reportId/cash-flow" component={CashFlowPage} />
-            <Route path="/reports/:reportId/validation" component={ValidationView} />
-            <Route path="/reports/:reportId/review" component={ReviewView} />
-            <Route path="/reports/:reportId/audit" component={AuditView} />
-            <Route path="/reports/:reportId/summary" component={ReportSummary} />
-            <Route path="/reports/:reportId/preview" component={PreviewExport} />
+            <Route path="/companies/new">
+              <RequirePaid><CompanyNew /></RequirePaid>
+            </Route>
+            <Route path="/companies/:companyId/edit">
+              <RequirePaid><CompanyEdit /></RequirePaid>
+            </Route>
+            <Route path="/companies/:companyId">
+              <RequirePaid><CompanyDetail /></RequirePaid>
+            </Route>
+            {/* All real /reports/:reportId/* routes are gated. The reportId
+                path param maps to a project on the server; we gate by
+                "user is paid in general" here and let the API enforce
+                per-project ownership (which produces 402 / 404 with
+                content-aware redirects in each page). */}
+            <Route path="/reports/:reportId">
+              <RequirePaid><ReportWorkspace /></RequirePaid>
+            </Route>
+            <Route path="/reports/:reportId/import">
+              <RequirePaid><ImportPage /></RequirePaid>
+            </Route>
+            <Route path="/reports/:reportId/mapping">
+              <RequirePaid><MappingPage /></RequirePaid>
+            </Route>
+            <Route path="/reports/:reportId/statements">
+              <RequirePaid><FinancialStatements /></RequirePaid>
+            </Route>
+            <Route path="/reports/:reportId/notes">
+              <RequirePaid><NotesPage /></RequirePaid>
+            </Route>
+            <Route path="/reports/:reportId/reclassifications">
+              <RequirePaid><ReclassificationReview /></RequirePaid>
+            </Route>
+            <Route path="/reports/:reportId/cash-flow">
+              <RequirePaid><CashFlowPage /></RequirePaid>
+            </Route>
+            <Route path="/reports/:reportId/validation">
+              <RequirePaid><ValidationView /></RequirePaid>
+            </Route>
+            <Route path="/reports/:reportId/review">
+              <RequirePaid><ReviewView /></RequirePaid>
+            </Route>
+            <Route path="/reports/:reportId/audit">
+              <RequirePaid><AuditView /></RequirePaid>
+            </Route>
+            <Route path="/reports/:reportId/summary">
+              <RequirePaid><ReportSummary /></RequirePaid>
+            </Route>
+            <Route path="/reports/:reportId/preview">
+              <RequirePaid><PreviewExport /></RequirePaid>
+            </Route>
             <Route path="/settings" component={Settings} />
             <Route path="/launch-checklist" component={LaunchChecklist} />
             <Route component={NotFound} />

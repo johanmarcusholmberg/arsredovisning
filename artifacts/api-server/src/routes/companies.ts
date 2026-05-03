@@ -24,6 +24,7 @@ import {
   UpdateCompanyParams,
 } from "@workspace/api-zod";
 import { logAuditEvent } from "../lib/auditLog.js";
+import { canCreateRealProject } from "../helpers/permissions.js";
 
 const router: IRouter = Router();
 
@@ -77,6 +78,18 @@ router.post("/companies", async (req, res): Promise<void> => {
   const profileId = req.profile?.id;
   if (!profileId) {
     res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
+  // A real company belongs to the paid product. Free users must not be
+  // able to seed real organisation data into the system before purchase.
+  // Admins and users with credits / existing entitlements bypass.
+  if (!(await canCreateRealProject(profileId))) {
+    res.status(402).json({
+      error: "payment_required",
+      message:
+        "A paid project credit is required before you can create a real company.",
+    });
     return;
   }
 

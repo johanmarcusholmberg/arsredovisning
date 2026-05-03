@@ -22,9 +22,11 @@ import {
   ListChecks,
   FileText,
   Globe,
+  ShieldCheck,
 } from "lucide-react";
 import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEntitlement } from "@/hooks/useEntitlement";
 import { AppFooter } from "@/components/layout/AppFooter";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { Language } from "@/i18n/strings";
@@ -61,6 +63,7 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
+  const { isAdmin } = useEntitlement();
   const reportMatch = location.match(/^\/reports\/([^/]+)/);
   const activeReportId = reportMatch ? reportMatch[1] : null;
 
@@ -165,6 +168,16 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location === "/admin"}>
+                    <Link href="/admin">
+                      <ShieldCheck className="h-4 w-4" />
+                      <span>Admin</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={location === "/settings"}>
                   <Link href="/settings">

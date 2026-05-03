@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { requireAuth } from "../middlewares/auth.js";
 import { syncProfile } from "../middlewares/profile.js";
+import { gateProjectWrites } from "../middlewares/gateProjectWrites.js";
 import healthRouter from "./health";
 import clientErrorsRouter from "./clientErrors";
 import eventsRouter from "./events";
@@ -23,6 +24,7 @@ import reclassificationsRouter from "./reclassifications";
 import cashFlowRouter from "./cashFlow";
 import annualReportExportRouter from "./annualReportExport";
 import meRouter from "./me";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -32,6 +34,11 @@ router.use(eventsRouter);
 
 router.use(requireAuth);
 router.use(syncProfile);
+
+// Centralised entitlement + edit gate for every write under /reports/* and
+// /projects/*. Mount BEFORE the per-feature routers so a missing inline check
+// in any future write endpoint can never bypass the paid wall.
+router.use(gateProjectWrites);
 
 router.use(companiesRouter);
 router.use(reportsRouter);
@@ -52,5 +59,6 @@ router.use(reclassificationsRouter);
 router.use(cashFlowRouter);
 router.use(annualReportExportRouter);
 router.use(meRouter);
+router.use(adminRouter);
 
 export default router;

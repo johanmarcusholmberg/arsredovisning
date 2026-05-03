@@ -16,19 +16,121 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * Returns the authenticated user's access tier and capabilities. Phase 2: all authenticated users receive "paid" tier. Stripe-gated entitlement is added in Phase 4.
+ * Returns the authenticated user's access tier (free / paid / admin), unredeemed project credits, and the list of projects they currently have an active paid entitlement on.
 
  * @summary Get the current user's entitlement tier
  */
 export const GetEntitlementResponse = zod.object({
   tier: zod
-    .enum(["demo_only", "paid", "subscription"])
+    .enum(["free", "paid", "admin"])
     .describe(
-      "demo_only: no real projects; paid: per-report; subscription: unlimited",
+      "free: no paid project, locked out of real workspace; paid: at least one active entitlement or unredeemed credit; admin: site administrator, bypasses all gates.",
+    ),
+  isAdmin: zod
+    .boolean()
+    .describe("True if the profile has the site-admin flag."),
+  availableProjectCredits: zod
+    .number()
+    .describe(
+      "Unredeemed project credits the user can spend on POST \/projects.",
+    ),
+  paidProjectIds: zod
+    .array(zod.string().uuid())
+    .describe(
+      "Project ids the caller currently has an active paid entitlement on.",
     ),
   canCreateCompany: zod.boolean(),
   canCreateProject: zod.boolean(),
   companyCount: zod.number(),
+});
+
+/**
+ * @summary List all profiles (admin only)
+ */
+export const AdminListUsersResponse = zod.object({
+  users: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      email: zod.string(),
+      displayName: zod.string().nullish(),
+      isAdmin: zod.boolean(),
+      availableProjectCredits: zod.number(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Adjust a user's project credit balance (admin only)
+ */
+export const AdminGrantCreditsParams = zod.object({
+  profileId: zod.coerce.string().uuid(),
+});
+
+export const AdminGrantCreditsBody = zod.object({
+  delta: zod
+    .number()
+    .describe(
+      "Non-zero integer to add to (or subtract from) the credit balance.",
+    ),
+});
+
+export const AdminGrantCreditsResponse = zod.object({
+  profileId: zod.string().uuid(),
+  availableProjectCredits: zod.number(),
+});
+
+/**
+ * @summary Promote / demote a user to/from site admin
+ */
+export const AdminSetAdminParams = zod.object({
+  profileId: zod.coerce.string().uuid(),
+});
+
+export const AdminSetAdminBody = zod.object({
+  isAdmin: zod.boolean(),
+});
+
+export const AdminSetAdminResponse = zod.object({
+  id: zod.string().uuid(),
+  isAdmin: zod.boolean(),
+});
+
+/**
+ * @summary List all projects with entitlement status (admin only)
+ */
+export const AdminListProjectsResponse = zod.object({
+  projects: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      companyName: zod.string(),
+      fiscalYearStart: zod.coerce.date(),
+      fiscalYearEnd: zod.coerce.date(),
+      status: zod.string(),
+      isDemo: zod.boolean(),
+      ownerEmail: zod.string().nullish(),
+      hasActiveEntitlement: zod.boolean(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Issue a manual_grant entitlement on a project (admin only)
+ */
+export const AdminGrantProjectEntitlementParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+});
+
+/**
+ * @summary Deactivate every entitlement on a project (admin only)
+ */
+export const AdminRevokeProjectEntitlementParams = zod.object({
+  projectId: zod.coerce.string().uuid(),
+});
+
+export const AdminRevokeProjectEntitlementResponse = zod.object({
+  ok: zod.boolean(),
 });
 
 /**

@@ -65,9 +65,9 @@ paths:
       tags: [entitlement]
       summary: Get the current user's entitlement tier
       description: >
-        Returns the authenticated user's access tier and capabilities.
-        Phase 2: all authenticated users receive "paid" tier.
-        Stripe-gated entitlement is added in Phase 4.
+        Returns the authenticated user's access tier (free / paid / admin),
+        unredeemed project credits, and the list of projects they currently
+        have an active paid entitlement on.
       responses:
         "200":
           description: Entitlement info
@@ -75,6 +75,151 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EntitlementInfo"
+
+  # ─── Admin ───────────────────────────────────────────────────────────────────
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: List all profiles (admin only)
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminUser"
+                required: [users]
+
+  /admin/users/{profileId}/grant-credits:
+    post:
+      operationId: adminGrantCredits
+      tags: [admin]
+      summary: Adjust a user's project credit balance (admin only)
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                delta:
+                  type: integer
+                  description: Non-zero integer to add to (or subtract from) the credit balance.
+              required: [delta]
+      responses:
+        "200":
+          description: Updated balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profileId: { type: string, format: uuid }
+                  availableProjectCredits: { type: integer }
+                required: [profileId, availableProjectCredits]
+
+  /admin/users/{profileId}/set-admin:
+    post:
+      operationId: adminSetAdmin
+      tags: [admin]
+      summary: Promote / demote a user to/from site admin
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isAdmin: { type: boolean }
+              required: [isAdmin]
+      responses:
+        "200":
+          description: Updated role
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  isAdmin: { type: boolean }
+                required: [id, isAdmin]
+
+  /admin/projects:
+    get:
+      operationId: adminListProjects
+      tags: [admin]
+      summary: List all projects with entitlement status (admin only)
+      responses:
+        "200":
+          description: Project list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminProject"
+                required: [projects]
+
+  /admin/projects/{projectId}/grant:
+    post:
+      operationId: adminGrantProjectEntitlement
+      tags: [admin]
+      summary: Issue a manual_grant entitlement on a project (admin only)
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Entitlement created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                required: [ok]
+
+  /admin/projects/{projectId}/revoke:
+    post:
+      operationId: adminRevokeProjectEntitlement
+      tags: [admin]
+      summary: Deactivate every entitlement on a project (admin only)
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Entitlements deactivated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                required: [ok]
 
   # ─── Projects ────────────────────────────────────────────────────────────────
   /projects:
@@ -2262,8 +2407,20 @@ components:
       properties:
         tier:
           type: string
-          enum: [demo_only, paid, subscription]
-          description: "demo_only: no real projects; paid: per-report; subscription: unlimited"
+          enum: [free, paid, admin]
+          description: "free: no paid project, locked out of real workspace; paid: at least one active entitlement or unredeemed credit; admin: site administrator, bypasses all gates."
+        isAdmin:
+          type: boolean
+          description: "True if the profile has the site-admin flag."
+        availableProjectCredits:
+          type: integer
+          description: "Unredeemed project credits the user can spend on POST /projects."
+        paidProjectIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: "Project ids the caller currently has an active paid entitlement on."
         canCreateCompany:
           type: boolean
         canCreateProject:
@@ -2272,9 +2429,73 @@ components:
           type: integer
       required:
         - tier
+        - isAdmin
+        - availableProjectCredits
+        - paidProjectIds
         - canCreateCompany
         - canCreateProject
         - companyCount
+
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        displayName:
+          type: string
+          nullable: true
+        isAdmin:
+          type: boolean
+        availableProjectCredits:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - isAdmin
+        - availableProjectCredits
+        - createdAt
+
+    AdminProject:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        companyName:
+          type: string
+        fiscalYearStart:
+          type: string
+          format: date
+        fiscalYearEnd:
+          type: string
+          format: date
+        status:
+          type: string
+        isDemo:
+          type: boolean
+        ownerEmail:
+          type: string
+          nullable: true
+        hasActiveEntitlement:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - companyName
+        - fiscalYearStart
+        - fiscalYearEnd
+        - status
+        - isDemo
+        - hasActiveEntitlement
+        - createdAt
 
     Company:
       type: object

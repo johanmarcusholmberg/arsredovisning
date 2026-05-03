@@ -1,8 +1,18 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
-import { db, annualReportProjectsTable, companiesTable } from "@workspace/db";
+import { eq, and, sql } from "drizzle-orm";
+import {
+  db,
+  annualReportProjectsTable,
+  companiesTable,
+  profilesTable,
+  projectAccessTable,
+  projectEntitlementsTable,
+} from "@workspace/db";
 import { logAuditEvent } from "../lib/auditLog.js";
-import { canViewProject } from "../helpers/permissions.js";
+import {
+  canViewProject,
+  canCreateRealProject,
+} from "../helpers/permissions.js";
 
 const router: IRouter = Router();
 
@@ -41,8 +51,18 @@ router.get("/projects", async (req, res): Promise<void> => {
 
 /**
  * POST /projects — create a new annual report project.
+ *
  * Requires: companyId (must be owned by caller), fiscalYearStart, fiscalYearEnd.
- * Phase 2: all authenticated users can create projects. Stripe gating added in Phase 4.
+ *
+ * Entitlement model:
+ *   - Caller must satisfy canCreateRealProject (admin OR has credits).
+ *   - On success we atomically:
+ *       1. decrement profiles.availableProjectCredits by 1 (skipped for admins)
+ *       2. insert the annual_report_projects row
+ *       3. insert a manual_grant project_entitlements row (active)
+ *       4. insert a project_access "owner" row for the creator
+ *   - If any step fails the whole thing rolls back so we never leak credits
+ *     into orphan projects or vice versa.
  */
 router.post("/projects", async (req, res): Promise<void> => {
   const profileId = req.profile?.id;
@@ -63,6 +83,15 @@ router.post("/projects", async (req, res): Promise<void> => {
     return;
   }
 
+  if (!(await canCreateRealProject(profileId))) {
+    res.status(402).json({
+      error: "payment_required",
+      message:
+        "A paid project credit is required to create a real annual-report project.",
+    });
+    return;
+  }
+
   const [company] = await db
     .select()
     .from(companiesTable)
@@ -78,18 +107,74 @@ router.post("/projects", async (req, res): Promise<void> => {
     return;
   }
 
-  const [project] = await db
-    .insert(annualReportProjectsTable)
-    .values({
-      companyId,
-      fiscalYearStart,
-      fiscalYearEnd,
-      accountingFramework: (accountingFramework as "K2" | "K3") ?? company.accountingFramework,
-      status: "draft",
-      noteNumberingScheme: "sequential",
-      createdByProfileId: profileId,
-    })
-    .returning();
+  // Atomic: decrement credit (unless admin) → insert project →
+  // insert entitlement → insert access.
+  let project: typeof annualReportProjectsTable.$inferSelect;
+  try {
+    project = await db.transaction(async (tx) => {
+      const [profile] = await tx
+        .select({
+          isAdmin: profilesTable.isAdmin,
+          credits: profilesTable.availableProjectCredits,
+        })
+        .from(profilesTable)
+        .where(eq(profilesTable.id, profileId))
+        .for("update")
+        .limit(1);
+
+      if (!profile) throw new Error("profile_missing");
+      if (!profile.isAdmin) {
+        if (profile.credits < 1) throw new Error("insufficient_credits");
+        await tx
+          .update(profilesTable)
+          .set({
+            availableProjectCredits: sql`${profilesTable.availableProjectCredits} - 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(profilesTable.id, profileId));
+      }
+
+      const [created] = await tx
+        .insert(annualReportProjectsTable)
+        .values({
+          companyId,
+          fiscalYearStart,
+          fiscalYearEnd,
+          accountingFramework: (accountingFramework as "K2" | "K3") ?? company.accountingFramework,
+          status: "draft",
+          noteNumberingScheme: "sequential",
+          createdByProfileId: profileId,
+        })
+        .returning();
+
+      await tx.insert(projectEntitlementsTable).values({
+        projectId: created.id,
+        profileId,
+        entitlementType: profile.isAdmin ? "manual_grant" : "manual_grant",
+        source: profile.isAdmin ? "admin_grant" : "credit_redeemed",
+        isActive: true,
+      });
+
+      await tx.insert(projectAccessTable).values({
+        projectId: created.id,
+        profileId,
+        role: "owner",
+        grantedByProfileId: profileId,
+      });
+
+      return created;
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg === "insufficient_credits" || msg === "profile_missing") {
+      res.status(402).json({
+        error: "payment_required",
+        message: "No project credits available. Purchase a project to continue.",
+      });
+      return;
+    }
+    throw err;
+  }
 
   await logAuditEvent({
     eventType: "project.created",

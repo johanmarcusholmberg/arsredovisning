@@ -20,6 +20,14 @@ import type {
   AcceptTextBody,
   AccountMapping,
   AddCashFlowAdjustmentBody,
+  AdminGrantCredits200,
+  AdminGrantCreditsBody,
+  AdminGrantProjectEntitlement201,
+  AdminListProjects200,
+  AdminListUsers200,
+  AdminRevokeProjectEntitlement200,
+  AdminSetAdmin200,
+  AdminSetAdminBody,
   AiDraftResponse,
   AnnualReport,
   AnnualReportProject,
@@ -206,7 +214,7 @@ export function useHealthCheck<
 }
 
 /**
- * Returns the authenticated user's access tier and capabilities. Phase 2: all authenticated users receive "paid" tier. Stripe-gated entitlement is added in Phase 4.
+ * Returns the authenticated user's access tier (free / paid / admin), unredeemed project credits, and the list of projects they currently have an active paid entitlement on.
 
  * @summary Get the current user's entitlement tier
  */
@@ -281,6 +289,504 @@ export function useGetEntitlement<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all profiles (admin only)
+ */
+export const getAdminListUsersUrl = () => {
+  return `/api/admin/users`;
+};
+
+export const adminListUsers = async (
+  options?: RequestInit,
+): Promise<AdminListUsers200> => {
+  return customFetch<AdminListUsers200>(getAdminListUsersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAdminListUsersQueryKey = () => {
+  return [`/api/admin/users`] as const;
+};
+
+export const getAdminListUsersQueryOptions = <
+  TData = Awaited<ReturnType<typeof adminListUsers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListUsers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getAdminListUsersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListUsers>>> = ({
+    signal,
+  }) => adminListUsers({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof adminListUsers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AdminListUsersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof adminListUsers>>
+>;
+export type AdminListUsersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all profiles (admin only)
+ */
+
+export function useAdminListUsers<
+  TData = Awaited<ReturnType<typeof adminListUsers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListUsers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAdminListUsersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Adjust a user's project credit balance (admin only)
+ */
+export const getAdminGrantCreditsUrl = (profileId: string) => {
+  return `/api/admin/users/${profileId}/grant-credits`;
+};
+
+export const adminGrantCredits = async (
+  profileId: string,
+  adminGrantCreditsBody: AdminGrantCreditsBody,
+  options?: RequestInit,
+): Promise<AdminGrantCredits200> => {
+  return customFetch<AdminGrantCredits200>(getAdminGrantCreditsUrl(profileId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminGrantCreditsBody),
+  });
+};
+
+export const getAdminGrantCreditsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminGrantCredits>>,
+    TError,
+    { profileId: string; data: BodyType<AdminGrantCreditsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminGrantCredits>>,
+  TError,
+  { profileId: string; data: BodyType<AdminGrantCreditsBody> },
+  TContext
+> => {
+  const mutationKey = ["adminGrantCredits"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminGrantCredits>>,
+    { profileId: string; data: BodyType<AdminGrantCreditsBody> }
+  > = (props) => {
+    const { profileId, data } = props ?? {};
+
+    return adminGrantCredits(profileId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminGrantCreditsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminGrantCredits>>
+>;
+export type AdminGrantCreditsMutationBody = BodyType<AdminGrantCreditsBody>;
+export type AdminGrantCreditsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Adjust a user's project credit balance (admin only)
+ */
+export const useAdminGrantCredits = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminGrantCredits>>,
+    TError,
+    { profileId: string; data: BodyType<AdminGrantCreditsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminGrantCredits>>,
+  TError,
+  { profileId: string; data: BodyType<AdminGrantCreditsBody> },
+  TContext
+> => {
+  return useMutation(getAdminGrantCreditsMutationOptions(options));
+};
+
+/**
+ * @summary Promote / demote a user to/from site admin
+ */
+export const getAdminSetAdminUrl = (profileId: string) => {
+  return `/api/admin/users/${profileId}/set-admin`;
+};
+
+export const adminSetAdmin = async (
+  profileId: string,
+  adminSetAdminBody: AdminSetAdminBody,
+  options?: RequestInit,
+): Promise<AdminSetAdmin200> => {
+  return customFetch<AdminSetAdmin200>(getAdminSetAdminUrl(profileId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminSetAdminBody),
+  });
+};
+
+export const getAdminSetAdminMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminSetAdmin>>,
+    TError,
+    { profileId: string; data: BodyType<AdminSetAdminBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminSetAdmin>>,
+  TError,
+  { profileId: string; data: BodyType<AdminSetAdminBody> },
+  TContext
+> => {
+  const mutationKey = ["adminSetAdmin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminSetAdmin>>,
+    { profileId: string; data: BodyType<AdminSetAdminBody> }
+  > = (props) => {
+    const { profileId, data } = props ?? {};
+
+    return adminSetAdmin(profileId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminSetAdminMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminSetAdmin>>
+>;
+export type AdminSetAdminMutationBody = BodyType<AdminSetAdminBody>;
+export type AdminSetAdminMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Promote / demote a user to/from site admin
+ */
+export const useAdminSetAdmin = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminSetAdmin>>,
+    TError,
+    { profileId: string; data: BodyType<AdminSetAdminBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminSetAdmin>>,
+  TError,
+  { profileId: string; data: BodyType<AdminSetAdminBody> },
+  TContext
+> => {
+  return useMutation(getAdminSetAdminMutationOptions(options));
+};
+
+/**
+ * @summary List all projects with entitlement status (admin only)
+ */
+export const getAdminListProjectsUrl = () => {
+  return `/api/admin/projects`;
+};
+
+export const adminListProjects = async (
+  options?: RequestInit,
+): Promise<AdminListProjects200> => {
+  return customFetch<AdminListProjects200>(getAdminListProjectsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAdminListProjectsQueryKey = () => {
+  return [`/api/admin/projects`] as const;
+};
+
+export const getAdminListProjectsQueryOptions = <
+  TData = Awaited<ReturnType<typeof adminListProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getAdminListProjectsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof adminListProjects>>
+  > = ({ signal }) => adminListProjects({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof adminListProjects>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AdminListProjectsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof adminListProjects>>
+>;
+export type AdminListProjectsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all projects with entitlement status (admin only)
+ */
+
+export function useAdminListProjects<
+  TData = Awaited<ReturnType<typeof adminListProjects>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListProjects>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAdminListProjectsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Issue a manual_grant entitlement on a project (admin only)
+ */
+export const getAdminGrantProjectEntitlementUrl = (projectId: string) => {
+  return `/api/admin/projects/${projectId}/grant`;
+};
+
+export const adminGrantProjectEntitlement = async (
+  projectId: string,
+  options?: RequestInit,
+): Promise<AdminGrantProjectEntitlement201> => {
+  return customFetch<AdminGrantProjectEntitlement201>(
+    getAdminGrantProjectEntitlementUrl(projectId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getAdminGrantProjectEntitlementMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminGrantProjectEntitlement>>,
+    TError,
+    { projectId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminGrantProjectEntitlement>>,
+  TError,
+  { projectId: string },
+  TContext
+> => {
+  const mutationKey = ["adminGrantProjectEntitlement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminGrantProjectEntitlement>>,
+    { projectId: string }
+  > = (props) => {
+    const { projectId } = props ?? {};
+
+    return adminGrantProjectEntitlement(projectId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminGrantProjectEntitlementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminGrantProjectEntitlement>>
+>;
+
+export type AdminGrantProjectEntitlementMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Issue a manual_grant entitlement on a project (admin only)
+ */
+export const useAdminGrantProjectEntitlement = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminGrantProjectEntitlement>>,
+    TError,
+    { projectId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminGrantProjectEntitlement>>,
+  TError,
+  { projectId: string },
+  TContext
+> => {
+  return useMutation(getAdminGrantProjectEntitlementMutationOptions(options));
+};
+
+/**
+ * @summary Deactivate every entitlement on a project (admin only)
+ */
+export const getAdminRevokeProjectEntitlementUrl = (projectId: string) => {
+  return `/api/admin/projects/${projectId}/revoke`;
+};
+
+export const adminRevokeProjectEntitlement = async (
+  projectId: string,
+  options?: RequestInit,
+): Promise<AdminRevokeProjectEntitlement200> => {
+  return customFetch<AdminRevokeProjectEntitlement200>(
+    getAdminRevokeProjectEntitlementUrl(projectId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getAdminRevokeProjectEntitlementMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminRevokeProjectEntitlement>>,
+    TError,
+    { projectId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminRevokeProjectEntitlement>>,
+  TError,
+  { projectId: string },
+  TContext
+> => {
+  const mutationKey = ["adminRevokeProjectEntitlement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminRevokeProjectEntitlement>>,
+    { projectId: string }
+  > = (props) => {
+    const { projectId } = props ?? {};
+
+    return adminRevokeProjectEntitlement(projectId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminRevokeProjectEntitlementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminRevokeProjectEntitlement>>
+>;
+
+export type AdminRevokeProjectEntitlementMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Deactivate every entitlement on a project (admin only)
+ */
+export const useAdminRevokeProjectEntitlement = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminRevokeProjectEntitlement>>,
+    TError,
+    { projectId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminRevokeProjectEntitlement>>,
+  TError,
+  { projectId: string },
+  TContext
+> => {
+  return useMutation(getAdminRevokeProjectEntitlementMutationOptions(options));
+};
 
 /**
  * @summary List annual report projects for the authenticated user
