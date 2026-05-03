@@ -2,9 +2,11 @@ import { useState } from "react";
 import {
   FileText, CheckCircle2, ArrowRight, Banknote, ScrollText,
   Link2, ShieldCheck, FileDown, Sparkles, ChevronLeft, ChevronRight,
+  Maximize2,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLanguage } from "@/hooks/useLanguage";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 function fmt(n: number) {
   return n.toLocaleString("sv-SE").replace(/,/g, " ");
@@ -275,15 +277,15 @@ function MiniRow({
 }) {
   return (
     <div
-      className={`grid grid-cols-[1fr_auto_auto] gap-x-2 items-center text-[9px] ${
-        bold ? "font-semibold border-t border-neutral-300 pt-1 mt-1" : ""
+      className={`grid grid-cols-[1fr_auto_auto] gap-x-[0.6em] items-center text-[0.95em] ${
+        bold ? "font-semibold border-t border-neutral-300 pt-[0.25em] mt-[0.25em]" : ""
       }`}
     >
       <span className="truncate text-neutral-800">{name}</span>
       <span className="text-right tabular-nums text-neutral-800">{amount ?? ""}</span>
       <span className="text-right">
         {note ? (
-          <span className="inline-flex items-center justify-center min-w-[1rem] rounded bg-amber-100 text-amber-800 text-[8px] font-mono px-1">
+          <span className="inline-flex items-center justify-center min-w-[1.4em] rounded bg-amber-100 text-amber-800 text-[0.85em] font-mono px-[0.3em]">
             {note}
           </span>
         ) : (
@@ -299,17 +301,21 @@ const miniPages: MiniPage[] = [
     label: "Omslag",
     render: () => (
       <div className="h-full flex flex-col">
-        <p className="text-[9px] font-mono uppercase tracking-wider text-neutral-500">
+        <p className="text-[0.85em] font-mono uppercase tracking-wider text-neutral-500">
           Årsredovisning
         </p>
-        <p className="mt-1 text-base font-semibold text-neutral-900 font-serif">
+        <p className="mt-[0.4em] text-[1.7em] leading-tight font-semibold text-neutral-900 font-serif">
           Nordic Design AB
         </p>
-        <p className="text-[10px] text-neutral-600">556123-4567</p>
-        <div className="mt-auto pt-4 border-t border-neutral-300 text-[9px] text-neutral-600 space-y-0.5">
+        <p className="text-[0.95em] text-neutral-600">556123-4567</p>
+        <p className="mt-[0.3em] text-[0.85em] text-neutral-500">
+          för räkenskapsåret 2024
+        </p>
+        <div className="mt-auto pt-[1em] border-t border-neutral-300 text-[0.9em] text-neutral-600 space-y-[0.2em]">
           <p>Räkenskapsår 2024-01-01 – 2024-12-31</p>
           <p>Säte: Stockholm</p>
-          <p>K3 (BFNAR 2012:1)</p>
+          <p>Tillämpad regelverk: K3 (BFNAR 2012:1)</p>
+          <p>Upprättad: 2025-04-15</p>
         </div>
       </div>
     ),
@@ -318,10 +324,10 @@ const miniPages: MiniPage[] = [
     label: "Innehåll",
     render: () => (
       <div className="h-full flex flex-col">
-        <p className="text-[10px] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-1">
+        <p className="text-[1.1em] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-[0.3em]">
           Innehållsförteckning
         </p>
-        <div className="mt-2 space-y-1 text-[10px] text-neutral-800">
+        <div className="mt-[0.6em] space-y-[0.3em] text-[1em] text-neutral-800">
           {[
             ["Förvaltningsberättelse", 2],
             ["Resultaträkning", 4],
@@ -341,22 +347,74 @@ const miniPages: MiniPage[] = [
     ),
   },
   {
+    label: "Förvaltningsberättelse",
+    render: () => (
+      <div className="h-full flex flex-col">
+        <p className="text-[1.1em] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-[0.3em]">
+          Förvaltningsberättelse
+        </p>
+        <div className="mt-[0.5em] space-y-[0.5em] text-[0.9em] text-neutral-800 leading-relaxed">
+          <div>
+            <p className="font-semibold">Verksamheten</p>
+            <p className="text-neutral-700">
+              Nordic Design AB bedriver konsultverksamhet inom grafisk
+              formgivning och varumärkesutveckling med kunder främst i Sverige
+              och Norden.
+            </p>
+          </div>
+          <div>
+            <p className="font-semibold">Väsentliga händelser under året</p>
+            <p className="text-neutral-700">
+              Bolaget har under året utökat personalstyrkan med en seniordesigner
+              och tecknat två nya ramavtal.
+            </p>
+          </div>
+          <div>
+            <p className="font-semibold">Flerårsöversikt (tkr)</p>
+            <div className="mt-[0.3em] grid grid-cols-4 gap-x-[0.5em] text-[0.95em] tabular-nums">
+              <span className="text-neutral-500"></span>
+              <span className="text-right text-neutral-500">2024</span>
+              <span className="text-right text-neutral-500">2023</span>
+              <span className="text-right text-neutral-500">2022</span>
+              <span>Nettoomsättning</span>
+              <span className="text-right">8 420</span>
+              <span className="text-right">7 180</span>
+              <span className="text-right">6 540</span>
+              <span>Rörelseresultat</span>
+              <span className="text-right">1 240</span>
+              <span className="text-right">1 015</span>
+              <span className="text-right">820</span>
+              <span>Soliditet (%)</span>
+              <span className="text-right">71,5</span>
+              <span className="text-right">66,7</span>
+              <span className="text-right">62,1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+  {
     label: "Resultaträkning",
     render: () => (
       <div className="h-full flex flex-col">
-        <p className="text-[10px] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-1">
+        <p className="text-[1.1em] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-[0.3em]">
           Resultaträkning
         </p>
-        <p className="text-[8px] text-neutral-500 mt-0.5">2024-01-01 – 2024-12-31 (kr)</p>
-        <div className="mt-2 space-y-1">
+        <p className="text-[0.8em] text-neutral-500 mt-[0.15em]">
+          2024-01-01 – 2024-12-31 (kr)
+        </p>
+        <div className="mt-[0.5em] space-y-[0.3em]">
           <MiniRow name="Nettoomsättning" amount="8 420 000" note="1" />
           <MiniRow name="Övriga rörelseintäkter" amount="120 000" />
           <MiniRow name="Personalkostnader" amount="-3 120 000" note="2" />
           <MiniRow name="Avskrivningar" amount="-410 000" note="3" />
           <MiniRow name="Övriga kostnader" amount="-3 770 000" />
           <MiniRow name="Rörelseresultat" amount="1 240 000" bold />
-          <MiniRow name="Finansiella poster" amount="-95 000" />
-          <MiniRow name="Skatt" amount="-258 000" />
+          <MiniRow name="Finansiella intäkter" amount="12 000" />
+          <MiniRow name="Finansiella kostnader" amount="-107 000" />
+          <MiniRow name="Resultat före skatt" amount="1 145 000" bold />
+          <MiniRow name="Skatt på årets resultat" amount="-258 000" />
           <MiniRow name="Årets resultat" amount="887 000" bold />
         </div>
       </div>
@@ -366,15 +424,20 @@ const miniPages: MiniPage[] = [
     label: "Balansräkning",
     render: () => (
       <div className="h-full flex flex-col">
-        <p className="text-[10px] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-1">
+        <p className="text-[1.1em] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-[0.3em]">
           Balansräkning
         </p>
-        <p className="text-[8px] text-neutral-500 mt-0.5">Per 2024-12-31 (kr)</p>
-        <div className="mt-2 space-y-1">
-          <MiniRow name="Materiella anl.tillg." amount="1 850 000" note="3" />
+        <p className="text-[0.8em] text-neutral-500 mt-[0.15em]">Per 2024-12-31 (kr)</p>
+        <div className="mt-[0.5em] space-y-[0.3em]">
+          <p className="text-[0.85em] uppercase tracking-wider text-neutral-500 mt-[0.2em]">Tillgångar</p>
+          <MiniRow name="Materiella anläggningstillgångar" amount="1 850 000" note="3" />
           <MiniRow name="Kundfordringar" amount="940 000" />
+          <MiniRow name="Övriga fordringar" amount="0" />
           <MiniRow name="Bank" amount="1 320 000" />
           <MiniRow name="Summa tillgångar" amount="4 110 000" bold />
+          <p className="text-[0.85em] uppercase tracking-wider text-neutral-500 mt-[0.4em]">
+            Eget kapital och skulder
+          </p>
           <MiniRow name="Eget kapital" amount="2 940 000" note="5" />
           <MiniRow name="Långfristiga skulder" amount="820 000" note="4" />
           <MiniRow name="Kortfristiga skulder" amount="350 000" />
@@ -387,32 +450,42 @@ const miniPages: MiniPage[] = [
     label: "Noter",
     render: () => (
       <div className="h-full flex flex-col">
-        <p className="text-[10px] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-1">
+        <p className="text-[1.1em] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-[0.3em]">
           Noter
         </p>
-        <div className="mt-2 space-y-1.5 text-[9px] text-neutral-800">
+        <div className="mt-[0.5em] space-y-[0.6em] text-[0.9em] text-neutral-800 leading-relaxed">
           <div>
             <p className="font-semibold">Not 1 — Nettoomsättning</p>
-            <p className="text-neutral-600">
-              Försäljning av designtjänster i Sverige.
+            <p className="text-neutral-700">
+              Försäljning av designtjänster, samtliga inom Sverige.
             </p>
           </div>
           <div>
-            <p className="font-semibold">Not 2 — Anställda</p>
-            <p className="text-neutral-600">
-              Medelantal anställda: 6 (5).
+            <p className="font-semibold">Not 2 — Anställda och personalkostnader</p>
+            <p className="text-neutral-700">
+              Medelantal anställda under året: 6 (föregående år 5). Löner och
+              ersättningar uppgick till 2 580 tkr (2 320).
             </p>
           </div>
           <div>
-            <p className="font-semibold">Not 3 — Materiella anl.tillg.</p>
-            <p className="text-neutral-600">
-              Inventarier, avskrivningstid 5 år.
+            <p className="font-semibold">Not 3 — Materiella anläggningstillgångar</p>
+            <p className="text-neutral-700">
+              Inventarier skrivs av linjärt över 5 år. Ingående anskaffnings­värde
+              2 280 tkr, årets investeringar 410 tkr.
             </p>
           </div>
           <div>
             <p className="font-semibold">Not 4 — Långfristiga skulder</p>
-            <p className="text-neutral-600">
-              Banklån, förfaller efter mer än 1 år.
+            <p className="text-neutral-700">
+              Banklån som förfaller till betalning senare än ett år efter
+              balansdagen.
+            </p>
+          </div>
+          <div>
+            <p className="font-semibold">Not 5 — Eget kapital</p>
+            <p className="text-neutral-700">
+              Aktiekapital 100 tkr, balanserat resultat 1 953 tkr, årets
+              resultat 887 tkr.
             </p>
           </div>
         </div>
@@ -423,54 +496,76 @@ const miniPages: MiniPage[] = [
     label: "Underskrifter",
     render: () => (
       <div className="h-full flex flex-col">
-        <p className="text-[10px] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-1">
+        <p className="text-[1.1em] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-[0.3em]">
           Underskrifter
         </p>
-        <p className="mt-2 text-[9px] text-neutral-700 leading-relaxed">
+        <p className="mt-[0.6em] text-[0.9em] text-neutral-700 leading-relaxed">
           Resultat- och balansräkningen kommer att framläggas på årsstämman
           för fastställelse.
         </p>
-        <p className="mt-3 text-[9px] text-neutral-700">Stockholm, 2025-04-15</p>
-        <div className="mt-4 grid grid-cols-2 gap-3 text-[9px] text-neutral-700">
-          {["Anna Lind", "Erik Sjö", "Maria Holm", "Johan Berg"].map((name) => (
+        <p className="mt-[0.6em] text-[0.9em] text-neutral-700">Stockholm, 2025-04-15</p>
+        <div className="mt-[1em] grid grid-cols-2 gap-[0.8em] text-[0.9em] text-neutral-700">
+          {[
+            ["Anna Lind", "Styrelseordförande"],
+            ["Erik Sjö", "Styrelseledamot"],
+            ["Maria Holm", "Styrelseledamot"],
+            ["Johan Berg", "Verkställande direktör"],
+          ].map(([name, role]) => (
             <div key={name}>
-              <div className="border-b border-neutral-400 h-5" />
-              <p className="mt-0.5">{name}</p>
-              <p className="text-neutral-500 text-[8px]">Styrelseledamot</p>
+              <div className="border-b border-neutral-400 h-[1.6em]" />
+              <p className="mt-[0.2em]">{name}</p>
+              <p className="text-neutral-500 text-[0.8em]">{role}</p>
             </div>
           ))}
+        </div>
+        <div className="mt-auto pt-[0.8em] text-[0.8em] text-neutral-500 border-t border-neutral-200">
+          Min revisionsberättelse har lämnats 2025-04-15. — Auktoriserad revisor
         </div>
       </div>
     ),
   },
 ];
 
-export function FinishedVisual() {
+function FlipReport({
+  variant,
+  pageIndex,
+  setPageIndex,
+}: {
+  variant: "sm" | "lg";
+  pageIndex: number;
+  setPageIndex: (next: number, direction: 1 | -1) => void;
+}) {
   const { t } = useLanguage();
-  const [pageIndex, setPageIndex] = useState(0);
-  const [direction, setDirection] = useState(1);
-
+  const [direction, setDirection] = useState<1 | -1>(1);
   const total = miniPages.length;
+  const current = miniPages[pageIndex];
+
+  const isLg = variant === "lg";
+
   const goPrev = () => {
     if (pageIndex === 0) return;
     setDirection(-1);
-    setPageIndex(pageIndex - 1);
+    setPageIndex(pageIndex - 1, -1);
   };
   const goNext = () => {
     if (pageIndex === total - 1) return;
     setDirection(1);
-    setPageIndex(pageIndex + 1);
+    setPageIndex(pageIndex + 1, 1);
   };
 
-  const current = miniPages[pageIndex];
+  // Base font size drives all em-relative sizes inside pages.
+  const pageFontSize = isLg ? 17 : 11;
+  const padding = isLg ? "p-7" : "p-3.5";
+  const watermarkSize = isLg ? 140 : 60;
+  const maxWidth = isLg ? 520 : 260;
 
   return (
-    <div className="w-full">
+    <div className={isLg ? "w-full flex flex-col items-center" : "w-full"}>
       <div
         className="relative mx-auto"
-        style={{ perspective: "1400px", width: "100%", maxWidth: "260px" }}
+        style={{ perspective: "1600px", width: "100%", maxWidth }}
       >
-        {/* Page stack shadow under the active page */}
+        {/* Stacked-page shadows */}
         <div
           aria-hidden
           className="absolute inset-x-2 top-2 bottom-0 rounded-xl bg-neutral-300/60"
@@ -487,9 +582,13 @@ export function FinishedVisual() {
           style={{ transformStyle: "preserve-3d" }}
         >
           {/* DEMO badge */}
-          <div className="absolute top-2 right-2 z-20">
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 uppercase tracking-wider">
-              <Sparkles className="size-2.5" />
+          <div className={`absolute ${isLg ? "top-3 right-3" : "top-2 right-2"} z-20`}>
+            <span
+              className={`inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 font-bold text-amber-800 uppercase tracking-wider ${
+                isLg ? "px-2.5 py-1 text-xs" : "px-1.5 py-0.5 text-[9px]"
+              }`}
+            >
+              <Sparkles className={isLg ? "size-3.5" : "size-2.5"} />
               DEMO
             </span>
           </div>
@@ -502,7 +601,7 @@ export function FinishedVisual() {
             <span
               style={{
                 transform: "rotate(-26deg)",
-                fontSize: "60px",
+                fontSize: `${watermarkSize}px`,
                 fontWeight: 900,
                 color: "rgba(180, 30, 30, 0.07)",
                 letterSpacing: "0.18em",
@@ -521,10 +620,11 @@ export function FinishedVisual() {
               animate={{ rotateY: 0, opacity: 1 }}
               exit={{ rotateY: direction > 0 ? 85 : -85, opacity: 0 }}
               transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
-              className="relative h-full w-full p-3.5 z-10"
+              className={`relative h-full w-full ${padding} z-10`}
               style={{
                 transformOrigin: direction > 0 ? "left center" : "right center",
                 backfaceVisibility: "hidden",
+                fontSize: `${pageFontSize}px`,
               }}
             >
               {current.render()}
@@ -532,7 +632,13 @@ export function FinishedVisual() {
           </AnimatePresence>
 
           {/* Page footer */}
-          <div className="absolute bottom-1.5 left-3 right-3 z-10 flex items-center justify-between text-[8px] text-neutral-500">
+          <div
+            className={`absolute z-10 flex items-center justify-between text-neutral-500 ${
+              isLg
+                ? "bottom-2.5 left-5 right-5 text-[11px]"
+                : "bottom-1.5 left-3 right-3 text-[8px]"
+            }`}
+          >
             <span>Nordic Design AB</span>
             <span className="font-mono tabular-nums">
               {pageIndex + 1} / {total}
@@ -542,30 +648,45 @@ export function FinishedVisual() {
       </div>
 
       {/* Flip controls */}
-      <div className="mt-3 flex items-center justify-between gap-2">
+      <div
+        className={`flex items-center justify-between gap-2 ${
+          isLg ? "mt-5 w-full max-w-[520px]" : "mt-3"
+        }`}
+      >
         <button
           type="button"
           onClick={goPrev}
           disabled={pageIndex === 0}
           aria-label={t("publicDemo.finished.prev")}
-          className="inline-flex items-center justify-center size-8 rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className={`inline-flex items-center justify-center rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            isLg ? "size-10" : "size-8"
+          }`}
         >
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className={isLg ? "size-5" : "size-4"} />
         </button>
         <div className="flex-1 text-center">
-          <p className="text-[11px] font-medium text-foreground">{current.label}</p>
-          <div className="mt-1 flex items-center justify-center gap-1">
+          <p
+            className={`font-medium text-foreground ${isLg ? "text-sm" : "text-[11px]"}`}
+          >
+            {current.label}
+          </p>
+          <div className="mt-1.5 flex items-center justify-center gap-1">
             {miniPages.map((_, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => {
-                  setDirection(i > pageIndex ? 1 : -1);
-                  setPageIndex(i);
+                  const dir: 1 | -1 = i > pageIndex ? 1 : -1;
+                  setDirection(dir);
+                  setPageIndex(i, dir);
                 }}
                 aria-label={`${t("publicDemo.finished.goto")} ${i + 1}`}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === pageIndex ? "w-5 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground/40"
+                className={`rounded-full transition-all ${
+                  isLg ? "h-2" : "h-1.5"
+                } ${
+                  i === pageIndex
+                    ? `bg-primary ${isLg ? "w-7" : "w-5"}`
+                    : `bg-border hover:bg-muted-foreground/40 ${isLg ? "w-2" : "w-1.5"}`
                 }`}
               />
             ))}
@@ -576,16 +697,66 @@ export function FinishedVisual() {
           onClick={goNext}
           disabled={pageIndex === total - 1}
           aria-label={t("publicDemo.finished.next")}
-          className="inline-flex items-center justify-center size-8 rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className={`inline-flex items-center justify-center rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            isLg ? "size-10" : "size-8"
+          }`}
         >
-          <ChevronRight className="size-4" />
+          <ChevronRight className={isLg ? "size-5" : "size-4"} />
         </button>
       </div>
+    </div>
+  );
+}
 
-      <p className="mt-2 text-center text-[10px] text-muted-foreground flex items-center justify-center gap-1">
-        <FileDown className="size-3" />
-        {t("publicDemo.finished.exportHint")}
-      </p>
+export function FinishedVisual() {
+  const { t } = useLanguage();
+  const [pageIndex, setPageIndex] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [largePageIndex, setLargePageIndex] = useState(0);
+
+  return (
+    <div className="w-full">
+      <FlipReport
+        variant="sm"
+        pageIndex={pageIndex}
+        setPageIndex={(next) => setPageIndex(next)}
+      />
+
+      <div className="mt-2 flex flex-col items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => {
+            setLargePageIndex(pageIndex);
+            setOpen(true);
+          }}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-[11px] font-medium text-foreground hover:bg-accent transition-colors"
+        >
+          <Maximize2 className="size-3" />
+          {t("publicDemo.finished.viewLarger")}
+        </button>
+        <p className="text-center text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+          <FileDown className="size-3" />
+          {t("publicDemo.finished.exportHint")}
+        </p>
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl p-6 sm:p-8">
+          <DialogTitle className="text-lg font-semibold">
+            {t("publicDemo.finished.dialog.title")}
+          </DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground -mt-1">
+            {t("publicDemo.finished.dialog.subtitle")}
+          </DialogDescription>
+          <div className="mt-2 flex justify-center">
+            <FlipReport
+              variant="lg"
+              pageIndex={largePageIndex}
+              setPageIndex={(next) => setLargePageIndex(next)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
