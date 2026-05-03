@@ -1,6 +1,7 @@
 import { Check, ArrowRight, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useSeo } from "@/lib/useSeo";
 
 /**
  * initiateCheckout — placeholder for Stripe Checkout integration.
@@ -16,6 +17,12 @@ export function initiateCheckout(_priceId: string) {
 
 export default function PricingPage() {
   const { t } = useLanguage();
+  useSeo({
+    title: t("seo.pricing.title"),
+    description: t("seo.pricing.description"),
+    ogImage: "/opengraph.jpg",
+    canonicalPath: "/pricing",
+  });
 
   const features1 = [
     t("pricing.card1.feature1"),

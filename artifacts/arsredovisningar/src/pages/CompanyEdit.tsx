@@ -6,18 +6,39 @@ import {
   getGetCompanyQueryKey,
   ApiError,
 } from "@workspace/api-client-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ArrowLeft, Building2, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const isValidMonthDay = (v: string): boolean => {
   if (!/^\d{2}-\d{2}$/.test(v)) return false;
@@ -28,12 +49,12 @@ const isValidMonthDay = (v: string): boolean => {
 };
 
 const companySchema = z.object({
-  name: z.string().min(1, "Company name is required"),
-  orgNumber: z.string().regex(/^\d{6}-\d{4}$/, "Must be in format XXXXXX-XXXX"),
+  name: z.string().min(1, "company.form.error.required_name"),
+  orgNumber: z.string().regex(/^\d{6}-\d{4}$/, "company.form.error.org_format"),
   legalForm: z.enum(["AB", "HB", "KB", "EF", "Ideell", "Stiftelse"]),
   accountingFramework: z.enum(["K2", "K3"]),
-  fiscalYearStart: z.string().refine(isValidMonthDay, "Must be a valid MM-DD"),
-  fiscalYearEnd: z.string().refine(isValidMonthDay, "Must be a valid MM-DD"),
+  fiscalYearStart: z.string().refine(isValidMonthDay, "company.form.error.month_day"),
+  fiscalYearEnd: z.string().refine(isValidMonthDay, "company.form.error.month_day"),
   address: z.string().optional(),
   zipCode: z.string().optional(),
   city: z.string().optional(),
@@ -47,6 +68,7 @@ export function CompanyEdit() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
 
   const { data: company, isLoading } = useGetCompany(companyId, {
     query: { enabled: !!companyId, queryKey: getGetCompanyQueryKey(companyId) },
@@ -91,44 +113,59 @@ export function CompanyEdit() {
       {
         onSuccess: (updated) => {
           toast({
-            title: "Company updated",
-            description: `${updated.name} has been saved.`,
+            title: t("company.toast.updated_title"),
+            description: `${t("company.toast.updated_desc_prefix")}${updated.name}${t("company.toast.updated_desc_suffix")}`,
           });
-          queryClient.invalidateQueries({ queryKey: getGetCompanyQueryKey(companyId) });
+          queryClient.invalidateQueries({
+            queryKey: getGetCompanyQueryKey(companyId),
+          });
           setLocation(`/companies/${companyId}`);
         },
         onError: (err) => {
           if (err instanceof ApiError) {
-            const data = err.data as { error?: string; field?: string; message?: string } | null;
-            if (data?.field === "orgNumber" || data?.error === "duplicate_org_number") {
+            const data = err.data as
+              | { error?: string; field?: string; message?: string }
+              | null;
+            if (
+              data?.field === "orgNumber" ||
+              data?.error === "duplicate_org_number"
+            ) {
               form.setError("orgNumber", {
                 type: "server",
-                message: data.message ?? "This organisation number is already used by another company.",
+                message: data.message ?? t("company.toast.duplicate_org_desc"),
               });
               toast({
-                title: "Organisation number already in use",
+                title: t("company.toast.duplicate_org_title"),
                 description:
-                  data.message ??
-                  "A company with this organisation number already exists.",
+                  data.message ?? t("company.toast.duplicate_org_desc"),
                 variant: "destructive",
               });
               return;
             }
             toast({
-              title: "Error updating company",
+              title: t("company.toast.update_error_title"),
               description: data?.message ?? err.message,
               variant: "destructive",
             });
             return;
           }
           toast({
-            title: "Error updating company",
-            description: "An unexpected error occurred. Please try again.",
+            title: t("company.toast.update_error_title"),
+            description: t("company.toast.unexpected"),
             variant: "destructive",
           });
         },
-      }
+      },
     );
+  };
+
+  const tMsg = (m?: string): string | undefined => {
+    if (!m) return undefined;
+    if (m.startsWith("company.form.error.")) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return t(m as any);
+    }
+    return m;
   };
 
   if (isLoading || !company) {
@@ -143,14 +180,22 @@ export function CompanyEdit() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-300">
       <div className="flex items-center gap-4 mb-8">
-        <Button variant="outline" size="icon" asChild className="h-10 w-10 shrink-0 rounded-full">
+        <Button
+          variant="outline"
+          size="icon"
+          asChild
+          className="h-10 w-10 shrink-0 rounded-full"
+          aria-label={t("company.form.back_aria")}
+        >
           <Link href={`/companies/${companyId}`}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Edit Company</h1>
-          <p className="text-muted-foreground">Update the company's registered details.</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {t("company.edit.title")}
+          </h1>
+          <p className="text-muted-foreground">{t("company.edit.subtitle")}</p>
         </div>
       </div>
 
@@ -163,116 +208,180 @@ export function CompanyEdit() {
                   <Building2 className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle>Company Details</CardTitle>
-                  <CardDescription>All fields below can be updated.</CardDescription>
+                  <CardTitle>{t("company.form.section.details")}</CardTitle>
+                  <CardDescription>
+                    {t("company.form.section.details_edit_desc")}
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem className="col-span-2">
-                  <FormLabel>Company Name</FormLabel>
-                  <FormControl><Input {...field} className="h-11" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-
-              <FormField control={form.control} name="orgNumber" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Organization Number</FormLabel>
-                  <FormControl><Input {...field} className="h-11 font-mono" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-
-              <FormField control={form.control} name="legalForm" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Legal Form</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field, fieldState }) => (
+                  <FormItem className="col-span-2">
+                    <FormLabel>{t("company.form.field.name")}</FormLabel>
                     <FormControl>
-                      <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                      <Input {...field} className="h-11" />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="AB">Aktiebolag (AB)</SelectItem>
-                      <SelectItem value="HB">Handelsbolag (HB)</SelectItem>
-                      <SelectItem value="KB">Kommanditbolag (KB)</SelectItem>
-                      <SelectItem value="EF">Enskild Firma (EF)</SelectItem>
-                      <SelectItem value="Ideell">Ideell förening</SelectItem>
-                      <SelectItem value="Stiftelse">Stiftelse</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
+                    <FormMessage>{tMsg(fieldState.error?.message)}</FormMessage>
+                  </FormItem>
+                )}
+              />
 
-              <FormField control={form.control} name="accountingFramework" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Accounting Framework</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+              <FormField
+                control={form.control}
+                name="orgNumber"
+                render={({ field, fieldState }) => (
+                  <FormItem>
+                    <FormLabel>{t("company.form.field.org_number")}</FormLabel>
                     <FormControl>
-                      <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                      <Input {...field} className="h-11 font-mono" />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="K2">K2 (Mindre företag)</SelectItem>
-                      <SelectItem value="K3">K3 (Huvudregelverket)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
+                    <FormMessage>{tMsg(fieldState.error?.message)}</FormMessage>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="legalForm"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("company.form.field.legal_form")}</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="AB">Aktiebolag (AB)</SelectItem>
+                        <SelectItem value="HB">Handelsbolag (HB)</SelectItem>
+                        <SelectItem value="KB">Kommanditbolag (KB)</SelectItem>
+                        <SelectItem value="EF">Enskild Firma (EF)</SelectItem>
+                        <SelectItem value="Ideell">Ideell förening</SelectItem>
+                        <SelectItem value="Stiftelse">Stiftelse</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="accountingFramework"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("company.form.field.framework")}</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-11">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="K2">K2 (Mindre företag)</SelectItem>
+                        <SelectItem value="K3">K3 (Huvudregelverket)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="fiscalYearStart" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fiscal Start (MM-DD)</FormLabel>
-                    <FormControl><Input {...field} className="h-11 font-mono" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="fiscalYearEnd" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fiscal End (MM-DD)</FormLabel>
-                    <FormControl><Input {...field} className="h-11 font-mono" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                <FormField
+                  control={form.control}
+                  name="fiscalYearStart"
+                  render={({ field, fieldState }) => (
+                    <FormItem>
+                      <FormLabel>{t("company.form.field.fiscal_start")} (MM-DD)</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="h-11 font-mono" />
+                      </FormControl>
+                      <FormMessage>{tMsg(fieldState.error?.message)}</FormMessage>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="fiscalYearEnd"
+                  render={({ field, fieldState }) => (
+                    <FormItem>
+                      <FormLabel>{t("company.form.field.fiscal_end")} (MM-DD)</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="h-11 font-mono" />
+                      </FormControl>
+                      <FormMessage>{tMsg(fieldState.error?.message)}</FormMessage>
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <div className="col-span-2 mt-4">
-                <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                  {t("company.form.section.contact")}
+                </h3>
               </div>
 
-              <FormField control={form.control} name="address" render={({ field }) => (
-                <FormItem className="col-span-2">
-                  <FormLabel>Street Address</FormLabel>
-                  <FormControl><Input {...field} className="h-11" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem className="col-span-2">
+                    <FormLabel>{t("company.form.field.address")}</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="h-11" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <FormField control={form.control} name="zipCode" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Postal Code</FormLabel>
-                  <FormControl><Input {...field} className="h-11" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="zipCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("company.form.field.zip")}</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="h-11" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-              <FormField control={form.control} name="city" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>City</FormLabel>
-                  <FormControl><Input {...field} className="h-11" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("company.form.field.city")}</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="h-11" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
             <CardFooter className="flex justify-end gap-4 border-t bg-muted/20 py-4 mt-6">
               <Button variant="ghost" asChild type="button">
-                <Link href={`/companies/${companyId}`}>Cancel</Link>
+                <Link href={`/companies/${companyId}`}>
+                  {t("company.form.cancel")}
+                </Link>
               </Button>
               <Button type="submit" disabled={updateCompany.isPending} className="px-8">
-                {updateCompany.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Save Changes
+                {updateCompany.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {t("company.form.save_edit")}
               </Button>
             </CardFooter>
           </Card>

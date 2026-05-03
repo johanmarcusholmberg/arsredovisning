@@ -21,6 +21,7 @@ import {
   AuthLanguageSwitcher,
   BackToHomepageLink,
 } from "@/components/auth/AuthChrome";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -231,9 +232,8 @@ export function ResetPassword() {
                   <Label htmlFor="new-password">
                     {t("reset.form.new_password")}
                   </Label>
-                  <Input
+                  <PasswordInput
                     id="new-password"
-                    type="password"
                     className="h-11"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -247,15 +247,15 @@ export function ResetPassword() {
                   <Label htmlFor="confirm-password">
                     {t("reset.form.confirm_password")}
                   </Label>
-                  <Input
+                  <PasswordInput
                     id="confirm-password"
-                    type="password"
                     className="h-11"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     required
                     minLength={MIN_PASSWORD_LENGTH}
                     autoComplete="new-password"
+                    showCapsLockHint={false}
                   />
                 </div>
               </CardContent>

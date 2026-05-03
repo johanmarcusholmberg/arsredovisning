@@ -1,5 +1,10 @@
 import { useRoute, Link, useLocation } from "wouter";
-import { useGetReport, getGetReportQueryKey, useUpdateReport } from "@workspace/api-client-react";
+import {
+  useGetReport,
+  getGetReportQueryKey,
+  useUpdateReport,
+  type AnnualReportStatus,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,7 +15,6 @@ import {
   CheckCircle2,
   ChevronRight,
   BarChart3,
-  Calculator,
   AlignLeft,
   PenTool,
   LayoutDashboard,
@@ -24,93 +28,114 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { WorkflowProgress, type WorkflowStep, type StepStatus } from "@/components/WorkflowProgress";
+import {
+  WorkflowProgress,
+  type WorkflowStep,
+  type StepStatus,
+} from "@/components/WorkflowProgress";
 import {
   getCashFlowAssessment,
   getCashFlowStatement,
   type CashFlowAssessmentResponse,
   type CashFlowStatementResponse,
 } from "@workspace/api-client-react";
+import { useLanguage } from "@/hooks/useLanguage";
+import type { StringKey } from "@/i18n/strings";
 
-const SECTIONS = [
+type Section = {
+  id: string;
+  titleKey: StringKey;
+  descKey: StringKey;
+  icon: typeof Upload;
+  href: string | null;
+};
+
+const SECTIONS: Section[] = [
   {
     id: "import",
-    title: "Importera bokföringsdata",
+    titleKey: "workspace.section.import.title",
+    descKey: "workspace.section.import.desc",
     icon: Upload,
-    desc: "Ladda upp SIE-, Excel- eller CSV-fil och granska staging",
     href: "import",
   },
   {
     id: "mappning",
-    title: "Kontomappning",
+    titleKey: "workspace.section.mapping.title",
+    descKey: "workspace.section.mapping.desc",
     icon: MapIcon,
-    desc: "Granska BAS → K2/K3-mappning och justera vid behov",
     href: "mapping",
   },
   {
     id: "förvaltningsberättelse",
-    title: "Förvaltningsberättelse",
+    titleKey: "workspace.section.mgmt.title",
+    descKey: "workspace.section.mgmt.desc",
     icon: AlignLeft,
-    desc: "Förvaltningsberättelse och bolagsöversikt",
     href: null,
   },
   {
     id: "finansiella-rapporter",
-    title: "Finansiella rapporter",
+    titleKey: "workspace.section.statements.title",
+    descKey: "workspace.section.statements.desc",
     icon: BarChart3,
-    desc: "Resultaträkning, balansräkning och kassaflödesanalys",
     href: "statements",
   },
   {
     id: "noter",
-    title: "Noter",
+    titleKey: "workspace.section.notes.title",
+    descKey: "workspace.section.notes.desc",
     icon: FileText,
-    desc: "Redovisningsprinciper och tilläggsupplysningar",
     href: "notes",
   },
   {
     id: "omklassificeringar",
-    title: "Omklassificeringar mellan noter",
+    titleKey: "workspace.section.reclass.title",
+    descKey: "workspace.section.reclass.desc",
     icon: Shuffle,
-    desc: "Förslag och kvittningar mellan noter — granska och tillämpa",
     href: "reclassifications",
   },
   {
     id: "kassaflode",
-    title: "Kassaflödesanalys",
+    titleKey: "workspace.section.cashflow.title",
+    descKey: "workspace.section.cashflow.desc",
     icon: TrendingUp,
-    desc: "Bedöm laglig skyldighet och bygg kassaflödesanalysen (indirekt metod)",
     href: "cash-flow",
   },
   {
     id: "validering",
-    title: "Validering",
+    titleKey: "workspace.section.validation.title",
+    descKey: "workspace.section.validation.desc",
     icon: ShieldAlert,
-    desc: "Kör regler för att hitta blockerande problem och varningar",
     href: "validation",
   },
   {
     id: "granskning",
-    title: "Granskning & samarbete",
+    titleKey: "workspace.section.review.title",
+    descKey: "workspace.section.review.desc",
     icon: ClipboardCheck,
-    desc: "Granskningsstatus per avsnitt, kommentarer och samarbetspartners",
     href: "review",
   },
   {
     id: "aktivitet",
-    title: "Aktivitet & revisionsspår",
+    titleKey: "workspace.section.audit.title",
+    descKey: "workspace.section.audit.desc",
     icon: History,
-    desc: "Komplett händelselogg och ögonblicksbilder",
     href: "audit",
   },
   {
     id: "underskrifter",
-    title: "Underskrifter",
+    titleKey: "workspace.section.signatures.title",
+    descKey: "workspace.section.signatures.desc",
     icon: PenTool,
-    desc: "Styrelseledamöter och revisor",
     href: null,
   },
 ];
+
+const STATUS_KEY: Record<AnnualReportStatus, StringKey> = {
+  draft: "report.status.draft",
+  in_progress: "report.status.in_progress",
+  complete: "report.status.complete",
+  exported: "report.status.exported",
+};
 
 export function ReportWorkspace() {
   const [, params] = useRoute("/reports/:reportId");
@@ -118,6 +143,7 @@ export function ReportWorkspace() {
   const reportId = params?.reportId || "";
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { t, language } = useLanguage();
 
   const { data: report, isLoading } = useGetReport(reportId, {
     query: {
@@ -129,9 +155,6 @@ export function ReportWorkspace() {
   const updateReport = useUpdateReport();
 
   // ── Cash flow workflow step status ────────────────────────────────────────
-  // Wires the "Kassaflödesanalys" workflow step to the real assessment +
-  // statement state so the sidebar reflects whether it is mandatory, optional,
-  // pending review, validated, or blocked.
   const { data: cfAssessment } = useQuery<CashFlowAssessmentResponse>({
     queryKey: ["cf-assessment", reportId],
     enabled: !!reportId,
@@ -148,18 +171,18 @@ export function ReportWorkspace() {
     s.id === "cash-flow" ? { ...s, ...cashFlowStep } : s,
   );
 
-  const handleStatusChange = (
-    newStatus: "draft" | "in_progress" | "complete" | "exported",
-  ) => {
+  const handleStatusChange = (newStatus: AnnualReportStatus) => {
     updateReport.mutate(
       { reportId, data: { status: newStatus } },
       {
         onSuccess: () => {
           toast({
-            title: "Status uppdaterad",
-            description: `Rapportstatus ändrad till ${newStatus.replace("_", " ")}.`,
+            title: t("workspace.status_changed.title"),
+            description: `${t("workspace.status_changed.desc_prefix")}${t(STATUS_KEY[newStatus]).toLowerCase()}.`,
           });
-          queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(reportId) });
+          queryClient.invalidateQueries({
+            queryKey: getGetReportQueryKey(reportId),
+          });
         },
       },
     );
@@ -183,10 +206,11 @@ export function ReportWorkspace() {
   }
 
   if (!report) {
-    return <div>Rapporten hittades inte.</div>;
+    return <div>{t("workspace.not_found")}</div>;
   }
 
   const fiscalYear = new Date(report.fiscalYearEnd).getFullYear();
+  const dateLocale = language === "sv" ? "sv-SE" : "en-GB";
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 max-w-6xl mx-auto">
@@ -198,7 +222,8 @@ export function ReportWorkspace() {
             className="hover:text-foreground transition-colors flex items-center gap-1"
           >
             <ArrowLeft className="h-3 w-3" />
-            Tillbaka till {report.companyName}
+            {t("workspace.back_to")}
+            {report.companyName}
           </Link>
         </div>
         <div className="flex items-center gap-3">
@@ -209,7 +234,7 @@ export function ReportWorkspace() {
             variant={report.status === "complete" ? "default" : "secondary"}
             className={report.status === "complete" ? "bg-green-500" : ""}
           >
-            {report.status.replace("_", " ").toUpperCase()}
+            {t(STATUS_KEY[report.status as AnnualReportStatus] ?? "report.status.draft")}
           </Badge>
         </div>
       </div>
@@ -218,12 +243,13 @@ export function ReportWorkspace() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-border pb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Årsredovisning {fiscalYear}
+            {t("workspace.title_prefix")}
+            {fiscalYear}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Räkenskapsår:{" "}
-            {new Date(report.fiscalYearStart).toLocaleDateString("sv-SE")} —{" "}
-            {new Date(report.fiscalYearEnd).toLocaleDateString("sv-SE")}
+            {t("workspace.fiscal_year")}
+            {new Date(report.fiscalYearStart).toLocaleDateString(dateLocale)} —{" "}
+            {new Date(report.fiscalYearEnd).toLocaleDateString(dateLocale)}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -235,7 +261,7 @@ export function ReportWorkspace() {
               disabled={updateReport.isPending}
             >
               <CheckCircle2 className="mr-2 h-4 w-4" />
-              Markera som klar
+              {t("workspace.mark_complete")}
             </Button>
           ) : (
             <Button
@@ -243,16 +269,16 @@ export function ReportWorkspace() {
               variant="outline"
               className="border-amber-500/40 text-amber-700 hover:bg-amber-500/10"
               disabled={updateReport.isPending}
-              title="Återöppna rapporten för redigering"
+              title={t("workspace.unmark_complete_title")}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Ångra klarmarkering
+              {t("workspace.unmark_complete")}
             </Button>
           )}
           <Button asChild>
             <Link href={`/reports/${report.id}/summary`}>
               <LayoutDashboard className="mr-2 h-4 w-4" />
-              Visa sammanfattning
+              {t("workspace.view_summary")}
             </Link>
           </Button>
         </div>
@@ -262,9 +288,11 @@ export function ReportWorkspace() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-2">
         {/* Sections list */}
         <div className="md:col-span-2 space-y-4">
-          <h2 className="text-xl font-bold tracking-tight mb-4">Avsnitt</h2>
+          <h2 className="text-xl font-bold tracking-tight mb-4">
+            {t("workspace.sections")}
+          </h2>
           <div className="grid gap-3">
-            {SECTIONS.map((section, idx) => (
+            {SECTIONS.map((section) => (
               <Card
                 key={section.id}
                 className={`shadow-sm transition-colors ${
@@ -291,17 +319,19 @@ export function ReportWorkspace() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-lg flex items-center gap-2">
-                        {section.title}
+                        {t(section.titleKey)}
                         {section.id === "finansiella-rapporter" && (
                           <Badge
                             variant="secondary"
                             className="text-[10px] h-4 px-1.5 bg-primary/10 text-primary border-transparent"
                           >
-                            Ny
+                            {t("workspace.section.new")}
                           </Badge>
                         )}
                       </h3>
-                      <p className="text-sm text-muted-foreground">{section.desc}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {t(section.descKey)}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -310,14 +340,14 @@ export function ReportWorkspace() {
                         variant="secondary"
                         className="bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 border-transparent"
                       >
-                        Granskas
+                        {t("workspace.section.in_review")}
                       </Badge>
                     ) : (
                       <Badge
                         variant="secondary"
                         className="bg-muted/60 text-muted-foreground border-transparent"
                       >
-                        Kommande
+                        {t("workspace.section.upcoming")}
                       </Badge>
                     )}
                     {section.href && (
@@ -334,7 +364,9 @@ export function ReportWorkspace() {
         <div className="space-y-6">
           <Card className="shadow-sm">
             <CardHeader className="pb-3 border-b bg-muted/20">
-              <CardTitle className="text-lg">9-stegs arbetsflöde</CardTitle>
+              <CardTitle className="text-lg">
+                {t("workspace.workflow.title")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
               <WorkflowProgress steps={workflowSteps} />
@@ -343,7 +375,9 @@ export function ReportWorkspace() {
 
           <Card className="shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Snabbåtgärder</CardTitle>
+              <CardTitle className="text-lg">
+                {t("workspace.quick_actions")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button
@@ -352,7 +386,7 @@ export function ReportWorkspace() {
                 onClick={() => navigate(`/reports/${reportId}/statements`)}
               >
                 <TrendingUp className="mr-2 h-4 w-4" />
-                Finansiella rapporter
+                {t("workspace.quick.statements")}
               </Button>
               <Button
                 variant="outline"
@@ -360,11 +394,11 @@ export function ReportWorkspace() {
                 onClick={() => navigate(`/reports/${reportId}/preview`)}
               >
                 <FileText className="mr-2 h-4 w-4" />
-                Förhandsvisa & exportera
+                {t("workspace.quick.preview")}
               </Button>
               <Button variant="outline" className="w-full justify-start" disabled>
                 <PenTool className="mr-2 h-4 w-4" />
-                Skicka för signering
+                {t("workspace.quick.sign")}
               </Button>
             </CardContent>
           </Card>
@@ -402,7 +436,6 @@ function deriveCashFlowStep(
 ): Partial<WorkflowStep> {
   if (!assessment) return {};
 
-  // Requirement decision must be settled first.
   if (assessment.cashFlowRequirement === "unknown") {
     return {
       status: "needs-review" as StepStatus,
@@ -411,8 +444,10 @@ function deriveCashFlowStep(
     };
   }
 
-  // Optional + voluntary disabled → not in export, not blocking.
-  if (assessment.cashFlowRequirement === "optional" && !assessment.shouldIncludeInExport) {
+  if (
+    assessment.cashFlowRequirement === "optional" &&
+    !assessment.shouldIncludeInExport
+  ) {
     return {
       status: "not-started" as StepStatus,
       badge: "Frivillig",
@@ -425,16 +460,27 @@ function deriveCashFlowStep(
     return {
       status: "needs-review" as StepStatus,
       badge:
-        assessment.cashFlowRequirement === "mandatory" ? "Obligatorisk" : "Frivillig",
-      badgeTone: assessment.cashFlowRequirement === "mandatory" ? "danger" : "info",
+        assessment.cashFlowRequirement === "mandatory"
+          ? "Obligatorisk"
+          : "Frivillig",
+      badgeTone:
+        assessment.cashFlowRequirement === "mandatory" ? "danger" : "info",
     };
   }
 
   switch (stmt.status) {
     case "validated":
-      return { status: "completed" as StepStatus, badge: "Validerad", badgeTone: "success" };
+      return {
+        status: "completed" as StepStatus,
+        badge: "Validerad",
+        badgeTone: "success",
+      };
     case "blocked":
-      return { status: "blocked" as StepStatus, badge: "Blockerad", badgeTone: "danger" };
+      return {
+        status: "blocked" as StepStatus,
+        badge: "Blockerad",
+        badgeTone: "danger",
+      };
     case "needs_review":
       return {
         status: "needs-review" as StepStatus,

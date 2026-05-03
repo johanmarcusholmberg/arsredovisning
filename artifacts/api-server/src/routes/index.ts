@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 import { requireAuth } from "../middlewares/auth.js";
 import { syncProfile } from "../middlewares/profile.js";
 import healthRouter from "./health";
+import clientErrorsRouter from "./clientErrors";
+import eventsRouter from "./events";
 import companiesRouter from "./companies";
 import reportsRouter from "./reports";
 import dashboardRouter from "./dashboard";
@@ -25,6 +27,8 @@ import meRouter from "./me";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(clientErrorsRouter);
+router.use(eventsRouter);
 
 router.use(requireAuth);
 router.use(syncProfile);

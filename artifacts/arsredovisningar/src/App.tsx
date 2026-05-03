@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -5,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SidebarLayout } from "./components/layout/SidebarLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Dashboard } from "./pages/Dashboard";
@@ -14,8 +16,6 @@ import { CompanyEdit } from "./pages/CompanyEdit";
 import { CompanyDetail } from "./pages/CompanyDetail";
 import { ReportWorkspace } from "./pages/ReportWorkspace";
 import { ReportSummary } from "./pages/ReportSummary";
-import PreviewExport from "./pages/PreviewExport";
-import { FinancialStatements } from "./pages/FinancialStatements";
 import { ImportPage } from "./pages/ImportPage";
 import { MappingPage } from "./pages/MappingPage";
 import { NotesPage } from "./pages/NotesPage";
@@ -23,14 +23,29 @@ import { ReclassificationReview } from "./pages/ReclassificationReview";
 import { ValidationView } from "./pages/ValidationView";
 import { CashFlowPage } from "./pages/CashFlowPage";
 import { ReviewView } from "./pages/ReviewView";
-import { AuditView } from "./pages/AuditView";
 import { Settings } from "./pages/Settings";
 import { LaunchChecklist } from "./pages/LaunchChecklist";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ForgotPassword } from "./pages/ForgotPassword";
-import { ResetPassword } from "./pages/ResetPassword";
 import NotFound from "@/pages/not-found";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// ─── Code-split heavy pages (P3-3) ──────────────────────────────────────────
+// Pages with large dependency trees (PDF preview, full statements grid,
+// audit timeline, recovery flow) get loaded only when their route is hit.
+const PreviewExport = lazy(() => import("./pages/PreviewExport"));
+const FinancialStatements = lazy(() =>
+  import("./pages/FinancialStatements").then((m) => ({
+    default: m.FinancialStatements,
+  })),
+);
+const AuditView = lazy(() =>
+  import("./pages/AuditView").then((m) => ({ default: m.AuditView })),
+);
+const ResetPassword = lazy(() =>
+  import("./pages/ResetPassword").then((m) => ({ default: m.ResetPassword })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,35 +56,46 @@ const queryClient = new QueryClient({
   }
 });
 
+function PageFallback() {
+  return (
+    <div className="p-6 space-y-4">
+      <Skeleton className="h-8 w-1/3" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  );
+}
+
 function AppRoutes() {
   return (
     <ProtectedRoute>
       <SidebarLayout>
-        <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/companies" component={Companies} />
-          <Route path="/companies/new" component={CompanyNew} />
-          <Route path="/companies/:companyId/edit" component={CompanyEdit} />
-          <Route path="/companies/:companyId" component={CompanyDetail} />
-          <Route path="/reports/:reportId" component={ReportWorkspace} />
-          <Route path="/reports/:reportId/import" component={ImportPage} />
-          <Route path="/reports/:reportId/mapping" component={MappingPage} />
-          <Route path="/reports/:reportId/statements" component={FinancialStatements} />
-          <Route path="/reports/:reportId/notes" component={NotesPage} />
-          <Route
-            path="/reports/:reportId/reclassifications"
-            component={ReclassificationReview}
-          />
-          <Route path="/reports/:reportId/cash-flow" component={CashFlowPage} />
-          <Route path="/reports/:reportId/validation" component={ValidationView} />
-          <Route path="/reports/:reportId/review" component={ReviewView} />
-          <Route path="/reports/:reportId/audit" component={AuditView} />
-          <Route path="/reports/:reportId/summary" component={ReportSummary} />
-          <Route path="/reports/:reportId/preview" component={PreviewExport} />
-          <Route path="/settings" component={Settings} />
-          <Route path="/launch-checklist" component={LaunchChecklist} />
-          <Route component={NotFound} />
-        </Switch>
+        <Suspense fallback={<PageFallback />}>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/companies" component={Companies} />
+            <Route path="/companies/new" component={CompanyNew} />
+            <Route path="/companies/:companyId/edit" component={CompanyEdit} />
+            <Route path="/companies/:companyId" component={CompanyDetail} />
+            <Route path="/reports/:reportId" component={ReportWorkspace} />
+            <Route path="/reports/:reportId/import" component={ImportPage} />
+            <Route path="/reports/:reportId/mapping" component={MappingPage} />
+            <Route path="/reports/:reportId/statements" component={FinancialStatements} />
+            <Route path="/reports/:reportId/notes" component={NotesPage} />
+            <Route
+              path="/reports/:reportId/reclassifications"
+              component={ReclassificationReview}
+            />
+            <Route path="/reports/:reportId/cash-flow" component={CashFlowPage} />
+            <Route path="/reports/:reportId/validation" component={ValidationView} />
+            <Route path="/reports/:reportId/review" component={ReviewView} />
+            <Route path="/reports/:reportId/audit" component={AuditView} />
+            <Route path="/reports/:reportId/summary" component={ReportSummary} />
+            <Route path="/reports/:reportId/preview" component={PreviewExport} />
+            <Route path="/settings" component={Settings} />
+            <Route path="/launch-checklist" component={LaunchChecklist} />
+            <Route component={NotFound} />
+          </Switch>
+        </Suspense>
       </SidebarLayout>
     </ProtectedRoute>
   );
@@ -84,22 +110,24 @@ function AuthRedirect({ component: Component }: { component: React.ComponentType
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/login">
-        <AuthRedirect component={Login} />
-      </Route>
-      <Route path="/register">
-        <AuthRedirect component={Register} />
-      </Route>
-      <Route path="/forgot-password">
-        <AuthRedirect component={ForgotPassword} />
-      </Route>
-      {/* Recovery landing page: do NOT bounce away on auth — the magic
-          link itself creates a session, and the page needs that session
-          to call updateUser. */}
-      <Route path="/reset-password" component={ResetPassword} />
-      <Route component={AppRoutes} />
-    </Switch>
+    <Suspense fallback={<PageFallback />}>
+      <Switch>
+        <Route path="/login">
+          <AuthRedirect component={Login} />
+        </Route>
+        <Route path="/register">
+          <AuthRedirect component={Register} />
+        </Route>
+        <Route path="/forgot-password">
+          <AuthRedirect component={ForgotPassword} />
+        </Route>
+        {/* Recovery landing page: do NOT bounce away on auth — the magic
+            link itself creates a session, and the page needs that session
+            to call updateUser. */}
+        <Route path="/reset-password" component={ResetPassword} />
+        <Route component={AppRoutes} />
+      </Switch>
+    </Suspense>
   );
 }
 
@@ -107,14 +135,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <AuthProvider>
-              <Router />
-            </AuthProvider>
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
+        <ErrorBoundary>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <AuthProvider>
+                <Router />
+              </AuthProvider>
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </ErrorBoundary>
       </LanguageProvider>
     </QueryClientProvider>
   );

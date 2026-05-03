@@ -1,5 +1,6 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { track } from "@/lib/track";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ import {
   AuthLanguageSwitcher,
   BackToHomepageLink,
 } from "@/components/auth/AuthChrome";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 
 export function Register() {
   const [email, setEmail] = useState("");
@@ -32,8 +34,25 @@ export function Register() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
+  // Persist the "from=demo" referral so the post-signup Dashboard can show
+  // a one-time prompt even after Supabase email confirmation forces a
+  // detour through /login. Read once on mount so a stale URL doesn't
+  // overwrite a fresher value.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("from") === "demo") {
+      try {
+        window.localStorage.setItem("ar.signupSource", "demo");
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    track("register_start");
 
     if (password !== confirmPassword) {
       toast({
@@ -63,6 +82,7 @@ export function Register() {
       });
       setLoading(false);
     } else {
+      track("register_success");
       setSuccess(true);
     }
   }
@@ -128,13 +148,13 @@ export function Register() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
+                  autoFocus
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">{t("common.password")}</Label>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   className="h-11"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -146,14 +166,14 @@ export function Register() {
                 <Label htmlFor="confirmPassword">
                   {t("register.confirm_password")}
                 </Label>
-                <Input
+                <PasswordInput
                   id="confirmPassword"
-                  type="password"
                   className="h-11"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   autoComplete="new-password"
+                  showCapsLockHint={false}
                 />
               </div>
             </CardContent>
@@ -161,7 +181,12 @@ export function Register() {
               <Button
                 type="submit"
                 className="w-full h-11 text-base font-medium"
-                disabled={loading}
+                disabled={
+                  loading ||
+                  !email.trim() ||
+                  !password ||
+                  !confirmPassword
+                }
               >
                 {loading ? t("register.submitting") : t("register.submit")}
               </Button>

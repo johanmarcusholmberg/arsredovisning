@@ -11,7 +11,13 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,10 +39,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/hooks/useLanguage";
+import type { Language } from "@/i18n/strings";
 import { User, Bell, Shield, Key, Loader2 } from "lucide-react";
 
 export function Settings() {
   const { toast } = useToast();
+  const { t, setLanguage: setUiLanguage } = useLanguage();
   const qc = useQueryClient();
   const meQueryKey = getGetMeQueryKey();
 
@@ -46,12 +55,12 @@ export function Settings() {
     mutation: {
       onSuccess: (data) => {
         qc.setQueryData(meQueryKey, data);
-        toast({ title: "Profile updated" });
+        toast({ title: t("settings.profile.saved_toast") });
       },
       onError: (err: unknown) => {
         toast({
-          title: "Could not save profile",
-          description: err instanceof Error ? err.message : "Unknown error",
+          title: t("settings.profile.save_error"),
+          description: err instanceof Error ? err.message : t("auth.error.generic"),
           variant: "destructive",
         });
       },
@@ -65,8 +74,8 @@ export function Settings() {
       },
       onError: (err: unknown) => {
         toast({
-          title: "Could not save preference",
-          description: err instanceof Error ? err.message : "Unknown error",
+          title: t("settings.notifications.save_error"),
+          description: err instanceof Error ? err.message : t("auth.error.generic"),
           variant: "destructive",
         });
         qc.invalidateQueries({ queryKey: meQueryKey });
@@ -76,7 +85,7 @@ export function Settings() {
 
   // ── Profile form local state, hydrated from server ──
   const [displayName, setDisplayName] = useState("");
-  const [language, setLanguage] = useState<"sv" | "en">("sv");
+  const [language, setLanguage] = useState<Language>("sv");
 
   useEffect(() => {
     if (me) {
@@ -87,6 +96,10 @@ export function Settings() {
 
   function handleProfileSave(e: FormEvent) {
     e.preventDefault();
+    // Mirror the chosen UI language to the LanguageContext immediately so
+    // the rest of the chrome (sidebar, toasts) flips without waiting for
+    // the next reload.
+    setUiLanguage(language);
     updateProfile.mutate({
       data: {
         displayName: displayName.trim() || null,
@@ -95,7 +108,10 @@ export function Settings() {
     });
   }
 
-  function handleToggle(field: "emailWeeklySummary" | "deadlineAlertsEnabled", value: boolean) {
+  function handleToggle(
+    field: "emailWeeklySummary" | "deadlineAlertsEnabled",
+    value: boolean,
+  ) {
     if (!me) return;
     qc.setQueryData(meQueryKey, {
       ...me,
@@ -108,11 +124,11 @@ export function Settings() {
     return (
       <div className="max-w-4xl mx-auto py-12">
         <Alert variant="destructive">
-          <AlertTitle>Could not load settings</AlertTitle>
+          <AlertTitle>{t("settings.error.title")}</AlertTitle>
           <AlertDescription className="space-y-3">
-            <p>{error instanceof Error ? error.message : "Unknown error"}</p>
+            <p>{error instanceof Error ? error.message : t("auth.error.generic")}</p>
             <Button size="sm" variant="outline" onClick={() => refetch()}>
-              Retry
+              {t("settings.error.retry")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -123,7 +139,7 @@ export function Settings() {
   if (isLoading || !me) {
     return (
       <div className="max-w-4xl mx-auto py-12 flex items-center justify-center text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading settings…
+        <Loader2 className="h-5 w-5 animate-spin mr-2" /> {t("settings.loading")}
       </div>
     );
   }
@@ -131,10 +147,10 @@ export function Settings() {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your account preferences and application settings.
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {t("settings.title")}
+        </h1>
+        <p className="text-muted-foreground mt-1">{t("settings.subtitle")}</p>
       </div>
 
       <div className="grid gap-6">
@@ -143,14 +159,16 @@ export function Settings() {
           <CardHeader className="border-b bg-muted/20 pb-4">
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-primary" />
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle>{t("settings.profile.title")}</CardTitle>
             </div>
-            <CardDescription>Update your display name and language.</CardDescription>
+            <CardDescription>{t("settings.profile.description")}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleProfileSave} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name</Label>
+                <Label htmlFor="displayName">
+                  {t("settings.profile.display_name")}
+                </Label>
                 <Input
                   id="displayName"
                   value={displayName}
@@ -159,30 +177,38 @@ export function Settings() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{t("settings.profile.email")}</Label>
                 <div className="flex gap-2">
-                  <Input id="email" value={me.profile.email} type="email" readOnly disabled />
+                  <Input
+                    id="email"
+                    value={me.profile.email}
+                    type="email"
+                    readOnly
+                    disabled
+                  />
                   <ChangeEmailButton />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
+                <Label htmlFor="language">{t("settings.profile.language")}</Label>
                 <Select
                   value={language}
-                  onValueChange={(v) => setLanguage(v as "sv" | "en")}
+                  onValueChange={(v) => setLanguage(v as Language)}
                 >
                   <SelectTrigger id="language" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sv">Svenska</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="sv">{t("common.language.sv")}</SelectItem>
+                    <SelectItem value="en">{t("common.language.en")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Button type="submit" disabled={updateProfile.isPending}>
-                {updateProfile.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save Changes
+                {updateProfile.isPending && (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                )}
+                {t("settings.profile.save")}
               </Button>
             </form>
           </CardContent>
@@ -193,16 +219,20 @@ export function Settings() {
           <CardHeader className="border-b bg-muted/20 pb-4">
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-primary" />
-              <CardTitle>Notifications</CardTitle>
+              <CardTitle>{t("settings.notifications.title")}</CardTitle>
             </div>
-            <CardDescription>Configure how you receive alerts.</CardDescription>
+            <CardDescription>
+              {t("settings.notifications.description")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <Label className="text-base">Email Notifications</Label>
+                <Label className="text-base">
+                  {t("settings.notifications.email")}
+                </Label>
                 <p className="text-sm text-muted-foreground">
-                  Receive weekly summaries of reports.
+                  {t("settings.notifications.email_desc")}
                 </p>
               </div>
               <Switch
@@ -213,15 +243,19 @@ export function Settings() {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <Label className="text-base">Deadline Alerts</Label>
+                <Label className="text-base">
+                  {t("settings.notifications.deadlines")}
+                </Label>
                 <p className="text-sm text-muted-foreground">
-                  Get notified when a fiscal year approaches its end.
+                  {t("settings.notifications.deadlines_desc")}
                 </p>
               </div>
               <Switch
                 checked={me.preferences.deadlineAlertsEnabled}
                 disabled={updatePrefs.isPending}
-                onCheckedChange={(v) => handleToggle("deadlineAlertsEnabled", v)}
+                onCheckedChange={(v) =>
+                  handleToggle("deadlineAlertsEnabled", v)
+                }
               />
             </div>
           </CardContent>
@@ -232,9 +266,11 @@ export function Settings() {
           <CardHeader className="border-b bg-muted/20 pb-4">
             <div className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
-              <CardTitle>Security</CardTitle>
+              <CardTitle>{t("settings.security.title")}</CardTitle>
             </div>
-            <CardDescription>Manage password and authentication.</CardDescription>
+            <CardDescription>
+              {t("settings.security.description")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <ChangePasswordButton email={me.profile.email} />
@@ -248,13 +284,13 @@ export function Settings() {
 // ── Change Password dialog ──
 function ChangePasswordButton({ email }: { email: string }) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   // Ensure we're inside an AuthProvider (we use supabase directly below).
   useAuth();
   const [open, setOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   const changePassword = useChangeMyPassword({
     mutation: {
@@ -270,46 +306,56 @@ function ChangePasswordButton({ email }: { email: string }) {
           });
           if (signInErr) {
             toast({
-              title: "Password updated, but please sign in again",
+              title: t("settings.password.updated_signin_again"),
               description: signInErr.message,
               variant: "destructive",
             });
           } else {
-            toast({ title: "Password updated" });
+            toast({ title: t("settings.password.updated_toast") });
           }
         } else {
-          toast({ title: "Password updated" });
+          toast({ title: t("settings.password.updated_toast") });
         }
         setOpen(false);
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
-        setError(null);
       },
       onError: (err: unknown) => {
-        let message = "Could not update password";
+        let message = t("settings.password.update_error");
         if (err && typeof err === "object" && "message" in err) {
           message = String((err as { message: unknown }).message);
         }
-        // Surface the most common 401 case as a clear inline error.
-        if (/incorrect|invalid_credentials|401/i.test(message)) {
-          setError("Current password is incorrect.");
-        } else {
-          setError(message);
-        }
+        // Surface the most common 401 case as a clear toast.
+        const localized =
+          /incorrect|invalid_credentials|401/i.test(message)
+            ? t("settings.password.current_wrong")
+            : message;
+        toast({
+          title: t("settings.password.update_error"),
+          description: localized,
+          variant: "destructive",
+        });
       },
     },
   });
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
     if (newPassword.length < 8) {
-      setError("New password must be at least 8 characters.");
+      toast({
+        title: t("settings.password.update_error"),
+        description: t("settings.password.too_short"),
+        variant: "destructive",
+      });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("New passwords do not match.");
+      toast({
+        title: t("settings.password.update_error"),
+        description: t("settings.password.mismatch"),
+        variant: "destructive",
+      });
       return;
     }
     changePassword.mutate({
@@ -318,24 +364,18 @@ function ChangePasswordButton({ email }: { email: string }) {
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        setOpen(v);
-        if (!v) setError(null);
-      }}
-    >
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline">
-          <Key className="mr-2 h-4 w-4" /> Change Password
+          <Key className="mr-2 h-4 w-4" /> {t("settings.password.button")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Change Password</DialogTitle>
+            <DialogTitle>{t("settings.password.title")}</DialogTitle>
             <DialogDescription>
-              Enter your current password and choose a new one. Your session stays active.
+              {t("settings.password.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -350,7 +390,9 @@ function ChangePasswordButton({ email }: { email: string }) {
               hidden
             />
             <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password</Label>
+              <Label htmlFor="currentPassword">
+                {t("settings.password.current")}
+              </Label>
               <Input
                 id="currentPassword"
                 type="password"
@@ -361,7 +403,7 @@ function ChangePasswordButton({ email }: { email: string }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
+              <Label htmlFor="newPassword">{t("settings.password.new")}</Label>
               <Input
                 id="newPassword"
                 type="password"
@@ -371,10 +413,14 @@ function ChangePasswordButton({ email }: { email: string }) {
                 required
                 minLength={8}
               />
-              <p className="text-xs text-muted-foreground">At least 8 characters.</p>
+              <p className="text-xs text-muted-foreground">
+                {t("settings.password.hint")}
+              </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Label htmlFor="confirmPassword">
+                {t("settings.password.confirm")}
+              </Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -385,19 +431,16 @@ function ChangePasswordButton({ email }: { email: string }) {
                 minLength={8}
               />
             </div>
-            {error && (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
+              {t("settings.password.cancel")}
             </Button>
             <Button type="submit" disabled={changePassword.isPending}>
-              {changePassword.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Update Password
+              {changePassword.isPending && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              {t("settings.password.submit")}
             </Button>
           </DialogFooter>
         </form>
@@ -409,62 +452,57 @@ function ChangePasswordButton({ email }: { email: string }) {
 // ── Change Email dialog ──
 function ChangeEmailButton() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   const changeEmail = useChangeMyEmail({
     mutation: {
       onSuccess: () => {
         toast({
-          title: "Confirmation email sent",
-          description: `Check ${newEmail} for a confirmation link.`,
+          title: t("settings.email.sent_title"),
+          description: `${t("settings.email.sent_desc_prefix")}${newEmail}${t("settings.email.sent_desc_suffix")}`,
         });
         setOpen(false);
         setNewEmail("");
-        setError(null);
       },
       onError: (err: unknown) => {
         const message =
           err && typeof err === "object" && "message" in err
             ? String((err as { message: unknown }).message)
-            : "Could not change email";
-        setError(message);
+            : t("settings.email.error");
+        toast({
+          title: t("settings.email.error"),
+          description: message,
+          variant: "destructive",
+        });
       },
     },
   });
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
     changeEmail.mutate({ data: { newEmail } });
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        setOpen(v);
-        if (!v) setError(null);
-      }}
-    >
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button" variant="outline">
-          Change
+          {t("settings.profile.email_change")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Change Email</DialogTitle>
+            <DialogTitle>{t("settings.email.title")}</DialogTitle>
             <DialogDescription>
-              We'll send a confirmation link to your new address. The change takes effect once
-              you confirm it.
+              {t("settings.email.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="newEmail">New Email Address</Label>
+              <Label htmlFor="newEmail">{t("settings.email.new")}</Label>
               <Input
                 id="newEmail"
                 type="email"
@@ -474,19 +512,16 @@ function ChangeEmailButton() {
                 required
               />
             </div>
-            {error && (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
+              {t("settings.email.cancel")}
             </Button>
             <Button type="submit" disabled={changeEmail.isPending}>
-              {changeEmail.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Send Confirmation
+              {changeEmail.isPending && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              {t("settings.email.submit")}
             </Button>
           </DialogFooter>
         </form>

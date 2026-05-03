@@ -1,6 +1,7 @@
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/hooks/useLanguage";
+import { track } from "@/lib/track";
 
 interface DemoPdfDownloadProps {
   variant?: "primary" | "outline";
@@ -14,7 +15,13 @@ export function DemoPdfDownload({ variant = "primary", size = "default" }: DemoP
   const { t } = useLanguage();
   const href = `${import.meta.env.BASE_URL}arsredovisning-demo.pdf`;
   return (
-    <Button asChild variant={variant === "outline" ? "outline" : "default"} size={size} className="gap-2">
+    <Button
+      asChild
+      variant={variant === "outline" ? "outline" : "default"}
+      size={size}
+      className="gap-2"
+      onClick={() => track("demo_open_pdf")}
+    >
       <a href={href} download="arsredovisning-demo.pdf">
         <Download className="size-4" />
         {t("publicDemo.cta.downloadPdf")}

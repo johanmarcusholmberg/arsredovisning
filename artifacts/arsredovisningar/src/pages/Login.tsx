@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   AuthLanguageSwitcher,
   BackToHomepageLink,
 } from "@/components/auth/AuthChrome";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -30,6 +31,42 @@ export function Login() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
+  // Detect Supabase's email-confirmation redirect (P2-3). Supabase appends
+  // either `?type=signup&...` or a hash like `#access_token=...&type=signup`
+  // when the user clicks the verification link. Show a friendly localized
+  // toast and clean the URL so a refresh doesn't fire the toast again.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const search = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(
+      window.location.hash.startsWith("#")
+        ? window.location.hash.slice(1)
+        : window.location.hash,
+    );
+    const type = search.get("type") ?? hash.get("type");
+    const confirmed =
+      search.get("confirmed") === "1" ||
+      type === "signup" ||
+      type === "email_change" ||
+      type === "email_confirmation";
+    if (!confirmed) return;
+    toast({
+      title: t("login.email_confirmed.title"),
+      description: t("login.email_confirmed.body"),
+    });
+    // Strip the noisy params/hash so a manual refresh is clean.
+    try {
+      const url = new URL(window.location.href);
+      url.search = "";
+      url.hash = "";
+      window.history.replaceState({}, "", url.toString());
+    } catch {
+      /* ignore */
+    }
+    // Intentionally run only on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -37,8 +74,6 @@ export function Login() {
     const { error } = await signIn(email, password);
 
     if (error) {
-      // Surface as a transient toast instead of an inline alert so the form
-      // doesn't grow taller and shift fields around when validation fails.
       toast({
         variant: "destructive",
         title: t("login.error.toast_title"),
@@ -49,6 +84,8 @@ export function Login() {
       navigate("/");
     }
   }
+
+  const canSubmit = email.trim().length > 0 && password.length > 0;
 
   return (
     <div className="auth-brand min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 relative">
@@ -84,6 +121,7 @@ export function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
+                  autoFocus
                 />
               </div>
               <div className="space-y-2">
@@ -96,9 +134,8 @@ export function Login() {
                     {t("login.forgot_password")}
                   </Link>
                 </div>
-                <Input
+                <PasswordInput
                   id="password"
-                  type="password"
                   className="h-11"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -111,7 +148,7 @@ export function Login() {
               <Button
                 type="submit"
                 className="w-full h-11 text-base font-medium"
-                disabled={loading}
+                disabled={loading || !canSubmit}
               >
                 {loading ? t("login.submitting") : t("login.submit")}
               </Button>

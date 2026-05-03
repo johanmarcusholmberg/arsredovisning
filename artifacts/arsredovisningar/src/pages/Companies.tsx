@@ -20,18 +20,26 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Building, Plus, ChevronRight } from "lucide-react";
+import { useLanguage } from "@/hooks/useLanguage";
+import type { StringKey } from "@/i18n/strings";
 
-const statusMeta: Record<
-  AnnualReportStatus,
-  { label: string; cls: string }
-> = {
-  draft: { label: "Utkast", cls: "bg-slate-500/10 text-slate-700 border-slate-500/30" },
-  in_progress: { label: "Pågående", cls: "bg-blue-500/10 text-blue-700 border-blue-500/30" },
-  complete: { label: "Klar", cls: "bg-green-500/10 text-green-700 border-green-500/30" },
-  exported: { label: "Exporterad", cls: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30" },
+const STATUS_KEY: Record<AnnualReportStatus, StringKey> = {
+  draft: "report.status.draft",
+  in_progress: "report.status.in_progress",
+  complete: "report.status.complete",
+  exported: "report.status.exported",
 };
 
-function pickLatestReport(reports: AnnualReport[] | undefined): AnnualReport | null {
+const STATUS_CLS: Record<AnnualReportStatus, string> = {
+  draft: "bg-slate-500/10 text-slate-700 border-slate-500/30",
+  in_progress: "bg-blue-500/10 text-blue-700 border-blue-500/30",
+  complete: "bg-green-500/10 text-green-700 border-green-500/30",
+  exported: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
+};
+
+function pickLatestReport(
+  reports: AnnualReport[] | undefined,
+): AnnualReport | null {
   if (!reports || reports.length === 0) return null;
   return [...reports].sort((a, b) =>
     b.fiscalYearEnd.localeCompare(a.fiscalYearEnd),
@@ -39,6 +47,7 @@ function pickLatestReport(reports: AnnualReport[] | undefined): AnnualReport | n
 }
 
 function CompanyReportCell({ companyId }: { companyId: string }) {
+  const { t } = useLanguage();
   const { data: reports, isLoading } = useListReports(companyId, {
     query: { queryKey: getListReportsQueryKey(companyId) },
   });
@@ -49,14 +58,20 @@ function CompanyReportCell({ companyId }: { companyId: string }) {
 
   const latest = pickLatestReport(reports);
   if (!latest) {
-    return <span className="text-xs text-muted-foreground/60">Ingen rapport</span>;
+    return (
+      <span className="text-xs text-muted-foreground/60">
+        {t("companies.no_report")}
+      </span>
+    );
   }
 
-  const meta = statusMeta[latest.status];
   return (
     <div className="flex flex-col gap-1 min-w-[140px]">
-      <Badge variant="outline" className={`${meta.cls} w-fit text-[11px]`}>
-        {meta.label}
+      <Badge
+        variant="outline"
+        className={`${STATUS_CLS[latest.status]} w-fit text-[11px]`}
+      >
+        {t(STATUS_KEY[latest.status])}
       </Badge>
       <div className="flex items-center gap-2">
         <div className="h-1 w-20 bg-muted rounded-full overflow-hidden">
@@ -101,6 +116,7 @@ function CompanyLatestYearCell({ companyId }: { companyId: string }) {
 }
 
 export function Companies() {
+  const { t } = useLanguage();
   const {
     data: companies,
     isLoading,
@@ -113,14 +129,16 @@ export function Companies() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Companies</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {t("companies.title")}
+          </h1>
           <p className="text-muted-foreground mt-1 text-lg">
-            Your client companies. Open a company to manage its annual reports.
+            {t("companies.subtitle")}
           </p>
         </div>
         <Button asChild className="shrink-0 h-11 px-6 shadow-sm">
           <Link href="/companies/new">
-            <Plus className="mr-2 h-4 w-4" /> New Company
+            <Plus className="mr-2 h-4 w-4" /> {t("companies.new")}
           </Link>
         </Button>
       </div>
@@ -135,8 +153,10 @@ export function Companies() {
         </Card>
       ) : isError ? (
         <div className="bg-destructive/10 text-destructive p-6 rounded-lg border border-destructive/20 text-center">
-          <h3 className="font-bold text-lg mb-2">Error loading companies</h3>
-          <p>Could not fetch companies. Please try refreshing.</p>
+          <h3 className="font-bold text-lg mb-2">
+            {t("companies.error.title")}
+          </h3>
+          <p>{t("companies.error.body")}</p>
         </div>
       ) : !companies || companies.length === 0 ? (
         <Card className="shadow-sm">
@@ -145,14 +165,12 @@ export function Companies() {
               <Building className="h-8 w-8 opacity-50" />
             </div>
             <h3 className="font-semibold text-lg text-foreground">
-              No companies yet
+              {t("companies.empty.title")}
             </h3>
-            <p className="mt-1 mb-6">
-              Add your first client company to start drafting annual reports.
-            </p>
+            <p className="mt-1 mb-6">{t("companies.empty.body")}</p>
             <Button asChild>
               <Link href="/companies/new">
-                <Plus className="mr-2 h-4 w-4" /> Create First Company
+                <Plus className="mr-2 h-4 w-4" /> {t("companies.empty.cta")}
               </Link>
             </Button>
           </CardContent>
@@ -162,15 +180,34 @@ export function Companies() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[24%]">Name</TableHead>
-                <TableHead className="w-[14%]">Org. number</TableHead>
-                <TableHead className="w-[8%]">Form</TableHead>
-                <TableHead className="w-[8%]">Framework</TableHead>
-                <TableHead className="w-[16%]">Senaste årsredovisning</TableHead>
-                <TableHead className="w-[7%] text-right">År</TableHead>
-                <TableHead className="w-[7%] text-right">Antal</TableHead>
-                <TableHead className="hidden lg:table-cell">Location</TableHead>
-                <TableHead className="w-[40px]" aria-label="Open" />
+                <TableHead className="w-[24%]">
+                  {t("companies.col.name")}
+                </TableHead>
+                <TableHead className="w-[14%]">
+                  {t("companies.col.org_number")}
+                </TableHead>
+                <TableHead className="w-[8%]">
+                  {t("companies.col.form")}
+                </TableHead>
+                <TableHead className="w-[8%]">
+                  {t("companies.col.framework")}
+                </TableHead>
+                <TableHead className="w-[16%]">
+                  {t("companies.col.latest_report")}
+                </TableHead>
+                <TableHead className="w-[7%] text-right">
+                  {t("companies.col.year")}
+                </TableHead>
+                <TableHead className="w-[7%] text-right">
+                  {t("companies.col.count")}
+                </TableHead>
+                <TableHead className="hidden lg:table-cell">
+                  {t("companies.col.location")}
+                </TableHead>
+                <TableHead
+                  className="w-[40px]"
+                  aria-label={t("companies.col.open_aria")}
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -188,9 +225,10 @@ export function Companies() {
                       // miss the title link.
                       const target = e.target as HTMLElement;
                       if (target.closest("a")) return;
-                      const link = e.currentTarget.querySelector<HTMLAnchorElement>(
-                        "a[data-row-link]"
-                      );
+                      const link =
+                        e.currentTarget.querySelector<HTMLAnchorElement>(
+                          "a[data-row-link]",
+                        );
                       link?.click();
                     }}
                   >

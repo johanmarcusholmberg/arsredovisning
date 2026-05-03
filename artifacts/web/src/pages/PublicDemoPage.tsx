@@ -1,7 +1,11 @@
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useSeo } from "@/lib/useSeo";
+import { track } from "@/lib/track";
+import { StickyDemoBanner } from "@/components/StickyDemoBanner";
 import { DemoCarousel, type DemoSlideDefinition } from "@/components/demo/DemoCarousel";
 import {
   ImportVisual,
@@ -11,10 +15,20 @@ import {
   FinishedVisual,
 } from "@/components/demo/DemoSlideVisuals";
 
-const APP_SIGNUP_URL = "/arsredovisningar/register";
+const APP_SIGNUP_URL = "/arsredovisningar/register?from=demo";
 
 export default function PublicDemoPage() {
   const { t } = useLanguage();
+  useSeo({
+    title: t("seo.demo.title"),
+    description: t("seo.demo.description"),
+    ogImage: "/opengraph.jpg",
+    canonicalPath: "/demo",
+  });
+
+  useEffect(() => {
+    track("demo_view");
+  }, []);
 
   const slides: DemoSlideDefinition[] = [
     {
@@ -103,7 +117,12 @@ export default function PublicDemoPage() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row md:flex-col gap-3 md:items-stretch">
-              <Button asChild size="lg" className="gap-2">
+              <Button
+                asChild
+                size="lg"
+                className="gap-2"
+                onClick={() => track("demo_signup_click")}
+              >
                 <a href={APP_SIGNUP_URL} target="_top" rel="noopener">
                   {t("publicDemo.cta.start")}
                   <ArrowRight className="size-4" />
@@ -117,6 +136,8 @@ export default function PublicDemoPage() {
           {t("publicDemo.disclaimer")}
         </p>
       </section>
+
+      <StickyDemoBanner />
     </div>
   );
 }
