@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import {
   useGetFinancialStatements,
@@ -256,6 +256,45 @@ export function FinancialStatements() {
   const hasLines = data?.hasAnyLines ?? false;
   const framework = (data?.framework ?? "K3") as "K2" | "K3";
   const cashFlowRequired = data?.cashFlowRequired ?? false;
+  const hasCashFlowLines = (data?.cashFlow?.length ?? 0) > 0;
+  // Show the tab when the analysis is required by the framework, OR when the
+  // user has voluntarily generated cash-flow lines for the report. Hidden for
+  // K2 reports without an override so the workspace stays focused on what
+  // actually applies.
+  const showCashFlowTab = cashFlowRequired || hasCashFlowLines;
+
+  // React to framework switches: bring the cash-flow tab into focus when it
+  // becomes required (e.g. K2 → K3), and step back to the income statement if
+  // the user was viewing a tab that just disappeared (e.g. K3 → K2 with no
+  // existing cash-flow lines).
+  const prevFrameworkRef = useRef<"K2" | "K3" | null>(null);
+  useEffect(() => {
+    const prev = prevFrameworkRef.current;
+    if (prev && prev !== framework) {
+      if (framework === "K3" && cashFlowRequired) {
+        setActiveTab("kassaflode");
+        toast({
+          title: "Kassaflödesanalys krävs nu",
+          description: "K3 kräver kassaflödesanalys — fliken har lyfts fram.",
+        });
+      } else if (framework === "K2" && !showCashFlowTab) {
+        setActiveTab((current) =>
+          current === "kassaflode" ? "resultatrakning" : current,
+        );
+      }
+    }
+    prevFrameworkRef.current = framework;
+    // We deliberately do not depend on `toast`; it is stable from the hook.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [framework, cashFlowRequired, showCashFlowTab]);
+
+  // If the active tab was hidden while we were on it (e.g. data loaded after
+  // a framework switch), gracefully fall back to the income statement.
+  useEffect(() => {
+    if (activeTab === "kassaflode" && !showCashFlowTab) {
+      setActiveTab("resultatrakning");
+    }
+  }, [activeTab, showCashFlowTab]);
 
   return (
     <div className="space-y-4">
@@ -312,20 +351,44 @@ export function FinancialStatements() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full justify-start border-b rounded-none bg-transparent h-auto pb-0 gap-1 mb-4">
             {[
-              { value: "resultatrakning", icon: BarChart3, label: "Resultaträkning" },
-              { value: "balansrakning", icon: LayoutList, label: "Balansräkning" },
-              { value: "kassaflode", icon: WavesLadder, label: "Kassaflödesanalys" },
-              { value: "rapportstruktur", icon: LayoutList, label: "Rapportstruktur" },
-            ].map(({ value, icon: Icon, label }) => (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className="rounded-b-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2"
-              >
-                <Icon className="h-3.5 w-3.5 mr-1.5" />
-                {label}
-              </TabsTrigger>
-            ))}
+              { value: "resultatrakning", icon: BarChart3, label: "Resultaträkning", badge: null as string | null, hidden: false },
+              { value: "balansrakning", icon: LayoutList, label: "Balansräkning", badge: null, hidden: false },
+              {
+                value: "kassaflode",
+                icon: WavesLadder,
+                label: "Kassaflödesanalys",
+                // "Krävs" makes the framework-driven obligation visible at a
+                // glance when K3 is active; "Frivillig" signals that lines
+                // exist on a K2 report but aren't mandatory.
+                badge: cashFlowRequired ? "Krävs" : hasCashFlowLines ? "Frivillig" : null,
+                hidden: !showCashFlowTab,
+              },
+              { value: "rapportstruktur", icon: LayoutList, label: "Rapportstruktur", badge: null, hidden: false },
+            ]
+              .filter((t) => !t.hidden)
+              .map(({ value, icon: Icon, label, badge }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="rounded-b-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2"
+                >
+                  <Icon className="h-3.5 w-3.5 mr-1.5" />
+                  {label}
+                  {badge && (
+                    <Badge
+                      variant="secondary"
+                      className={
+                        "ml-2 h-4 px-1.5 text-[10px] border-transparent " +
+                        (badge === "Krävs"
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground")
+                      }
+                    >
+                      {badge}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              ))}
           </TabsList>
 
           <TabsContent value="resultatrakning" className="mt-0">
