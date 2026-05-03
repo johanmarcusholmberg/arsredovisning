@@ -1,10 +1,16 @@
 import { useRoute, Link } from "wouter";
-import { useGetReportSummary, getGetReportSummaryQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  useGetReportSummary,
+  getGetReportSummaryQueryKey,
+  useGetReport,
+  getGetReportQueryKey,
+} from "@workspace/api-client-react";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, CheckCircle2, Circle, AlertCircle, FileDown, Edit3 } from "lucide-react";
+import { ConnectedReportSummaryCard } from "@/components/report/ReportSummaryCard";
 
 export function ReportSummary() {
   const [, params] = useRoute("/reports/:reportId/summary");
@@ -15,6 +21,13 @@ export function ReportSummary() {
       enabled: !!reportId,
       queryKey: getGetReportSummaryQueryKey(reportId)
     }
+  });
+
+  const { data: report } = useGetReport(reportId, {
+    query: {
+      enabled: !!reportId,
+      queryKey: getGetReportQueryKey(reportId),
+    },
   });
 
   if (isLoading) {
@@ -37,11 +50,8 @@ export function ReportSummary() {
         </Link>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Report Summary</h1>
-          <p className="text-muted-foreground mt-1 text-lg">{summary.companyName}</p>
-        </div>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold tracking-tight">Report Summary</h1>
         <Button className="shadow-sm" asChild>
           <Link href={`/reports/${reportId}/preview`}>
             <FileDown className="mr-2 h-4 w-4" /> Export Report
@@ -49,25 +59,30 @@ export function ReportSummary() {
         </Button>
       </div>
 
-      <Card className="bg-primary text-primary-foreground border-primary-border shadow-md">
-        <CardContent className="p-8 flex flex-col md:flex-row items-center gap-8">
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold mb-2">
-              {summary.completionPercent === 100 ? "Ready for Export" : "In Progress"}
-            </h2>
-            <p className="text-primary-foreground/80">
-              {summary.completionPercent === 100 
-                ? "All sections are completed and the report is ready to be exported or signed."
-                : `You have completed ${summary.sections.filter(s => s.completed).length} out of ${summary.sections.length} required sections.`}
-            </p>
-          </div>
-          <div className="shrink-0 flex items-center justify-center w-32 h-32 rounded-full border-4 border-primary-foreground/20 relative">
-            <div className="absolute inset-0 rounded-full border-4 border-primary-foreground" 
-                 style={{ clipPath: `polygon(0 0, 100% 0, 100% ${summary.completionPercent}%, 0 ${summary.completionPercent}%)`, transform: 'rotate(-90deg)' }} />
-            <span className="text-4xl font-bold">{summary.completionPercent}%</span>
-          </div>
-        </CardContent>
-      </Card>
+      {report ? (
+        <ConnectedReportSummaryCard
+          reportId={reportId}
+          report={report}
+          variant="hero"
+          trailing={
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="tabular-nums">
+                {summary.completionPercent}% ·{" "}
+                {summary.sections.filter((s) => s.completed).length}/
+                {summary.sections.length} sections
+              </span>
+              <div className="w-32 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary"
+                  style={{ width: `${summary.completionPercent}%` }}
+                />
+              </div>
+            </div>
+          }
+        />
+      ) : (
+        <Skeleton className="h-64 w-full" />
+      )}
 
       <h3 className="text-xl font-bold tracking-tight mt-8 mb-4">Section Breakdown</h3>
       

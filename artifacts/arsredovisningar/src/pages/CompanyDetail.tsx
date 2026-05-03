@@ -5,8 +5,8 @@ import {
   useListReports,
   getListReportsQueryKey,
   useCreateReport,
-  type AnnualReportStatus,
 } from "@workspace/api-client-react";
+import { ConnectedReportSummaryCard } from "@/components/report/ReportSummaryCard";
 import {
   Card,
   CardContent,
@@ -17,14 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import {
-  FileText,
-  Building2,
-  Plus,
-  Calendar,
-  ArrowRight,
-  Loader2,
-} from "lucide-react";
+import { FileText, Building2, Plus, ArrowRight, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -40,14 +33,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/hooks/useLanguage";
-import type { StringKey } from "@/i18n/strings";
-
-const STATUS_KEY: Record<AnnualReportStatus, StringKey> = {
-  draft: "report.status.draft",
-  in_progress: "report.status.in_progress",
-  complete: "report.status.complete",
-  exported: "report.status.exported",
-};
 
 export function CompanyDetail() {
   const [, params] = useRoute("/companies/:companyId");
@@ -55,7 +40,7 @@ export function CompanyDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
 
   const { data: company, isLoading: isCompanyLoading } = useGetCompany(
     companyId,
@@ -177,7 +162,6 @@ export function CompanyDetail() {
     return <div>{t("company.detail.not_found")}</div>;
   }
 
-  const dateLocale = language === "sv" ? "sv-SE" : "en-GB";
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -337,85 +321,34 @@ export function CompanyDetail() {
             </div>
           ) : reports && reports.length > 0 ? (
             <div className="grid gap-4">
-              {reports.map((report) => {
-                const statusKey =
-                  STATUS_KEY[report.status] ?? "report.status.draft";
-                return (
-                  <Card
-                    key={report.id}
-                    className="shadow-sm hover:border-primary/50 transition-colors group"
-                  >
-                    <Link href={`/reports/${report.id}`}>
-                      <div className="p-5 flex items-center justify-between cursor-pointer">
-                        <div className="flex items-center gap-4">
-                          <div
-                            className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${
-                              report.status === "complete"
-                                ? "bg-green-500/10 text-green-600"
-                                : "bg-primary/10 text-primary"
-                            }`}
-                          >
-                            <FileText className="h-6 w-6" />
-                          </div>
-                          <div>
-                            <div className="font-semibold text-lg flex items-center gap-2">
-                              {new Date(report.fiscalYearEnd).getFullYear()}
-                              {t("company.detail.reports.year_suffix")}
-                              <Badge
-                                variant={
-                                  report.status === "complete"
-                                    ? "default"
-                                    : "secondary"
-                                }
-                                className={
-                                  report.status === "complete"
-                                    ? "bg-green-500 hover:bg-green-600"
-                                    : ""
-                                }
-                              >
-                                {t(statusKey)}
-                              </Badge>
-                            </div>
-                            <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(
-                                report.fiscalYearStart,
-                              ).toLocaleDateString(dateLocale)}{" "}
-                              —{" "}
-                              {new Date(
-                                report.fiscalYearEnd,
-                              ).toLocaleDateString(dateLocale)}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-6">
-                          <div className="text-right hidden sm:block">
-                            <div className="text-sm font-medium">
-                              {report.completionPercent}%
-                            </div>
-                            <div className="w-24 h-1.5 bg-muted rounded-full mt-1.5 overflow-hidden">
-                              <div
-                                className="h-full bg-primary"
-                                style={{
-                                  width: `${report.completionPercent}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="group-hover:bg-primary/10 group-hover:text-primary"
-                          >
-                            <ArrowRight className="h-5 w-5" />
-                          </Button>
-                        </div>
+              {reports.map((report) => (
+                <Link
+                  key={report.id}
+                  href={`/reports/${report.id}`}
+                  className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-2xl"
+                >
+                  <ConnectedReportSummaryCard
+                    reportId={report.id}
+                    report={report}
+                    variant="row"
+                    className="cursor-pointer group-hover:border-primary/50"
+                    trailing={
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="tabular-nums">
+                          {report.completionPercent}%{" "}
+                          <span className="text-muted-foreground/70">
+                            ({report.sectionsCompleted}/{report.sectionsTotal})
+                          </span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                          {t("report.card.open")}
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </span>
                       </div>
-                    </Link>
-                  </Card>
-                );
-              })}
+                    }
+                  />
+                </Link>
+              ))}
             </div>
           ) : (
             <Card className="border-dashed shadow-none bg-transparent">

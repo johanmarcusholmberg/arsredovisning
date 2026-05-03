@@ -155,6 +155,13 @@ export const strings = {
     "report.status.complete": "Klar",
     "report.status.exported": "Exporterad",
 
+    "report.card.ready": "Färdig att exportera",
+    "report.card.vs_prev": "vs föregående år",
+    "report.card.no_comparison": "Ingen jämförelse",
+    "report.card.signatures": "Underskrifter",
+    "report.card.pages": "sidor",
+    "report.card.open": "Öppna rapport",
+
     // ── Companies list ───────────────────────────────────────────────────
     "companies.title": "Företag",
     "companies.subtitle":
@@ -571,6 +578,13 @@ export const strings = {
     "report.status.in_progress": "In progress",
     "report.status.complete": "Complete",
     "report.status.exported": "Exported",
+
+    "report.card.ready": "Ready to export",
+    "report.card.vs_prev": "vs prior year",
+    "report.card.no_comparison": "No comparison",
+    "report.card.signatures": "Signatories",
+    "report.card.pages": "pages",
+    "report.card.open": "Open report",
 
     "companies.title": "Companies",
     "companies.subtitle":
