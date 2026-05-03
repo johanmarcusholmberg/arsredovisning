@@ -135,14 +135,15 @@ export async function buildAnnualReportExportData(
     buildNotes(reportId),
   ]);
 
-  // Single-source-of-truth invariant: the renderers do not yet honor the
-  // "uploaded" cover mode. Coerce it to "auto" here so every downstream
-  // consumer (preview, PDF, Word, history snapshot) sees the same shape.
+  // Cover sheet: the "uploaded" mode is now persisted end-to-end. The
+  // renderers fall back to the auto-generated cover when an uploaded PDF/
+  // image cannot be merged in (see `docs/export-implementation.md` —
+  // PDF first-page merging is a documented Phase 8 limitation), but the
+  // contract still carries the upload reference so the preview can reflect
+  // the user's intent.
   const rawMode = (projectRow?.coverMode as ExportCoverSheet["mode"]) ?? "auto";
-  const safeMode: ExportCoverSheet["mode"] =
-    rawMode === "uploaded" ? "auto" : rawMode;
   const cover: ExportCoverSheet = {
-    mode: safeMode,
+    mode: rawMode,
     title: projectRow?.coverTitle ?? "Årsredovisning",
     subtitle: projectRow?.coverSubtitle ?? period.label,
     logoUrl: projectRow?.coverLogoUrl ?? null,

@@ -13,6 +13,8 @@ import type {
   ExportReadiness,
   ExportHistoryEntry,
   CoverMode,
+  ExportPackageOptions,
+  ProjectExportState,
 } from "@workspace/export-contract";
 
 // The API server is mounted at the absolute proxy path `/api` (see
@@ -117,4 +119,76 @@ export async function fetchExportDownloadUrl(
   return call<{ downloadUrl: string; filename: string; mimeType: string; watermark: boolean }>(
     `/exports/${exportId}/download`,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7 additions — package export, project state badge, cover upload
+// ---------------------------------------------------------------------------
+
+export interface GeneratePackageResponse {
+  packageId: string;
+  primaryExportId: string;
+  appendixIds: string[];
+  filename: string;
+  watermark: boolean;
+}
+
+export function generateExportPackage(
+  reportId: string,
+  options: ExportPackageOptions,
+): Promise<GeneratePackageResponse> {
+  return call<GeneratePackageResponse>(`/reports/${reportId}/export/package`, {
+    method: "POST",
+    body: JSON.stringify(options),
+  });
+}
+
+export function fetchProjectExportState(
+  reportId: string,
+): Promise<{ state: ProjectExportState; isDemo: boolean; isPaid: boolean }> {
+  return call<{ state: ProjectExportState; isDemo: boolean; isPaid: boolean }>(
+    `/reports/${reportId}/export/state`,
+  );
+}
+
+/**
+ * Upload a cover-sheet asset (PDF or image) using the project's two-step
+ * upload flow:
+ *   1. POST /projects/:id/files/upload — registers metadata, returns a signed
+ *      upload URL pointed at the `cover-sheets` bucket.
+ *   2. PUT  <uploadUrl>                 — streams the file bytes to Supabase
+ *      Storage at the resolved path.
+ *
+ * Returns the new `project_files.id`. The caller is expected to persist the
+ * id via `updateExportCover({ uploadedFileId, mode: "uploaded" })`.
+ */
+export async function uploadCoverFile(args: {
+  projectId: string;
+  file: File;
+}): Promise<{ fileId: string }> {
+  const meta = await call<{
+    fileId: string;
+    uploadUrl?: string | null;
+    storageBucket: string;
+    storagePath: string;
+  }>(`/projects/${args.projectId}/files/upload`, {
+    method: "POST",
+    body: JSON.stringify({
+      originalFilename: args.file.name,
+      mimeType: args.file.type || "application/octet-stream",
+      fileSize: args.file.size,
+      storageBucket: "cover-sheets",
+    }),
+  });
+  if (meta.uploadUrl) {
+    const put = await fetch(meta.uploadUrl, {
+      method: "PUT",
+      body: args.file,
+      headers: { "Content-Type": args.file.type || "application/octet-stream" },
+    });
+    if (!put.ok) {
+      throw new Error(`Cover upload failed (${put.status} ${put.statusText})`);
+    }
+  }
+  return { fileId: meta.fileId };
 }

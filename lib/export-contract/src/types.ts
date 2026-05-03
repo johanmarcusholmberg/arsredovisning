@@ -214,6 +214,28 @@ export interface ExportReadiness {
 
 export type ExportFormat = "pdf" | "word" | "package";
 
+/**
+ * Optional appendices that can be bundled into an export package.
+ * The formal annual report PDF/Word never contains these unless the user
+ * explicitly opts in here.
+ */
+export interface ExportPackageOptions {
+  /** Primary report format inside the package. */
+  format: "pdf" | "word";
+  /** Append a per-issue validation summary (PDF). */
+  includeValidationSummary: boolean;
+  /** Append a chronological audit/change summary (PDF). */
+  includeAuditSummary: boolean;
+}
+
+/** Project-level export state shown as a badge in the export workspace. */
+export type ProjectExportState =
+  | "demo"
+  | "blocked"
+  | "ready"
+  | "paid"
+  | "already_exported";
+
 export interface ExportHistoryEntry {
   id: string;
   format: ExportFormat;
@@ -225,6 +247,10 @@ export interface ExportHistoryEntry {
   generatedByProfileId: string | null;
   /** Brief snapshot summary (counts, period) captured at export time. */
   snapshotSummary: ExportSnapshotSummary | null;
+  /** When part of a package, the shared package id grouping main + appendices. */
+  packageId?: string | null;
+  /** Optional human label (e.g. "Validation summary appendix"). */
+  label?: string | null;
 }
 
 export interface ExportSnapshotSummary {

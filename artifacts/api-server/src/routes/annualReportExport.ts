@@ -27,21 +27,28 @@
 
 import { Router, type IRouter } from "express";
 import { randomUUID } from "crypto";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, ne } from "drizzle-orm";
 import {
   db,
   exportFilesTable,
   annualReportProjectsTable,
+  auditEventsTable,
+  projectFilesTable,
 } from "@workspace/db";
 import {
   type ExportHistoryEntry,
   type ExportSnapshotSummary,
+  type ExportPackageOptions,
 } from "@workspace/export-contract";
 import { buildAnnualReportExportData } from "../lib/exportDataBuilder.js";
 import { buildExportReadiness } from "../lib/exportReadiness.js";
 // (re-imported above) — used by both the readiness route and the generate path.
 import { renderAnnualReportPdf } from "../lib/pdfRenderer.js";
 import { renderAnnualReportWord } from "../lib/wordRenderer.js";
+import {
+  renderValidationSummaryPdf,
+  renderAuditSummaryPdf,
+} from "../lib/exportPackageRenderer.js";
 import {
   resolveProjectForReport,
   resolveReportForProject,
@@ -131,12 +138,47 @@ router.get("/reports/:reportId/export/data", async (req, res): Promise<void> => 
     res.status(404).json({ error: "not_found" });
     return;
   }
-  // The "uploaded" cover mode is contractually defined but not yet rendered
-  // by the PDF/Word renderers. Coerce to "auto" so the preview, PDF, and
-  // Word stay in lockstep until the upload-replacement pass ships.
-  if (data.cover.mode === "uploaded") {
-    data.cover.mode = "auto";
-    data.cover.uploadedFileUrl = null;
+  // Resolve a signed download URL for the uploaded cover, when present, so
+  // the preview can render a thumbnail / acknowledge the upload. The actual
+  // PDF first-page merging is a documented Phase 8 limitation — see
+  // `docs/export-implementation.md`.
+  //
+  // SECURITY: We must constrain the project_files lookup to *this project*
+  // so a user with edit rights on project A cannot point `coverUploadedFileId`
+  // at a file from project B and exfiltrate a signed URL via the admin
+  // storage credentials. The same constraint is also enforced at write-time
+  // in `/export/cover`.
+  if (
+    data.cover.mode === "uploaded" &&
+    data.cover.uploadedFileId &&
+    ctx.projectId
+  ) {
+    try {
+      const supa = getSupabaseAdmin();
+      if (supa) {
+        const { data: fileRow } = await supa
+          .from("project_files" as never)
+          .select("storage_bucket, storage_path, project_id")
+          .eq("id", data.cover.uploadedFileId as never)
+          .eq("project_id", ctx.projectId as never)
+          .single();
+        if (fileRow) {
+          const { data: signed } = await supa.storage
+            .from((fileRow as { storage_bucket: string }).storage_bucket)
+            .createSignedUrl((fileRow as { storage_path: string }).storage_path, 3600);
+          if (signed?.signedUrl) {
+            data.cover.uploadedFileUrl = signed.signedUrl;
+          }
+        } else {
+          req.log.warn(
+            { fileId: data.cover.uploadedFileId, projectId: ctx.projectId },
+            "Cover uploadedFileId does not belong to this project — ignoring",
+          );
+        }
+      }
+    } catch (err) {
+      req.log.warn({ err }, "Could not resolve uploaded cover URL — preview will fall back");
+    }
   }
   await logAuditEvent({
     eventType: AUDIT_EVENTS.EXPORT_PREVIEW_VIEWED,
@@ -195,17 +237,50 @@ router.post(
       logoUrl?: string | null;
       uploadedFileId?: string | null;
     };
-    // "uploaded" is a future cover mode — accepted by the contract but not
-    // yet honored by the renderers. Reject it explicitly so the data shown
-    // in the preview always matches the bytes produced for PDF/Word.
-    const allowedModes = new Set(["auto", "logo"]);
+    const allowedModes = new Set(["auto", "logo", "uploaded"]);
     if (body.mode && !allowedModes.has(body.mode)) {
       res.status(400).json({
         error: "invalid_input",
-        message: "mode must be auto|logo (uploaded covers are not yet supported)",
+        message: "mode must be auto|logo|uploaded",
       });
       return;
     }
+
+    // SECURITY: when an `uploadedFileId` is supplied, verify it belongs to
+    // *this* project. Otherwise a user with edit rights on project A could
+    // attach a file id from project B and later receive a signed download
+    // URL for it via `/export/data`.
+    if (body.uploadedFileId) {
+      const [own] = await db
+        .select({ id: projectFilesTable.id })
+        .from(projectFilesTable)
+        .where(
+          and(
+            eq(projectFilesTable.id, body.uploadedFileId),
+            eq(projectFilesTable.projectId, ctx.projectId),
+          ),
+        )
+        .limit(1);
+      if (!own) {
+        res.status(400).json({
+          error: "invalid_input",
+          message: "uploadedFileId does not belong to this project",
+        });
+        return;
+      }
+    }
+
+    // Read the previous row so we can emit "added" vs "removed" vs
+    // "updated" audit events for the cover sheet upload lifecycle (spec §15).
+    const [prev] = await db
+      .select({
+        coverMode: annualReportProjectsTable.coverMode,
+        coverUploadedFileId: annualReportProjectsTable.coverUploadedFileId,
+      })
+      .from(annualReportProjectsTable)
+      .where(eq(annualReportProjectsTable.id, ctx.projectId))
+      .limit(1);
+
     const update: Record<string, unknown> = { updatedAt: new Date() };
     if (body.mode !== undefined) update.coverMode = body.mode;
     if (body.title !== undefined) update.coverTitle = body.title;
@@ -218,12 +293,28 @@ router.post(
       .set(update)
       .where(eq(annualReportProjectsTable.id, ctx.projectId));
 
+    // Always emit the legacy "updated" event for the audit timeline.
     await logAuditEvent({
       eventType: AUDIT_EVENTS.EXPORT_COVER_UPDATED,
       projectId: ctx.projectId,
       actorProfileId: ctx.profileId,
       eventData: { reportId: ctx.reportId, ...body },
     });
+    // Emit added / removed when the upload reference changes.
+    const prevId = prev?.coverUploadedFileId ?? null;
+    const nextId =
+      body.uploadedFileId !== undefined ? body.uploadedFileId : prevId;
+    if (prevId !== nextId) {
+      await logAuditEvent({
+        eventType:
+          nextId !== null
+            ? AUDIT_EVENTS.COVER_SHEET_ADDED
+            : AUDIT_EVENTS.COVER_SHEET_REMOVED,
+        projectId: ctx.projectId,
+        actorProfileId: ctx.profileId,
+        eventData: { reportId: ctx.reportId, fileId: nextId, previousFileId: prevId },
+      });
+    }
 
     res.json({ ok: true });
   },
@@ -263,12 +354,60 @@ async function generateExport(
   const watermark = mustWatermark(isDemo, isPaid);
 
   // Compute the real readiness verdict so the snapshot summary reflects
-  // what the user saw at export time (not hardcoded zeros).
+  // what the user saw at export time (not hardcoded zeros). The readiness
+  // call itself runs the validation engine + note-numbering + reference +
+  // reclassification checks; we surface those as discrete audit events so
+  // an external audit trail can see that each gate was evaluated before
+  // the export attempt (spec §15).
   const readiness = await buildExportReadiness(ctx.reportId, ctx.profileId);
+  await Promise.all([
+    logAuditEvent({
+      eventType: AUDIT_EVENTS.FINAL_VALIDATION_RUN,
+      projectId: ctx.projectId,
+      actorProfileId: ctx.profileId,
+      eventData: { reportId: ctx.reportId, level: readiness.level },
+    }),
+    logAuditEvent({
+      eventType: AUDIT_EVENTS.NOTE_NUMBERING_CHECKED,
+      projectId: ctx.projectId,
+      actorProfileId: ctx.profileId,
+      eventData: { reportId: ctx.reportId },
+    }),
+    logAuditEvent({
+      eventType: AUDIT_EVENTS.NOTE_REFERENCES_CHECKED,
+      projectId: ctx.projectId,
+      actorProfileId: ctx.profileId,
+      eventData: { reportId: ctx.reportId },
+    }),
+    logAuditEvent({
+      eventType: AUDIT_EVENTS.NOTE_TOTALS_CHECKED,
+      projectId: ctx.projectId,
+      actorProfileId: ctx.profileId,
+      eventData: { reportId: ctx.reportId },
+    }),
+    logAuditEvent({
+      eventType: AUDIT_EVENTS.RECLASS_NETTING_CHECKED,
+      projectId: ctx.projectId,
+      actorProfileId: ctx.profileId,
+      eventData: { reportId: ctx.reportId },
+    }),
+  ]);
   if (!watermark && !readiness.canExportFinal) {
+    await logAuditEvent({
+      eventType: AUDIT_EVENTS.EXPORT_BLOCKED,
+      projectId: ctx.projectId,
+      actorProfileId: ctx.profileId,
+      eventData: {
+        reportId: ctx.reportId,
+        format,
+        blockingCodes: readiness.items
+          .filter((i) => i.level === "blocking")
+          .map((i) => i.code),
+      },
+    });
     res.status(409).json({
       error: "blocked",
-      message: "Final export is blocked — resolve readiness items first.",
+      message: "Export is blocked because required issues remain.",
       readiness,
     });
     return;
@@ -372,18 +511,68 @@ async function generateExport(
   }
   void fileId;
 
-  await logAuditEvent({
-    eventType: AUDIT_EVENTS.EXPORT_GENERATED,
-    projectId: ctx.projectId,
-    actorProfileId: ctx.profileId,
-    eventData: {
-      reportId: ctx.reportId,
-      exportId: exportRow.id,
-      format,
-      watermark,
-      bytes: bytes.byteLength,
-    },
-  });
+  // Emit both the legacy "generated" event (kept for back-compat with the
+  // existing audit timeline UI) and the new format-specific events required
+  // by spec §15.
+  await Promise.all([
+    logAuditEvent({
+      eventType: AUDIT_EVENTS.EXPORT_GENERATED,
+      projectId: ctx.projectId,
+      actorProfileId: ctx.profileId,
+      eventData: {
+        reportId: ctx.reportId,
+        exportId: exportRow.id,
+        format,
+        watermark,
+        bytes: bytes.byteLength,
+      },
+    }),
+    logAuditEvent({
+      eventType:
+        format === "pdf"
+          ? AUDIT_EVENTS.EXPORT_PDF_CREATED
+          : AUDIT_EVENTS.EXPORT_WORD_CREATED,
+      projectId: ctx.projectId,
+      actorProfileId: ctx.profileId,
+      eventData: {
+        reportId: ctx.reportId,
+        exportId: exportRow.id,
+        watermark,
+        bytes: bytes.byteLength,
+      },
+    }),
+  ]);
+
+  // Mark the project as "exported" the first time a non-watermarked export
+  // succeeds. The transition uses a single conditional UPDATE so two
+  // concurrent successful exports cannot both observe the pre-transition
+  // state and both emit `project.marked_exported`. The audit event only
+  // fires when the row was actually flipped.
+  if (!watermark) {
+    const flipped = await db
+      .update(annualReportProjectsTable)
+      .set({ status: "exported", updatedAt: new Date() })
+      .where(
+        and(
+          eq(annualReportProjectsTable.id, ctx.projectId),
+          // Only flip if not already "exported" — atomic compare-and-set.
+          ne(annualReportProjectsTable.status, "exported"),
+        ),
+      )
+      .returning({ id: annualReportProjectsTable.id });
+    if (flipped.length > 0) {
+      await logAuditEvent({
+        eventType: AUDIT_EVENTS.PROJECT_MARKED_EXPORTED,
+        projectId: ctx.projectId,
+        actorProfileId: ctx.profileId,
+        eventData: {
+          reportId: ctx.reportId,
+          exportId: exportRow.id,
+          format,
+        },
+      });
+    }
+  }
 
   res.json({
     exportId: exportRow.id,
@@ -394,6 +583,224 @@ async function generateExport(
     watermark,
     downloadUrl: `/api/projects/${ctx.projectId}/exports/${exportRow.id}/download`,
   });
+}
+
+// ---------------------------------------------------------------------------
+// POST /reports/:reportId/export/package
+// ---------------------------------------------------------------------------
+//
+// Generates the formal report (PDF or Word) plus optional appendices and
+// links them via a shared `packageId` in `export_files`. The download UI
+// presents the package as a single grouping in the history list.
+//
+// Body shape: ExportPackageOptions (see @workspace/export-contract).
+// ---------------------------------------------------------------------------
+
+router.post(
+  "/reports/:reportId/export/package",
+  async (req, res): Promise<void> => {
+    const ctx = await gateForReport(req, res);
+    if (!ctx) return;
+    if (!ctx.projectId) {
+      res.status(409).json({ error: "no_project_link" });
+      return;
+    }
+    const opts = (req.body ?? {}) as ExportPackageOptions;
+    if (opts.format !== "pdf" && opts.format !== "word") {
+      res.status(400).json({ error: "invalid_input", message: "format must be pdf|word" });
+      return;
+    }
+
+    // Step 1 — generate the primary report by calling the same code path the
+    // PDF/Word endpoints use. We collect the response and pull out the
+    // export id so we can group appendices under the same packageId.
+    const captureRes = makeCaptureRes();
+    await generateExport(req, captureRes as unknown as typeof res, opts.format);
+    if (captureRes.statusCode && captureRes.statusCode >= 400) {
+      res.status(captureRes.statusCode).json(captureRes.body);
+      return;
+    }
+    const primary = captureRes.body as {
+      exportId: string;
+      filename: string;
+      watermark: boolean;
+      fileSize: number;
+    };
+
+    const packageId = randomUUID();
+    await db
+      .update(exportFilesTable)
+      .set({ packageId })
+      .where(eq(exportFilesTable.id, primary.exportId));
+
+    // Step 2 — appendices.
+    const appendixIds: string[] = [];
+    const data = await buildAnnualReportExportData(ctx.reportId);
+    if (!data) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    if (opts.includeValidationSummary) {
+      const readiness = await buildExportReadiness(ctx.reportId, ctx.profileId);
+      const bytes = await renderValidationSummaryPdf(readiness, {
+        companyName: data.company.name,
+        periodLabel: data.period.label,
+      });
+      const id = await persistAppendix({
+        ctx,
+        bytes,
+        filename: "valideringssammanstallning.pdf",
+        mimeType: "application/pdf",
+        label: "Valideringssammanställning",
+        packageId,
+      });
+      appendixIds.push(id);
+    }
+    if (opts.includeAuditSummary) {
+      const events = await db
+        .select({
+          createdAt: auditEventsTable.createdAt,
+          eventType: auditEventsTable.eventType,
+          actorProfileId: auditEventsTable.actorProfileId,
+          eventData: auditEventsTable.eventData,
+        })
+        .from(auditEventsTable)
+        .where(eq(auditEventsTable.projectId, ctx.projectId))
+        .orderBy(desc(auditEventsTable.createdAt))
+        .limit(500);
+      const bytes = await renderAuditSummaryPdf(
+        events.map((e) => ({
+          createdAt: e.createdAt,
+          eventType: e.eventType,
+          actorProfileId: e.actorProfileId,
+          eventData: e.eventData,
+        })),
+        { companyName: data.company.name, periodLabel: data.period.label },
+      );
+      const id = await persistAppendix({
+        ctx,
+        bytes,
+        filename: "andringshistorik.pdf",
+        mimeType: "application/pdf",
+        label: "Ändringshistorik",
+        packageId,
+      });
+      appendixIds.push(id);
+    }
+
+    await logAuditEvent({
+      eventType: AUDIT_EVENTS.EXPORT_PACKAGE_CREATED,
+      projectId: ctx.projectId,
+      actorProfileId: ctx.profileId,
+      eventData: {
+        reportId: ctx.reportId,
+        packageId,
+        primaryExportId: primary.exportId,
+        appendixIds,
+        format: opts.format,
+      },
+    });
+
+    res.json({
+      packageId,
+      primaryExportId: primary.exportId,
+      appendixIds,
+      filename: primary.filename,
+      watermark: primary.watermark,
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// GET /reports/:reportId/export/state — coarse project state badge
+// ---------------------------------------------------------------------------
+
+router.get(
+  "/reports/:reportId/export/state",
+  async (req, res): Promise<void> => {
+    const ctx = await gateForReport(req, res);
+    if (!ctx) return;
+    if (!ctx.projectId) {
+      res.json({ state: "blocked" });
+      return;
+    }
+    const isDemo = await isDemoProject(ctx.projectId);
+    const isPaid = await hasPaidProjectEntitlement(ctx.projectId);
+    const [proj] = await db
+      .select({ status: annualReportProjectsTable.status })
+      .from(annualReportProjectsTable)
+      .where(eq(annualReportProjectsTable.id, ctx.projectId))
+      .limit(1);
+    const readiness = await buildExportReadiness(ctx.reportId, ctx.profileId);
+    let state: import("@workspace/export-contract").ProjectExportState;
+    if (proj?.status === "exported") state = "already_exported";
+    else if (isDemo) state = "demo";
+    else if (!readiness.canExportFinal) state = "blocked";
+    else if (isPaid) state = "paid";
+    else state = "ready";
+    res.json({ state, isDemo, isPaid });
+  },
+);
+
+// Minimal capture shim — lets the package endpoint reuse the same generate
+// pipeline as the dedicated PDF/Word endpoints without re-implementing it.
+function makeCaptureRes(): {
+  statusCode: number;
+  body: unknown;
+  status(code: number): { json(b: unknown): void };
+  json(b: unknown): void;
+} {
+  const obj = {
+    statusCode: 200,
+    body: undefined as unknown,
+    status(code: number) {
+      obj.statusCode = code;
+      return { json(b: unknown) { obj.body = b; } };
+    },
+    json(b: unknown) { obj.body = b; },
+  };
+  return obj;
+}
+
+async function persistAppendix(args: {
+  ctx: { projectId: string; profileId: string };
+  bytes: Buffer;
+  filename: string;
+  mimeType: string;
+  label: string;
+  packageId: string;
+}): Promise<string> {
+  const id = randomUUID();
+  const bucket = "exports";
+  const storagePath = buildStoragePath(args.ctx.projectId, id, args.filename);
+  const supabase = getSupabaseAdmin();
+  let uploaded = false;
+  if (supabase) {
+    const { error } = await supabase.storage
+      .from(bucket)
+      .upload(storagePath, args.bytes, { contentType: args.mimeType, upsert: true });
+    if (!error) uploaded = true;
+  }
+  if (!uploaded) cacheExportBytes(id, args.bytes, args.mimeType);
+  const [row] = await db
+    .insert(exportFilesTable)
+    .values({
+      projectId: args.ctx.projectId,
+      generatedByProfileId: args.ctx.profileId,
+      storageBucket: bucket,
+      storagePath,
+      originalFilename: args.filename,
+      mimeType: args.mimeType,
+      fileSize: args.bytes.byteLength,
+      format: "pdf",
+      exportStatus: "completed",
+      watermark: false,
+      label: args.label,
+      packageId: args.packageId,
+    })
+    .returning();
+  if (!uploaded) cacheExportBytes(row.id, args.bytes, args.mimeType);
+  return row.id;
 }
 
 // ---------------------------------------------------------------------------
@@ -427,6 +834,8 @@ router.get(
       generatedByProfileId: r.generatedByProfileId,
       snapshotSummary:
         (r.snapshotSummary as ExportSnapshotSummary | null) ?? null,
+      packageId: r.packageId ?? null,
+      label: r.label ?? null,
     }));
     res.json({ entries });
   },
@@ -507,6 +916,8 @@ router.get(
       generatedByProfileId: r.generatedByProfileId,
       snapshotSummary:
         (r.snapshotSummary as ExportSnapshotSummary | null) ?? null,
+      packageId: r.packageId ?? null,
+      label: r.label ?? null,
     }));
     res.json({ entries });
   },

@@ -327,6 +327,19 @@ router.get(
           .from(exportFile.storageBucket)
           .createSignedUrl(exportFile.storagePath, 3600);
         if (!error && data?.signedUrl) {
+          // Spec §15: emit a discrete event whenever a short-lived
+          // download link is minted, so downloads can be reconciled with
+          // their originating link.
+          await logAuditEvent({
+            eventType: AUDIT_EVENTS.EXPORT_DOWNLOAD_LINK_CREATED,
+            projectId,
+            actorProfileId: profileId,
+            eventData: {
+              exportId,
+              format: exportFile.format,
+              expiresInSec: 3600,
+            },
+          });
           res.json({
             downloadUrl: data.signedUrl,
             filename: exportFile.originalFilename,

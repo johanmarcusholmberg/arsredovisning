@@ -61,6 +61,20 @@ export const AUDIT_EVENTS = {
   EXPORT_PREVIEW_VIEWED: "export.preview_viewed",
   EXPORT_COVER_UPDATED: "export.cover_updated",
   EXPORT_READINESS_CHECKED: "export.readiness_checked",
+  // Phase 7 — granular export lifecycle events (spec §15)
+  EXPORT_PDF_CREATED: "export.pdf_created",
+  EXPORT_WORD_CREATED: "export.word_created",
+  EXPORT_PACKAGE_CREATED: "export.package_created",
+  EXPORT_BLOCKED: "export.blocked",
+  EXPORT_DOWNLOAD_LINK_CREATED: "export.download_link_created",
+  PROJECT_MARKED_EXPORTED: "project.marked_exported",
+  COVER_SHEET_ADDED: "cover_sheet.added",
+  COVER_SHEET_REMOVED: "cover_sheet.removed",
+  FINAL_VALIDATION_RUN: "validation.final_run",
+  NOTE_NUMBERING_CHECKED: "notes.numbering_checked_before_export",
+  NOTE_REFERENCES_CHECKED: "notes.references_checked_before_export",
+  NOTE_TOTALS_CHECKED: "notes.totals_checked_before_export",
+  RECLASS_NETTING_CHECKED: "reclassification.netting_checked_before_export",
 
   // Payment
   PAYMENT_INITIATED: "payment.initiated",

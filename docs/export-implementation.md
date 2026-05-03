@@ -68,3 +68,103 @@ The codebase has two id worlds: `reportId` (authoring data) and `projectId`
 resolves between them by matching `(companyId, fiscalYearStart,
 fiscalYearEnd)`. Reports without a paired project row degrade gracefully
 (streaming download, empty history, no role gate).
+
+## Phase 7 additions (final export, packages, marked-exported)
+
+### Package endpoint
+
+`POST /reports/:reportId/export/package` accepts an `ExportPackageOptions`
+body (see `@workspace/export-contract/types.ts`):
+
+```ts
+interface ExportPackageOptions {
+  format: "pdf" | "word";
+  includeValidationSummary: boolean;
+  includeAuditSummary: boolean;
+}
+```
+
+It re-uses the `generateExport()` helper for the formal report, then emits
+optional appendix PDFs (`exportPackageRenderer.ts`):
+
+- **Validation summary** — per-issue list of the readiness verdict at
+  generation time.
+- **Audit / change summary** — chronological list of project audit events.
+
+All files share a generated `packageId` in `export_files`, and each
+appendix carries a human `label`. The history endpoint and UI group rows
+by `packageId` so a package shows as a single entry with collapsible
+appendices.
+
+### Marked-exported flow
+
+The first time a non-watermarked export succeeds, the server flips
+`annual_report_projects.status` to `"exported"` and emits a single
+`project.marked_exported` audit event. Subsequent exports are idempotent
+(no second flip, no duplicate event), and the project state badge moves
+to `already_exported`. Demo and watermarked exports never trigger this
+transition.
+
+### Project state endpoint
+
+`GET /reports/:reportId/export/state` returns
+`{ state, isDemo, isPaid }` where `state: ProjectExportState` is one of:
+
+- `demo` — demo project (always watermarked).
+- `blocked` — readiness has at least one blocking issue.
+- `ready` — passes readiness but no paid entitlement (watermark applies).
+- `paid` — passes readiness and has paid entitlement (final allowed).
+- `already_exported` — at least one final export has been issued.
+
+The preview page shows this as a coloured badge next to the page title.
+
+### Cover sheet uploads
+
+The `cover-sheets` bucket is now wired end-to-end:
+
+1. The frontend calls `uploadCoverFile({ projectId, file })`, which uses
+   the standard 2-step `/files/upload` flow with
+   `storageBucket: "cover-sheets"`.
+2. The returned `fileId` is persisted via
+   `updateExportCover({ uploadedFileId, mode: "uploaded" })`.
+3. The `/export/data` endpoint resolves a signed URL for the upload so
+   the preview can show its presence.
+
+**Phase 8 limitation:** The renderers do not yet merge an uploaded PDF or
+image as the literal first page of the formal export. The upload is
+persisted, surfaced in the preview, and emitted via
+`cover_sheet.added` / `cover_sheet.removed` audit events, but the
+formal PDF/Word still uses the auto-generated cover. The UI displays a
+plain-language note about this on the cover panel.
+
+### Audit events added in Phase 7
+
+- `export.pdf_created`, `export.word_created`, `export.package_created`
+- `export.blocked` — emitted when a final export is rejected by readiness.
+- `export.download_link_created` — emitted whenever a signed URL is minted.
+- `project.marked_exported`
+- `cover_sheet.added`, `cover_sheet.removed`
+- `validation.final_run`
+- `notes.numbering_checked`, `notes.references_checked`, `notes.totals_checked`
+- `reclassification.netting_checked`
+
+The legacy `export.generated` and `export.downloaded` events are retained
+so existing audit-timeline UI keeps working.
+
+### OpenAPI codegen — deferred
+
+The Phase 7 endpoints continue to ship as hand-typed wrappers in
+`artifacts/arsredovisningar/src/lib/exportApi.ts` backed by the shared
+`@workspace/export-contract` types, the same approach the Phase 6.6
+endpoints use. Migrating these endpoints into `@workspace/api-spec` is
+deferred. The contract/server/client all share the canonical TypeScript
+shapes, and Zod-based input validation is enforced server-side at each
+route's body parsing step.
+
+### Spec §17 wording
+
+The readiness panel uses the exact spec wording:
+
+- Blocking → "Export är blockerad eftersom obligatoriska problem kvarstår."
+- OK / info → "Inga blockerande valideringsproblem hittades. Granska gärna innan inlämning."
+- Warning → "Exporten är tillåten men har varningar — granska gärna innan inlämning."

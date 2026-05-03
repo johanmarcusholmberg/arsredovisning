@@ -2,12 +2,13 @@
  * Phase 6.6 + Phase 7 surface — the unified Preview & Export page.
  *
  * Shows the formal Swedish annual report exactly as it will be exported,
- * alongside an export-readiness panel, cover-sheet settings, the PDF/Word
- * generate buttons, and the export history list. Demo and unpaid projects
- * always render with the watermark.
+ * alongside an export-readiness panel, cover-sheet settings (including
+ * upload), the PDF/Word generate buttons, the package builder, and the
+ * export history list. Demo and unpaid projects always render with the
+ * watermark.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertCircle,
   CheckCircle2,
@@ -26,7 +28,9 @@ import {
   Info,
   Loader2,
   Lock,
+  Package,
   ShieldAlert,
+  Upload,
 } from "lucide-react";
 import { Link } from "wouter";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -34,14 +38,19 @@ import {
   fetchExportData,
   fetchExportHistory,
   fetchExportReadiness,
+  fetchProjectExportState,
   generateExport,
+  generateExportPackage,
   fetchExportDownloadUrl,
   updateExportCover,
+  uploadCoverFile,
 } from "@/lib/exportApi";
 import type {
   ReadinessLevel,
   ExportReadiness,
   CoverMode,
+  ProjectExportState,
+  ExportHistoryEntry,
 } from "@workspace/export-contract";
 import { AnnualReportDocument } from "@/components/report/AnnualReportDocument";
 import { WorkflowProgress } from "@/components/WorkflowProgress";
@@ -50,6 +59,7 @@ const QK = {
   data: (id: string) => ["export-data", id] as const,
   ready: (id: string) => ["export-readiness", id] as const,
   hist: (id: string) => ["export-history", id] as const,
+  state: (id: string) => ["export-state", id] as const,
 };
 
 export default function PreviewExport() {
@@ -73,6 +83,11 @@ export default function PreviewExport() {
     queryFn: () => fetchExportHistory(reportId),
     enabled: !!reportId,
   });
+  const stateQ = useQuery({
+    queryKey: QK.state(reportId),
+    queryFn: () => fetchProjectExportState(reportId),
+    enabled: !!reportId,
+  });
 
   const generateMut = useMutation({
     mutationFn: ({ format }: { format: "pdf" | "word" }) =>
@@ -85,7 +100,7 @@ export default function PreviewExport() {
         }`,
       });
       qc.invalidateQueries({ queryKey: QK.hist(reportId) });
-      // Trigger immediate download via the typed download endpoint.
+      qc.invalidateQueries({ queryKey: QK.state(reportId) });
       try {
         const dl = await fetchExportDownloadUrl(resp.exportId);
         window.open(dl.downloadUrl, "_blank", "noopener,noreferrer");
@@ -96,6 +111,38 @@ export default function PreviewExport() {
     onError: (err: Error) =>
       toast({
         title: "Kunde inte generera export",
+        description: err.message,
+        variant: "destructive",
+      }),
+  });
+
+  const packageMut = useMutation({
+    mutationFn: (opts: {
+      format: "pdf" | "word";
+      includeValidationSummary: boolean;
+      includeAuditSummary: boolean;
+    }) => generateExportPackage(reportId, opts),
+    onSuccess: async (resp) => {
+      toast({
+        title: "Exportpaket skapat",
+        description: `${resp.filename}${
+          resp.appendixIds.length > 0
+            ? ` + ${resp.appendixIds.length} bilaga(or)`
+            : ""
+        }`,
+      });
+      qc.invalidateQueries({ queryKey: QK.hist(reportId) });
+      qc.invalidateQueries({ queryKey: QK.state(reportId) });
+      try {
+        const dl = await fetchExportDownloadUrl(resp.primaryExportId);
+        window.open(dl.downloadUrl, "_blank", "noopener,noreferrer");
+      } catch {
+        /* ignore */
+      }
+    },
+    onError: (err: Error) =>
+      toast({
+        title: "Kunde inte skapa exportpaket",
         description: err.message,
         variant: "destructive",
       }),
@@ -124,7 +171,6 @@ export default function PreviewExport() {
 
   if (dataQ.isError || !dataQ.data) {
     const raw = (dataQ.error as Error | undefined)?.message ?? "";
-    // The shared call() helper formats errors as "<status> <statusText>: <body.message>".
     const statusMatch = raw.match(/^(\d{3})\b/);
     const status = statusMatch ? Number(statusMatch[1]) : null;
 
@@ -134,7 +180,6 @@ export default function PreviewExport() {
     let tone: "destructive" | "default" = "destructive";
 
     if (status === 409) {
-      // Report exists but has no paired annual_report_projects row.
       title = "Inget projekt kopplat — export inte tillgänglig";
       icon = <Lock className="h-4 w-4" />;
       description = (
@@ -179,16 +224,15 @@ export default function PreviewExport() {
 
   const data = dataQ.data;
   const readiness = readyQ.data ?? null;
+  const projectId = (data as { projectId?: string } | undefined)?.projectId ?? null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
       {/* ── Document preview ─────────────────────────────────────────── */}
       <div className="min-w-0">
-        <div className="flex items-baseline justify-between mb-4">
+        <div className="flex items-baseline justify-between mb-4 gap-4 flex-wrap">
           <h1 className="text-2xl font-bold">Förhandsgranskning &amp; Export</h1>
-          {data.watermark.show && (
-            <Badge variant="destructive">Vattenmärkt utkast</Badge>
-          )}
+          <ProjectStateBadge state={stateQ.data?.state ?? null} />
         </div>
         <div className="bg-neutral-100 -mx-2 p-2 rounded-md overflow-x-auto">
           <AnnualReportDocument data={data} />
@@ -213,6 +257,7 @@ export default function PreviewExport() {
         <ReadinessPanel readiness={readiness} />
         <CoverPanel
           data={data}
+          projectId={projectId}
           onSave={(patch) => coverMut.mutate(patch)}
           saving={coverMut.isPending}
         />
@@ -222,6 +267,12 @@ export default function PreviewExport() {
           onGenerate={(format) => generateMut.mutate({ format })}
           generating={generateMut.isPending}
           generatingFormat={generateMut.variables?.format ?? null}
+        />
+        <PackageBuilder
+          canExportFinal={readiness?.canExportFinal ?? false}
+          isWatermarked={data.watermark.show}
+          onGenerate={(opts) => packageMut.mutate(opts)}
+          generating={packageMut.isPending}
         />
         <HistoryPanel
           entries={histQ.data?.entries ?? []}
@@ -236,6 +287,29 @@ export default function PreviewExport() {
 // Sub-panels
 // ---------------------------------------------------------------------------
 
+function ProjectStateBadge({ state }: { state: ProjectExportState | null }) {
+  if (!state) return null;
+  const cfg: Record<ProjectExportState, { label: string; cls: string }> = {
+    demo: { label: "Demo", cls: "bg-amber-100 text-amber-900 border-amber-300" },
+    blocked: { label: "Blockerad", cls: "bg-red-100 text-red-900 border-red-300" },
+    ready: { label: "Klar", cls: "bg-sky-100 text-sky-900 border-sky-300" },
+    paid: { label: "Betalad", cls: "bg-emerald-100 text-emerald-900 border-emerald-300" },
+    already_exported: {
+      label: "Redan exporterad",
+      cls: "bg-violet-100 text-violet-900 border-violet-300",
+    },
+  };
+  const c = cfg[state];
+  return (
+    <span
+      className={`text-xs font-medium px-2 py-1 rounded-md border ${c.cls}`}
+      title={`Projektstatus: ${c.label}`}
+    >
+      {c.label}
+    </span>
+  );
+}
+
 function ReadinessPanel({ readiness }: { readiness: ExportReadiness | null }) {
   if (!readiness) return null;
   const tone = ({
@@ -244,6 +318,14 @@ function ReadinessPanel({ readiness }: { readiness: ExportReadiness | null }) {
     info: "bg-sky-50 text-sky-900 border-sky-200",
     ok: "bg-green-50 text-green-900 border-green-200",
   } as const)[readiness.level satisfies ReadinessLevel];
+
+  // Spec §17 wording — exact text required for the readiness panel.
+  const headline =
+    readiness.level === "blocking"
+      ? "Export är blockerad eftersom obligatoriska problem kvarstår."
+      : readiness.level === "ok" || readiness.level === "info"
+      ? "Inga blockerande valideringsproblem hittades. Granska gärna innan inlämning."
+      : "Exporten är tillåten men har varningar — granska gärna innan inlämning.";
 
   return (
     <Card>
@@ -261,12 +343,7 @@ function ReadinessPanel({ readiness }: { readiness: ExportReadiness | null }) {
       </CardHeader>
       <CardContent className="space-y-2">
         <div className={`rounded-md border px-3 py-2 text-xs ${tone}`}>
-          {readiness.level === "blocking" &&
-            "Slutgiltig export är blockerad – åtgärda nedanstående."}
-          {readiness.level === "warning" &&
-            "Exporten är tillåten men har varningar."}
-          {readiness.level === "info" && "Information om exporten."}
-          {readiness.level === "ok" && "Rapporten är redo för export."}
+          {headline}
         </div>
         <ul className="space-y-1 text-xs">
           {readiness.items.map((it, i) => (
@@ -295,29 +372,84 @@ function ReadinessPanel({ readiness }: { readiness: ExportReadiness | null }) {
 
 function CoverPanel({
   data,
+  projectId,
   onSave,
   saving,
 }: {
   data: import("@workspace/export-contract").AnnualReportExportData;
+  projectId: string | null;
   onSave: (patch: {
     mode?: CoverMode;
     title?: string | null;
     subtitle?: string | null;
     logoUrl?: string | null;
+    uploadedFileId?: string | null;
   }) => void;
   saving: boolean;
 }) {
+  const { toast } = useToast();
   const [mode, setMode] = useState<CoverMode>(data.cover.mode);
   const [title, setTitle] = useState(data.cover.title);
   const [subtitle, setSubtitle] = useState(data.cover.subtitle);
   const [logoUrl, setLogoUrl] = useState(data.cover.logoUrl ?? "");
+  const [uploadedFileId, setUploadedFileId] = useState<string | null>(
+    data.cover.uploadedFileId ?? null,
+  );
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMode(data.cover.mode);
     setTitle(data.cover.title);
     setSubtitle(data.cover.subtitle);
     setLogoUrl(data.cover.logoUrl ?? "");
+    setUploadedFileId(data.cover.uploadedFileId ?? null);
   }, [data.cover]);
+
+  async function handlePick(file: File) {
+    if (!projectId) {
+      toast({
+        title: "Projekt saknas",
+        description: "Kan inte ladda upp försättsblad utan kopplat projekt.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const okType = ["application/pdf", "image/png", "image/jpeg"].includes(file.type);
+    if (!okType) {
+      toast({
+        title: "Filformat stöds inte",
+        description: "Tillåtna format: PDF, PNG, JPEG.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Filen är för stor",
+        description: "Max 10 MB för försättsblad.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setUploading(true);
+    try {
+      const { fileId } = await uploadCoverFile({ projectId, file });
+      setUploadedFileId(fileId);
+      setUploadedFileName(file.name);
+      toast({ title: "Försättsblad uppladdat", description: file.name });
+    } catch (err) {
+      toast({
+        title: "Uppladdning misslyckades",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   return (
     <Card>
@@ -330,7 +462,7 @@ function CoverPanel({
         <div>
           <Label className="text-xs">Läge</Label>
           <div className="flex gap-1 mt-1">
-            {(["auto", "logo"] as CoverMode[]).map((m) => (
+            {(["auto", "logo", "uploaded"] as CoverMode[]).map((m) => (
               <Button
                 key={m}
                 size="sm"
@@ -338,7 +470,7 @@ function CoverPanel({
                 onClick={() => setMode(m)}
                 className="text-xs h-7 flex-1"
               >
-                {m === "auto" ? "Auto" : "Logotyp"}
+                {m === "auto" ? "Auto" : m === "logo" ? "Logotyp" : "Uppladdad"}
               </Button>
             ))}
           </div>
@@ -370,6 +502,45 @@ function CoverPanel({
             />
           </div>
         )}
+        {mode === "uploaded" && (
+          <div className="space-y-2">
+            <Label className="text-xs">Uppladdad fil</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf,image/png,image/jpeg"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void handlePick(f);
+              }}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full h-8 text-xs"
+              disabled={uploading || !projectId}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+              ) : (
+                <Upload className="h-3.5 w-3.5 mr-1" />
+              )}
+              {uploadedFileId ? "Ersätt fil…" : "Välj PDF eller bild…"}
+            </Button>
+            {uploadedFileId && (
+              <p className="text-[11px] text-neutral-600 truncate">
+                Vald: {uploadedFileName ?? `(fil-id ${uploadedFileId.slice(0, 8)}…)`}
+              </p>
+            )}
+            <p className="text-[11px] text-amber-700">
+              Obs: Förhandsgranskningen visar fortfarande den autogenererade
+              försättssidan. Den uppladdade filen levereras med exporten men
+              sammanfogning av första sidan i PDF:en sker i Phase 8.
+            </p>
+          </div>
+        )}
         <Button
           size="sm"
           className="w-full"
@@ -380,6 +551,7 @@ function CoverPanel({
               title,
               subtitle,
               logoUrl: mode === "logo" ? logoUrl || null : null,
+              uploadedFileId: mode === "uploaded" ? uploadedFileId : null,
             })
           }
         >
@@ -454,22 +626,132 @@ function ExportButtons({
   );
 }
 
+function PackageBuilder({
+  canExportFinal,
+  isWatermarked,
+  onGenerate,
+  generating,
+}: {
+  canExportFinal: boolean;
+  isWatermarked: boolean;
+  onGenerate: (opts: {
+    format: "pdf" | "word";
+    includeValidationSummary: boolean;
+    includeAuditSummary: boolean;
+  }) => void;
+  generating: boolean;
+}) {
+  const [format, setFormat] = useState<"pdf" | "word">("pdf");
+  const [includeValidationSummary, setVal] = useState(true);
+  const [includeAuditSummary, setAud] = useState(false);
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Package className="h-4 w-4" /> Exportpaket
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-neutral-600">
+          Skapa ett samlat paket med årsredovisningen plus valfria bilagor.
+          Bilagorna ingår aldrig i det formella dokumentet.
+        </p>
+        <div>
+          <Label className="text-xs">Huvudformat</Label>
+          <div className="flex gap-1 mt-1">
+            {(["pdf", "word"] as const).map((f) => (
+              <Button
+                key={f}
+                size="sm"
+                variant={format === f ? "default" : "outline"}
+                onClick={() => setFormat(f)}
+                className="text-xs h-7 flex-1"
+              >
+                {f.toUpperCase()}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="flex items-center gap-2 text-xs cursor-pointer">
+            <Checkbox
+              checked={includeValidationSummary}
+              onCheckedChange={(v) => setVal(v === true)}
+            />
+            Bifoga valideringssammanställning (PDF)
+          </label>
+          <label className="flex items-center gap-2 text-xs cursor-pointer">
+            <Checkbox
+              checked={includeAuditSummary}
+              onCheckedChange={(v) => setAud(v === true)}
+            />
+            Bifoga ändringshistorik (PDF)
+          </label>
+        </div>
+        <Button
+          size="sm"
+          className="w-full"
+          disabled={generating || (!canExportFinal && !isWatermarked)}
+          onClick={() =>
+            onGenerate({ format, includeValidationSummary, includeAuditSummary })
+          }
+        >
+          {generating ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+          ) : (
+            <Package className="h-4 w-4 mr-1" />
+          )}
+          Skapa paket
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function HistoryPanel({
   entries,
   loading,
 }: {
-  entries: import("@workspace/export-contract").ExportHistoryEntry[];
+  entries: ExportHistoryEntry[];
   loading: boolean;
 }) {
-  const sorted = useMemo(
-    () =>
-      [...entries].sort(
-        (a, b) =>
-          new Date(b.generatedAt).getTime() -
-          new Date(a.generatedAt).getTime(),
-      ),
-    [entries],
-  );
+  // Group by packageId so a package + its appendices appear as a single
+  // entry in the history list (spec §15).
+  const grouped = useMemo(() => {
+    const sorted = [...entries].sort(
+      (a, b) =>
+        new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime(),
+    );
+    const groups: Array<{
+      key: string;
+      primary: ExportHistoryEntry;
+      appendices: ExportHistoryEntry[];
+    }> = [];
+    const seen = new Set<string>();
+    for (const e of sorted) {
+      if (e.packageId) {
+        if (seen.has(e.packageId)) continue;
+        seen.add(e.packageId);
+        const inGroup = sorted.filter((x) => x.packageId === e.packageId);
+        // The first one created (oldest) is the primary report; the others
+        // are the appendices.
+        const primary =
+          inGroup.find(
+            (x) => x.label && !/sammanställning|historik/i.test(x.label),
+          ) ?? inGroup[0];
+        groups.push({
+          key: e.packageId,
+          primary,
+          appendices: inGroup.filter((x) => x.id !== primary.id),
+        });
+      } else {
+        groups.push({ key: e.id, primary: e, appendices: [] });
+      }
+    }
+    return groups;
+  }, [entries]);
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -480,20 +762,25 @@ function HistoryPanel({
       <CardContent>
         {loading ? (
           <p className="text-xs text-neutral-500">Laddar…</p>
-        ) : sorted.length === 0 ? (
+        ) : grouped.length === 0 ? (
           <p className="text-xs text-neutral-500 flex items-center gap-1">
             <Info className="h-3 w-3" /> Inga exporter genererade ännu.
           </p>
         ) : (
           <ul className="space-y-2 text-xs">
-            {sorted.map((e) => (
-              <li key={e.id} className="border-b border-neutral-100 pb-2">
+            {grouped.map((g) => (
+              <li key={g.key} className="border-b border-neutral-100 pb-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium truncate">{e.filename}</span>
+                  <span className="font-medium truncate flex items-center gap-1">
+                    {g.appendices.length > 0 && (
+                      <Package className="h-3 w-3 text-neutral-500" />
+                    )}
+                    {g.primary.filename}
+                  </span>
                   <button
                     onClick={async () => {
                       try {
-                        const dl = await fetchExportDownloadUrl(e.id);
+                        const dl = await fetchExportDownloadUrl(g.primary.id);
                         window.open(dl.downloadUrl, "_blank", "noopener,noreferrer");
                       } catch {
                         /* ignore */
@@ -505,9 +792,32 @@ function HistoryPanel({
                   </button>
                 </div>
                 <div className="text-neutral-500">
-                  {new Date(e.generatedAt).toLocaleString("sv-SE")} · {e.format.toUpperCase()}
-                  {e.watermark && " · vattenmärkt"}
+                  {new Date(g.primary.generatedAt).toLocaleString("sv-SE")} ·{" "}
+                  {g.primary.format.toUpperCase()}
+                  {g.primary.watermark && " · vattenmärkt"}
                 </div>
+                {g.appendices.length > 0 && (
+                  <ul className="mt-1 ml-3 space-y-0.5 text-[11px] text-neutral-600">
+                    {g.appendices.map((a) => (
+                      <li key={a.id} className="flex items-center justify-between gap-2">
+                        <span className="truncate">↳ {a.label ?? a.filename}</span>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const dl = await fetchExportDownloadUrl(a.id);
+                              window.open(dl.downloadUrl, "_blank", "noopener,noreferrer");
+                            } catch {
+                              /* ignore */
+                            }
+                          }}
+                          className="text-primary hover:underline shrink-0"
+                        >
+                          Hämta
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
