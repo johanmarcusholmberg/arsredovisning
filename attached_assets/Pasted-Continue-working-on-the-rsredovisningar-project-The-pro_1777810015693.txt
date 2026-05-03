@@ -1,0 +1,66 @@
+Continue working on the Årsredovisningar project.
+
+The profile/admin security hardening has been completed in docs/rls-policies.sql and docs/SECURITY_ADMIN.md.
+
+Before moving forward with production/payment launch, add a deployment safety checklist and verification task to make sure the documented Supabase RLS policies are actually applied in the real Supabase project.
+
+Do not change the access model.
+Do not weaken any admin/profile protections.
+Do not reintroduce Credits as user-facing language.
+
+Goal:
+Make it harder to accidentally deploy with security policies documented but not applied.
+
+Tasks:
+
+1. Add a Supabase RLS deployment checklist
+Create or update documentation that clearly explains:
+- which SQL file must be applied in Supabase
+- where to run it in Supabase SQL Editor
+- which tables must have RLS enabled
+- which tables must have client INSERT/UPDATE/DELETE revoked
+- which grants are expected on profiles
+- how to verify that normal authenticated users cannot update sensitive fields
+
+2. Add a verification SQL script if possible
+Create a script or documented SQL queries that can be run against Supabase to verify:
+- RLS is enabled on security-sensitive tables
+- profiles does not allow general UPDATE for authenticated/anon
+- authenticated users only have UPDATE grants on:
+  - display_name
+  - default_ui_language
+  - updated_at
+- authenticated/anon cannot INSERT or DELETE profiles
+- project/report/company tables have appropriate RLS or are only accessed through the backend/service role
+- storage buckets for imports/exports/demo assets are not publicly writable
+
+3. Add a manual security test checklist
+Document how to test as a normal logged-in user that the following fails:
+- updating is_admin
+- updating available_project_credits
+- updating status/role
+- inserting a fake profile
+- deleting own profile
+- accessing /admin routes
+- granting own entitlement
+- accessing another user’s project by changed ID
+- exporting without entitlement
+
+4. Add startup/deployment warning if feasible
+If the app already has a backend healthcheck or startup logging, add a non-breaking warning reminding that production requires Supabase RLS policies to be applied.
+
+Do not make the app crash if verification cannot run, but make the risk visible.
+
+5. Acceptance criteria
+This is complete when:
+- there is a clear production security checklist
+- there is a practical way to verify Supabase grants/RLS
+- future developers are warned not to rely only on docs/rls-policies.sql
+- no user-facing behavior is changed
+- typecheck still passes
+
+After completion, report:
+- files added/changed
+- exact checklist location
+- whether any automated verification was added
+- remaining manual steps before production
