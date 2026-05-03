@@ -15,7 +15,13 @@ import type {
   CoverMode,
 } from "@workspace/export-contract";
 
-const BASE = `${import.meta.env.BASE_URL}api`.replace(/\/{2,}/g, "/");
+// The API server is mounted at the absolute proxy path `/api` (see
+// `artifacts/api-server/.replit-artifact/artifact.toml`). It is NOT served
+// from this app's BASE_URL prefix, so we must use the absolute path here —
+// otherwise requests get rewritten to `/arsredovisningar/api/...` which the
+// Vite dev server happily answers with `index.html`, producing
+// `Unexpected token '<'` JSON parse errors in the client.
+const BASE = "/api";
 
 async function getToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
