@@ -1,7 +1,9 @@
+import { useState } from "react";
 import {
   FileText, CheckCircle2, ArrowRight, Banknote, ScrollText,
-  Link2, ShieldCheck, FileDown, Sparkles,
+  Link2, ShieldCheck, FileDown, Sparkles, ChevronLeft, ChevronRight,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useLanguage } from "@/hooks/useLanguage";
 
 function fmt(n: number) {
@@ -56,40 +58,83 @@ export function ImportVisual() {
   );
 }
 
+function StatementCard({
+  label,
+  unit,
+  rows,
+  className = "",
+  style,
+}: {
+  label: string;
+  unit: string;
+  rows: { name: string; amount: number; prev?: number; note?: string; bold?: boolean }[];
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const { t } = useLanguage();
+  return (
+    <div
+      className={`rounded-xl border border-border bg-background shadow-lg p-4 ${className}`}
+      style={style}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-mono uppercase tracking-wider px-2 py-0.5">
+          {label}
+        </span>
+        <p className="text-[10px] text-muted-foreground">{unit}</p>
+      </div>
+      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[10px] items-center pb-1 border-b border-border">
+        <span className="text-muted-foreground">{t("publicDemo.statements.col.post")}</span>
+        <span className="text-muted-foreground text-right">{t("publicDemo.statements.col.amount")}</span>
+        <span className="text-muted-foreground text-right">{t("publicDemo.statements.col.prev")}</span>
+        <span className="text-muted-foreground text-right">{t("publicDemo.statements.col.note")}</span>
+      </div>
+      <div className="mt-1.5 space-y-1">
+        {rows.map((row) => (
+          <Row key={row.name} {...row} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function StatementsVisual() {
   const { t } = useLanguage();
   return (
-    <div className="relative">
-      {/* Balance sheet card (back) */}
-      <div className="absolute -top-3 left-3 right-3 rounded-xl border border-border bg-background shadow-sm p-4 opacity-90">
-        <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mb-2">
-          {t("publicDemo.statements.br.title")}
-        </p>
-        <div className="space-y-1.5 text-xs">
-          <Row name="Materiella anläggningstillgångar" amount={1850000} note="3" />
-          <Row name="Eget kapital" amount={2940000} note="5" />
-        </div>
-      </div>
-      {/* Income statement card (front) */}
-      <div className="relative rounded-xl border border-border bg-background shadow-md p-4 mt-12">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
-            {t("publicDemo.statements.rr.title")}
-          </p>
-          <p className="text-[10px] text-muted-foreground">{t("publicDemo.statements.unit")}</p>
-        </div>
-        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-xs items-center pb-1.5 border-b border-border">
-          <span className="text-muted-foreground">{t("publicDemo.statements.col.post")}</span>
-          <span className="text-muted-foreground text-right">{t("publicDemo.statements.col.amount")}</span>
-          <span className="text-muted-foreground text-right">{t("publicDemo.statements.col.prev")}</span>
-          <span className="text-muted-foreground text-right">{t("publicDemo.statements.col.note")}</span>
-        </div>
-        <div className="mt-1.5 space-y-1.5">
-          <Row name="Nettoomsättning" amount={8420000} prev={7180000} note="1" />
-          <Row name="Personalkostnader" amount={-3120000} prev={-2840000} note="2" />
-          <Row name="Avskrivningar" amount={-410000} prev={-380000} note="3" />
-          <Row name="Rörelseresultat" amount={1240000} prev={1015000} bold />
-        </div>
+    <div className="relative h-[400px] w-full">
+      {/* Balance sheet — back card, rotated and offset */}
+      <StatementCard
+        label={t("publicDemo.statements.br.title")}
+        unit={t("publicDemo.statements.unit")}
+        className="absolute top-0 right-0 w-[88%]"
+        style={{ transform: "rotate(3deg)" }}
+        rows={[
+          { name: "Materiella anläggningstillgångar", amount: 1850000, prev: 1620000, note: "3" },
+          { name: "Kundfordringar", amount: 940000, prev: 815000 },
+          { name: "Bank", amount: 1320000, prev: 1180000 },
+          { name: "Eget kapital", amount: 2940000, prev: 2410000, note: "5" },
+          { name: "Långfristiga skulder", amount: 820000, prev: 950000, note: "4" },
+          { name: "Summa eget kapital och skulder", amount: 4110000, prev: 3615000, bold: true },
+        ]}
+      />
+      {/* Income statement — front card, rotated the other way */}
+      <StatementCard
+        label={t("publicDemo.statements.rr.title")}
+        unit={t("publicDemo.statements.unit")}
+        className="absolute bottom-0 left-0 w-[88%] z-10"
+        style={{ transform: "rotate(-2deg)" }}
+        rows={[
+          { name: "Nettoomsättning", amount: 8420000, prev: 7180000, note: "1" },
+          { name: "Personalkostnader", amount: -3120000, prev: -2840000, note: "2" },
+          { name: "Avskrivningar", amount: -410000, prev: -380000, note: "3" },
+          { name: "Rörelseresultat", amount: 1240000, prev: 1015000, bold: true },
+        ]}
+      />
+
+      {/* Floating "Not"-link badge to make the connection explicit */}
+      <div className="absolute right-2 top-[42%] z-20 hidden sm:flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 text-[10px] font-medium shadow-sm">
+        <Link2 className="size-3" />
+        Not 3 · kopplad i båda
       </div>
     </div>
   );
@@ -217,47 +262,335 @@ export function NotesVisual() {
   );
 }
 
-export function FinishedVisual() {
-  const { t } = useLanguage();
+interface MiniPage {
+  label: string;
+  render: () => React.ReactNode;
+}
+
+function MiniRow({
+  name,
+  amount,
+  note,
+  bold,
+}: {
+  name: string;
+  amount?: string;
+  note?: string;
+  bold?: boolean;
+}) {
   return (
-    <div className="relative">
-      <div className="absolute -top-3 -right-2 z-10">
-        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 px-2 py-0.5 text-[10px] font-bold text-amber-800 uppercase tracking-wider">
-          <Sparkles className="size-3" />
-          DEMO
-        </span>
-      </div>
-      <div className="rounded-xl border border-border bg-background shadow-md aspect-[3/4] p-5 flex flex-col">
-        <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+    <div
+      className={`grid grid-cols-[1fr_auto_auto] gap-x-2 items-center text-[9px] ${
+        bold ? "font-semibold border-t border-neutral-300 pt-1 mt-1" : ""
+      }`}
+    >
+      <span className="truncate text-neutral-800">{name}</span>
+      <span className="text-right tabular-nums text-neutral-800">{amount ?? ""}</span>
+      <span className="text-right">
+        {note ? (
+          <span className="inline-flex items-center justify-center min-w-[1rem] rounded bg-amber-100 text-amber-800 text-[8px] font-mono px-1">
+            {note}
+          </span>
+        ) : (
+          ""
+        )}
+      </span>
+    </div>
+  );
+}
+
+const miniPages: MiniPage[] = [
+  {
+    label: "Omslag",
+    render: () => (
+      <div className="h-full flex flex-col">
+        <p className="text-[9px] font-mono uppercase tracking-wider text-neutral-500">
           Årsredovisning
         </p>
-        <p className="mt-1 text-base font-semibold text-foreground">Nordic Design AB</p>
-        <p className="text-xs text-muted-foreground">556123-4567 · 2024</p>
-        <div className="mt-4 space-y-1.5 text-xs text-foreground">
+        <p className="mt-1 text-base font-semibold text-neutral-900 font-serif">
+          Nordic Design AB
+        </p>
+        <p className="text-[10px] text-neutral-600">556123-4567</p>
+        <div className="mt-auto pt-4 border-t border-neutral-300 text-[9px] text-neutral-600 space-y-0.5">
+          <p>Räkenskapsår 2024-01-01 – 2024-12-31</p>
+          <p>Säte: Stockholm</p>
+          <p>K3 (BFNAR 2012:1)</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    label: "Innehåll",
+    render: () => (
+      <div className="h-full flex flex-col">
+        <p className="text-[10px] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-1">
+          Innehållsförteckning
+        </p>
+        <div className="mt-2 space-y-1 text-[10px] text-neutral-800">
           {[
-            "Förvaltningsberättelse",
-            "Resultaträkning",
-            "Balansräkning",
-            "Kassaflödesanalys",
-            "Noter",
-            "Underskrifter",
-          ].map((line, i) => (
-            <div key={line} className="flex items-center gap-2">
-              <span className="font-mono text-muted-foreground tabular-nums w-4 text-right">
-                {i + 1}
-              </span>
-              <span className="flex-1 truncate">{line}</span>
-              <span className="font-mono text-muted-foreground tabular-nums">
-                {(i + 1) * 2 + 1}
-              </span>
+            ["Förvaltningsberättelse", 2],
+            ["Resultaträkning", 4],
+            ["Balansräkning", 5],
+            ["Kassaflödesanalys", 7],
+            ["Noter", 8],
+            ["Underskrifter", 12],
+          ].map(([title, page]) => (
+            <div key={title} className="flex items-baseline gap-1">
+              <span>{title}</span>
+              <span className="flex-1 border-b border-dotted border-neutral-400 mx-1 translate-y-[-2px]" />
+              <span className="font-mono tabular-nums text-neutral-600">{page}</span>
             </div>
           ))}
         </div>
-        <div className="mt-auto pt-3 border-t border-border flex items-center gap-2 text-[10px] text-muted-foreground">
-          <FileDown className="size-3" />
-          {t("publicDemo.finished.exportHint")}
+      </div>
+    ),
+  },
+  {
+    label: "Resultaträkning",
+    render: () => (
+      <div className="h-full flex flex-col">
+        <p className="text-[10px] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-1">
+          Resultaträkning
+        </p>
+        <p className="text-[8px] text-neutral-500 mt-0.5">2024-01-01 – 2024-12-31 (kr)</p>
+        <div className="mt-2 space-y-1">
+          <MiniRow name="Nettoomsättning" amount="8 420 000" note="1" />
+          <MiniRow name="Övriga rörelseintäkter" amount="120 000" />
+          <MiniRow name="Personalkostnader" amount="-3 120 000" note="2" />
+          <MiniRow name="Avskrivningar" amount="-410 000" note="3" />
+          <MiniRow name="Övriga kostnader" amount="-3 770 000" />
+          <MiniRow name="Rörelseresultat" amount="1 240 000" bold />
+          <MiniRow name="Finansiella poster" amount="-95 000" />
+          <MiniRow name="Skatt" amount="-258 000" />
+          <MiniRow name="Årets resultat" amount="887 000" bold />
         </div>
       </div>
+    ),
+  },
+  {
+    label: "Balansräkning",
+    render: () => (
+      <div className="h-full flex flex-col">
+        <p className="text-[10px] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-1">
+          Balansräkning
+        </p>
+        <p className="text-[8px] text-neutral-500 mt-0.5">Per 2024-12-31 (kr)</p>
+        <div className="mt-2 space-y-1">
+          <MiniRow name="Materiella anl.tillg." amount="1 850 000" note="3" />
+          <MiniRow name="Kundfordringar" amount="940 000" />
+          <MiniRow name="Bank" amount="1 320 000" />
+          <MiniRow name="Summa tillgångar" amount="4 110 000" bold />
+          <MiniRow name="Eget kapital" amount="2 940 000" note="5" />
+          <MiniRow name="Långfristiga skulder" amount="820 000" note="4" />
+          <MiniRow name="Kortfristiga skulder" amount="350 000" />
+          <MiniRow name="Summa EK och skulder" amount="4 110 000" bold />
+        </div>
+      </div>
+    ),
+  },
+  {
+    label: "Noter",
+    render: () => (
+      <div className="h-full flex flex-col">
+        <p className="text-[10px] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-1">
+          Noter
+        </p>
+        <div className="mt-2 space-y-1.5 text-[9px] text-neutral-800">
+          <div>
+            <p className="font-semibold">Not 1 — Nettoomsättning</p>
+            <p className="text-neutral-600">
+              Försäljning av designtjänster i Sverige.
+            </p>
+          </div>
+          <div>
+            <p className="font-semibold">Not 2 — Anställda</p>
+            <p className="text-neutral-600">
+              Medelantal anställda: 6 (5).
+            </p>
+          </div>
+          <div>
+            <p className="font-semibold">Not 3 — Materiella anl.tillg.</p>
+            <p className="text-neutral-600">
+              Inventarier, avskrivningstid 5 år.
+            </p>
+          </div>
+          <div>
+            <p className="font-semibold">Not 4 — Långfristiga skulder</p>
+            <p className="text-neutral-600">
+              Banklån, förfaller efter mer än 1 år.
+            </p>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    label: "Underskrifter",
+    render: () => (
+      <div className="h-full flex flex-col">
+        <p className="text-[10px] font-semibold text-neutral-900 font-serif border-b border-neutral-300 pb-1">
+          Underskrifter
+        </p>
+        <p className="mt-2 text-[9px] text-neutral-700 leading-relaxed">
+          Resultat- och balansräkningen kommer att framläggas på årsstämman
+          för fastställelse.
+        </p>
+        <p className="mt-3 text-[9px] text-neutral-700">Stockholm, 2025-04-15</p>
+        <div className="mt-4 grid grid-cols-2 gap-3 text-[9px] text-neutral-700">
+          {["Anna Lind", "Erik Sjö", "Maria Holm", "Johan Berg"].map((name) => (
+            <div key={name}>
+              <div className="border-b border-neutral-400 h-5" />
+              <p className="mt-0.5">{name}</p>
+              <p className="text-neutral-500 text-[8px]">Styrelseledamot</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+];
+
+export function FinishedVisual() {
+  const { t } = useLanguage();
+  const [pageIndex, setPageIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
+
+  const total = miniPages.length;
+  const goPrev = () => {
+    if (pageIndex === 0) return;
+    setDirection(-1);
+    setPageIndex(pageIndex - 1);
+  };
+  const goNext = () => {
+    if (pageIndex === total - 1) return;
+    setDirection(1);
+    setPageIndex(pageIndex + 1);
+  };
+
+  const current = miniPages[pageIndex];
+
+  return (
+    <div className="w-full">
+      <div
+        className="relative mx-auto"
+        style={{ perspective: "1400px", width: "100%", maxWidth: "260px" }}
+      >
+        {/* Page stack shadow under the active page */}
+        <div
+          aria-hidden
+          className="absolute inset-x-2 top-2 bottom-0 rounded-xl bg-neutral-300/60"
+          style={{ transform: "translateY(6px) translateX(4px)" }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-x-3 top-1 bottom-0 rounded-xl bg-neutral-200"
+          style={{ transform: "translateY(3px) translateX(2px)" }}
+        />
+
+        <div
+          className="relative aspect-[3/4] rounded-xl border border-neutral-300 bg-white shadow-xl overflow-hidden"
+          style={{ transformStyle: "preserve-3d" }}
+        >
+          {/* DEMO badge */}
+          <div className="absolute top-2 right-2 z-20">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 uppercase tracking-wider">
+              <Sparkles className="size-2.5" />
+              DEMO
+            </span>
+          </div>
+
+          {/* Watermark */}
+          <div
+            aria-hidden
+            className="absolute inset-0 flex items-center justify-center pointer-events-none select-none"
+          >
+            <span
+              style={{
+                transform: "rotate(-26deg)",
+                fontSize: "60px",
+                fontWeight: 900,
+                color: "rgba(180, 30, 30, 0.07)",
+                letterSpacing: "0.18em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              EXEMPEL
+            </span>
+          </div>
+
+          <AnimatePresence mode="wait" initial={false} custom={direction}>
+            <motion.div
+              key={pageIndex}
+              custom={direction}
+              initial={{ rotateY: direction > 0 ? -85 : 85, opacity: 0 }}
+              animate={{ rotateY: 0, opacity: 1 }}
+              exit={{ rotateY: direction > 0 ? 85 : -85, opacity: 0 }}
+              transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+              className="relative h-full w-full p-3.5 z-10"
+              style={{
+                transformOrigin: direction > 0 ? "left center" : "right center",
+                backfaceVisibility: "hidden",
+              }}
+            >
+              {current.render()}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Page footer */}
+          <div className="absolute bottom-1.5 left-3 right-3 z-10 flex items-center justify-between text-[8px] text-neutral-500">
+            <span>Nordic Design AB</span>
+            <span className="font-mono tabular-nums">
+              {pageIndex + 1} / {total}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Flip controls */}
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={goPrev}
+          disabled={pageIndex === 0}
+          aria-label={t("publicDemo.finished.prev")}
+          className="inline-flex items-center justify-center size-8 rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <div className="flex-1 text-center">
+          <p className="text-[11px] font-medium text-foreground">{current.label}</p>
+          <div className="mt-1 flex items-center justify-center gap-1">
+            {miniPages.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  setDirection(i > pageIndex ? 1 : -1);
+                  setPageIndex(i);
+                }}
+                aria-label={`${t("publicDemo.finished.goto")} ${i + 1}`}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === pageIndex ? "w-5 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground/40"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={goNext}
+          disabled={pageIndex === total - 1}
+          aria-label={t("publicDemo.finished.next")}
+          className="inline-flex items-center justify-center size-8 rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      </div>
+
+      <p className="mt-2 text-center text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+        <FileDown className="size-3" />
+        {t("publicDemo.finished.exportHint")}
+      </p>
     </div>
   );
 }
