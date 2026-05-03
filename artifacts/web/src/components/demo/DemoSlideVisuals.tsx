@@ -657,8 +657,10 @@ function FlipReport({
 
   return (
     <div className={isLg ? "w-full flex flex-col items-center" : "w-full"}>
-      {/* DEMO badge above the popup page (lg only) */}
-      {isLg && <div className="mb-2 flex justify-center">{demoBadge}</div>}
+      {/* DEMO badge above the page (both variants, like the popup) */}
+      <div className={isLg ? "mb-2 flex justify-center" : "mb-1.5 flex justify-center"}>
+        {demoBadge}
+      </div>
 
       {/* Page + side arrows row (arrows only for lg) */}
       <div
@@ -687,11 +689,6 @@ function FlipReport({
           className="relative aspect-[3/4] rounded-xl border border-neutral-300 bg-white shadow-xl overflow-hidden"
           style={{ transformStyle: "preserve-3d" }}
         >
-          {/* DEMO badge — only inside page for sm variant; lg has it above */}
-          {!isLg && (
-            <div className="absolute z-20 top-2 right-2">{demoBadge}</div>
-          )}
-
           {/* Watermark */}
           <div
             aria-hidden
