@@ -45,24 +45,105 @@ export interface EntitlementInfo {
   companyCount: number;
 }
 
+export type AdminUserStatus =
+  (typeof AdminUserStatus)[keyof typeof AdminUserStatus];
+
+export const AdminUserStatus = {
+  active: "active",
+  blocked: "blocked",
+} as const;
+
+/**
+ * Computed display role used by the admin user table.
+ */
+export type AdminUserAccountRole =
+  (typeof AdminUserAccountRole)[keyof typeof AdminUserAccountRole];
+
+export const AdminUserAccountRole = {
+  admin: "admin",
+  paid_user: "paid_user",
+  demo_user: "demo_user",
+  blocked: "blocked",
+} as const;
+
 export interface AdminUser {
   id: string;
   email: string;
   displayName?: string | null;
   isAdmin: boolean;
+  status: AdminUserStatus;
+  /** Computed display role used by the admin user table. */
+  accountRole: AdminUserAccountRole;
   availableProjectCredits: number;
+  projectCount: number;
+  lastSignInAt?: string | null;
+  /** True for the bootstrap admin email — cannot be demoted/blocked from the frontend. */
+  isProtected: boolean;
   createdAt: string;
 }
+
+export type AdminProjectProjectKind =
+  (typeof AdminProjectProjectKind)[keyof typeof AdminProjectProjectKind];
+
+export const AdminProjectProjectKind = {
+  demo: "demo",
+  real: "real",
+} as const;
 
 export interface AdminProject {
   id: string;
   companyName: string;
+  companyOrgNumber?: string | null;
   fiscalYearStart: string;
   fiscalYearEnd: string;
   status: string;
   isDemo: boolean;
+  projectKind: AdminProjectProjectKind;
   ownerEmail?: string | null;
   hasActiveEntitlement: boolean;
+  latestExportStatus?: string | null;
+  latestExportAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  adminUsers: number;
+  blockedUsers: number;
+  paidUsers: number;
+  demoUsers: number;
+  totalProjects: number;
+  realProjects: number;
+  demoProjects: number;
+  totalExports: number;
+  failedExports: number;
+}
+
+export interface AdminPayment {
+  id: string;
+  projectId: string;
+  profileId?: string | null;
+  entitlementType: string;
+  source: string;
+  isActive: boolean;
+  stripePaymentIntentId?: string | null;
+  stripeSubscriptionId?: string | null;
+  validFrom: string;
+  validUntil?: string | null;
+  createdAt: string;
+  payerEmail?: string | null;
+  companyName?: string | null;
+}
+
+export interface AdminAuditEvent {
+  id: string;
+  eventType: string;
+  actorProfileId?: string | null;
+  actorEmail?: string | null;
+  projectId?: string | null;
+  companyId?: string | null;
+  eventData?: unknown | null;
   createdAt: string;
 }
 
@@ -1852,6 +1933,47 @@ export type AdminGrantProjectEntitlement201 = {
 
 export type AdminRevokeProjectEntitlement200 = {
   ok: boolean;
+};
+
+export type AdminSetUserStatusBodyStatus =
+  (typeof AdminSetUserStatusBodyStatus)[keyof typeof AdminSetUserStatusBodyStatus];
+
+export const AdminSetUserStatusBodyStatus = {
+  active: "active",
+  blocked: "blocked",
+} as const;
+
+export type AdminSetUserStatusBody = {
+  status: AdminSetUserStatusBodyStatus;
+};
+
+export type AdminSetUserStatus200Status =
+  (typeof AdminSetUserStatus200Status)[keyof typeof AdminSetUserStatus200Status];
+
+export const AdminSetUserStatus200Status = {
+  active: "active",
+  blocked: "blocked",
+} as const;
+
+export type AdminSetUserStatus200 = {
+  id: string;
+  status: AdminSetUserStatus200Status;
+};
+
+export type AdminListPayments200 = {
+  payments: AdminPayment[];
+};
+
+export type AdminListAuditParams = {
+  /**
+   * @minimum 1
+   * @maximum 500
+   */
+  limit?: number;
+};
+
+export type AdminListAudit200 = {
+  events: AdminAuditEvent[];
 };
 
 export type GetFinancialStatementsParams = {

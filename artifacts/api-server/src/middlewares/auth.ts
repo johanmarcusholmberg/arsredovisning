@@ -21,25 +21,17 @@ import { Request, Response, NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { db, profilesTable } from "@workspace/db";
 import { getSupabaseAdmin } from "../lib/supabase.js";
+import { isProtectedAdminEmail } from "../lib/protectedAdmins.js";
 
 /**
- * Hard-coded list of emails that should always be site-wide admins.
- * Compared case-insensitively. Applied in two places:
- *   1. New profile creation: row is inserted with is_admin = true.
- *   2. Existing profile sign-in: if is_admin is currently false, it is
- *      flipped to true (idempotent self-healing). This guarantees that
- *      these users have admin access regardless of past DB state.
- * To remove a user from this list, delete them here AND demote them via
- * POST /admin/users/:profileId/set-admin (the next sign-in won't re-promote).
+ * Bootstrap-admin handling: the PROTECTED_ADMIN_EMAILS list (see
+ * lib/protectedAdmins.ts) is the single source of truth for both:
+ *   1. Auto-promotion to is_admin=true on first sign-in.
+ *   2. Self-healing if a protected admin's row is somehow blocked or demoted.
+ * The same list is used by /admin routes to refuse any frontend attempt
+ * to demote, block, or delete those accounts.
  */
-const BOOTSTRAP_ADMIN_EMAILS = new Set<string>([
-  "johanmarcusholmberg@gmail.com",
-]);
-
-function isBootstrapAdminEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return BOOTSTRAP_ADMIN_EMAILS.has(email.toLowerCase());
-}
+const isBootstrapAdminEmail = isProtectedAdminEmail;
 
 export async function requireAuth(
   req: Request,
@@ -76,7 +68,12 @@ export async function requireAuth(
   // Auto-create profile row on first login.
   const authId = data.user.id;
   let [profile] = await db
-    .select({ id: profilesTable.id, isAdmin: profilesTable.isAdmin })
+    .select({
+      id: profilesTable.id,
+      isAdmin: profilesTable.isAdmin,
+      status: profilesTable.status,
+      lastSignInAt: profilesTable.lastSignInAt,
+    })
     .from(profilesTable)
     .where(eq(profilesTable.authId, authId))
     .limit(1);
@@ -92,8 +89,14 @@ export async function requireAuth(
         email: userEmail,
         displayName: data.user.user_metadata?.["full_name"] ?? null,
         isAdmin: shouldBeAdmin,
+        lastSignInAt: new Date(),
       })
-      .returning({ id: profilesTable.id, isAdmin: profilesTable.isAdmin });
+      .returning({
+        id: profilesTable.id,
+        isAdmin: profilesTable.isAdmin,
+        status: profilesTable.status,
+        lastSignInAt: profilesTable.lastSignInAt,
+      });
     profile = created;
     req.log.info(
       { authId, email: userEmail, isAdmin: shouldBeAdmin },
@@ -103,16 +106,60 @@ export async function requireAuth(
     // Self-healing promotion: a bootstrap-admin email signed in but their
     // existing profile row was not flagged as admin. Flip it now so they
     // get the access they're entitled to without manual DB intervention.
+    // Bootstrap admins are also force-unblocked here so they can never
+    // lock themselves out by toggling status in the admin UI.
     const [updated] = await db
       .update(profilesTable)
-      .set({ isAdmin: true, updatedAt: new Date() })
+      .set({ isAdmin: true, status: "active", updatedAt: new Date() })
       .where(eq(profilesTable.id, profile.id))
-      .returning({ id: profilesTable.id, isAdmin: profilesTable.isAdmin });
+      .returning({
+        id: profilesTable.id,
+        isAdmin: profilesTable.isAdmin,
+        status: profilesTable.status,
+        lastSignInAt: profilesTable.lastSignInAt,
+      });
     profile = updated;
     req.log.info(
       { profileId: profile.id, email: userEmail },
       "Promoted bootstrap-admin email to is_admin=true",
     );
+  } else if (shouldBeAdmin && profile.status === "blocked") {
+    // Defensive: a bootstrap admin must never remain blocked.
+    const [updated] = await db
+      .update(profilesTable)
+      .set({ status: "active", updatedAt: new Date() })
+      .where(eq(profilesTable.id, profile.id))
+      .returning({
+        id: profilesTable.id,
+        isAdmin: profilesTable.isAdmin,
+        status: profilesTable.status,
+        lastSignInAt: profilesTable.lastSignInAt,
+      });
+    profile = updated;
+  }
+
+  // ── Block enforcement ─────────────────────────────────────────────────
+  // Once a profile is blocked, every authenticated request fails closed
+  // with 403. The /admin set-status endpoint cannot block a bootstrap
+  // admin, so site administrators can always recover access.
+  if (profile.status === "blocked") {
+    res.status(403).json({
+      error: "account_blocked",
+      message: "This account has been blocked. Contact support.",
+    });
+    return;
+  }
+
+  // ── Throttled last-sign-in update ────────────────────────────────────
+  // Update at most once per minute to keep DB write volume low.
+  const now = Date.now();
+  const last = profile.lastSignInAt ? profile.lastSignInAt.getTime() : 0;
+  if (now - last > 60_000) {
+    db
+      .update(profilesTable)
+      .set({ lastSignInAt: new Date() })
+      .where(eq(profilesTable.id, profile.id))
+      .catch((err) => req.log.warn({ err }, "Failed to update lastSignInAt"));
   }
 
   req.user = {

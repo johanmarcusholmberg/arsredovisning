@@ -54,7 +54,18 @@ export const AdminListUsersResponse = zod.object({
       email: zod.string(),
       displayName: zod.string().nullish(),
       isAdmin: zod.boolean(),
+      status: zod.enum(["active", "blocked"]),
+      accountRole: zod
+        .enum(["admin", "paid_user", "demo_user", "blocked"])
+        .describe("Computed display role used by the admin user table."),
       availableProjectCredits: zod.number(),
+      projectCount: zod.number(),
+      lastSignInAt: zod.coerce.date().nullish(),
+      isProtected: zod
+        .boolean()
+        .describe(
+          "True for the bootstrap admin email — cannot be demoted\/blocked from the frontend.",
+        ),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -104,13 +115,18 @@ export const AdminListProjectsResponse = zod.object({
     zod.object({
       id: zod.string().uuid(),
       companyName: zod.string(),
+      companyOrgNumber: zod.string().nullish(),
       fiscalYearStart: zod.coerce.date(),
       fiscalYearEnd: zod.coerce.date(),
       status: zod.string(),
       isDemo: zod.boolean(),
+      projectKind: zod.enum(["demo", "real"]),
       ownerEmail: zod.string().nullish(),
       hasActiveEntitlement: zod.boolean(),
+      latestExportStatus: zod.string().nullish(),
+      latestExportAt: zod.coerce.date().nullish(),
       createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
     }),
   ),
 });
@@ -131,6 +147,90 @@ export const AdminRevokeProjectEntitlementParams = zod.object({
 
 export const AdminRevokeProjectEntitlementResponse = zod.object({
   ok: zod.boolean(),
+});
+
+/**
+ * @summary High-level platform counts for the admin overview
+ */
+export const AdminGetStatsResponse = zod.object({
+  totalUsers: zod.number(),
+  adminUsers: zod.number(),
+  blockedUsers: zod.number(),
+  paidUsers: zod.number(),
+  demoUsers: zod.number(),
+  totalProjects: zod.number(),
+  realProjects: zod.number(),
+  demoProjects: zod.number(),
+  totalExports: zod.number(),
+  failedExports: zod.number(),
+});
+
+/**
+ * @summary Block or unblock a user (admin only)
+ */
+export const AdminSetUserStatusParams = zod.object({
+  profileId: zod.coerce.string().uuid(),
+});
+
+export const AdminSetUserStatusBody = zod.object({
+  status: zod.enum(["active", "blocked"]),
+});
+
+export const AdminSetUserStatusResponse = zod.object({
+  id: zod.string().uuid(),
+  status: zod.enum(["active", "blocked"]),
+});
+
+/**
+ * @summary List every entitlement / payment record (admin only)
+ */
+export const AdminListPaymentsResponse = zod.object({
+  payments: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      projectId: zod.string().uuid(),
+      profileId: zod.string().uuid().nullish(),
+      entitlementType: zod.string(),
+      source: zod.string(),
+      isActive: zod.boolean(),
+      stripePaymentIntentId: zod.string().nullish(),
+      stripeSubscriptionId: zod.string().nullish(),
+      validFrom: zod.coerce.date(),
+      validUntil: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      payerEmail: zod.string().nullish(),
+      companyName: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Recent audit events (admin only)
+ */
+export const adminListAuditQueryLimitDefault = 200;
+export const adminListAuditQueryLimitMax = 500;
+
+export const AdminListAuditQueryParams = zod.object({
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(adminListAuditQueryLimitMax)
+    .default(adminListAuditQueryLimitDefault),
+});
+
+export const AdminListAuditResponse = zod.object({
+  events: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      eventType: zod.string(),
+      actorProfileId: zod.string().uuid().nullish(),
+      actorEmail: zod.string().nullish(),
+      projectId: zod.string().uuid().nullish(),
+      companyId: zod.string().uuid().nullish(),
+      eventData: zod.unknown().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
 });
 
 /**

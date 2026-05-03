@@ -30,6 +30,7 @@ The application is built as a pnpm monorepo using Node.js 24 and TypeScript 5.9,
 - **API Codegen**: Orval generates React Query hooks and Zod schemas from an OpenAPI spec.
 - **Authentication**: Supabase Auth (JWT-based) with backend validation. Profile synchronization ensures user data exists.
 - **Backend Security**: Named permission checkers, non-throwing audit logging, and helpers for demo project detection. The API server connects with the Supabase service role key, bypassing RLS.
+- **Admin backend**: Site-admin-only `/admin/*` routes (stats, users, projects, payments, audit). Profiles carry `is_admin`, `status` (`active`/`blocked`), and `last_sign_in_at`. The `requireAuth` middleware fails closed on `status=blocked`. A single source-of-truth `lib/protectedAdmins.ts` lists protected admin emails (currently `johanmarcusholmberg@gmail.com`); these accounts are auto-promoted/unblocked on every sign-in and cannot be demoted, blocked, or deleted via any admin endpoint. The `/admin` UI is tabbed (Overview, Users, Projects, Payments, Demo Content, Audit Log) and is enforced server-side — frontend redirects are UX only.
 - **Validation Engine**: Deterministic rules produce `blocking`, `warning`, or `info` levels with `isHighRisk` flags and deep-linking capabilities.
 - **Note Module**: Manages report notes with auto-numbering and AI drafting.
 - **Collaboration**: Features section reviews, threaded comments, and role-based access.

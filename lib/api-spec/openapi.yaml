@@ -221,6 +221,95 @@ paths:
                   ok: { type: boolean }
                 required: [ok]
 
+  /admin/stats:
+    get:
+      operationId: adminGetStats
+      tags: [admin]
+      summary: High-level platform counts for the admin overview
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/users/{profileId}/set-status:
+    post:
+      operationId: adminSetUserStatus
+      tags: [admin]
+      summary: Block or unblock a user (admin only)
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [active, blocked]
+              required: [status]
+      responses:
+        "200":
+          description: Updated status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [active, blocked] }
+                required: [id, status]
+
+  /admin/payments:
+    get:
+      operationId: adminListPayments
+      tags: [admin]
+      summary: List every entitlement / payment record (admin only)
+      responses:
+        "200":
+          description: Payment list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payments:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminPayment"
+                required: [payments]
+
+  /admin/audit:
+    get:
+      operationId: adminListAudit
+      tags: [admin]
+      summary: Recent audit events (admin only)
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500, default: 200 }
+      responses:
+        "200":
+          description: Audit events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdminAuditEvent"
+                required: [events]
+
   # ─── Projects ────────────────────────────────────────────────────────────────
   /projects:
     get:
@@ -2449,8 +2538,24 @@ components:
           nullable: true
         isAdmin:
           type: boolean
+        status:
+          type: string
+          enum: [active, blocked]
+        accountRole:
+          type: string
+          enum: [admin, paid_user, demo_user, blocked]
+          description: Computed display role used by the admin user table.
         availableProjectCredits:
           type: integer
+        projectCount:
+          type: integer
+        lastSignInAt:
+          type: string
+          format: date-time
+          nullable: true
+        isProtected:
+          type: boolean
+          description: True for the bootstrap admin email — cannot be demoted/blocked from the frontend.
         createdAt:
           type: string
           format: date-time
@@ -2458,7 +2563,11 @@ components:
         - id
         - email
         - isAdmin
+        - status
+        - accountRole
         - availableProjectCredits
+        - projectCount
+        - isProtected
         - createdAt
 
     AdminProject:
@@ -2469,6 +2578,9 @@ components:
           format: uuid
         companyName:
           type: string
+        companyOrgNumber:
+          type: string
+          nullable: true
         fiscalYearStart:
           type: string
           format: date
@@ -2479,12 +2591,25 @@ components:
           type: string
         isDemo:
           type: boolean
+        projectKind:
+          type: string
+          enum: [demo, real]
         ownerEmail:
           type: string
           nullable: true
         hasActiveEntitlement:
           type: boolean
+        latestExportStatus:
+          type: string
+          nullable: true
+        latestExportAt:
+          type: string
+          format: date-time
+          nullable: true
         createdAt:
+          type: string
+          format: date-time
+        updatedAt:
           type: string
           format: date-time
       required:
@@ -2494,7 +2619,107 @@ components:
         - fiscalYearEnd
         - status
         - isDemo
+        - projectKind
         - hasActiveEntitlement
+        - createdAt
+        - updatedAt
+
+    AdminStats:
+      type: object
+      properties:
+        totalUsers: { type: integer }
+        adminUsers: { type: integer }
+        blockedUsers: { type: integer }
+        paidUsers: { type: integer }
+        demoUsers: { type: integer }
+        totalProjects: { type: integer }
+        realProjects: { type: integer }
+        demoProjects: { type: integer }
+        totalExports: { type: integer }
+        failedExports: { type: integer }
+      required:
+        - totalUsers
+        - adminUsers
+        - blockedUsers
+        - paidUsers
+        - demoUsers
+        - totalProjects
+        - realProjects
+        - demoProjects
+        - totalExports
+        - failedExports
+
+    AdminPayment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+        profileId:
+          type: string
+          format: uuid
+          nullable: true
+        entitlementType: { type: string }
+        source: { type: string }
+        isActive: { type: boolean }
+        stripePaymentIntentId:
+          type: string
+          nullable: true
+        stripeSubscriptionId:
+          type: string
+          nullable: true
+        validFrom:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        payerEmail:
+          type: string
+          nullable: true
+        companyName:
+          type: string
+          nullable: true
+      required:
+        - id
+        - projectId
+        - entitlementType
+        - source
+        - isActive
+        - validFrom
+        - createdAt
+
+    AdminAuditEvent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        eventType: { type: string }
+        actorProfileId:
+          type: string
+          format: uuid
+          nullable: true
+        actorEmail:
+          type: string
+          nullable: true
+        projectId:
+          type: string
+          format: uuid
+          nullable: true
+        companyId:
+          type: string
+          format: uuid
+          nullable: true
+        eventData:
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - eventType
         - createdAt
 
     Company:

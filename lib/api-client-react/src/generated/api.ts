@@ -23,11 +23,17 @@ import type {
   AdminGrantCredits200,
   AdminGrantCreditsBody,
   AdminGrantProjectEntitlement201,
+  AdminListAudit200,
+  AdminListAuditParams,
+  AdminListPayments200,
   AdminListProjects200,
   AdminListUsers200,
   AdminRevokeProjectEntitlement200,
   AdminSetAdmin200,
   AdminSetAdminBody,
+  AdminSetUserStatus200,
+  AdminSetUserStatusBody,
+  AdminStats,
   AiDraftResponse,
   AnnualReport,
   AnnualReportProject,
@@ -787,6 +793,340 @@ export const useAdminRevokeProjectEntitlement = <
 > => {
   return useMutation(getAdminRevokeProjectEntitlementMutationOptions(options));
 };
+
+/**
+ * @summary High-level platform counts for the admin overview
+ */
+export const getAdminGetStatsUrl = () => {
+  return `/api/admin/stats`;
+};
+
+export const adminGetStats = async (
+  options?: RequestInit,
+): Promise<AdminStats> => {
+  return customFetch<AdminStats>(getAdminGetStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAdminGetStatsQueryKey = () => {
+  return [`/api/admin/stats`] as const;
+};
+
+export const getAdminGetStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof adminGetStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminGetStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getAdminGetStatsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof adminGetStats>>> = ({
+    signal,
+  }) => adminGetStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof adminGetStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AdminGetStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof adminGetStats>>
+>;
+export type AdminGetStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary High-level platform counts for the admin overview
+ */
+
+export function useAdminGetStats<
+  TData = Awaited<ReturnType<typeof adminGetStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminGetStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAdminGetStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Block or unblock a user (admin only)
+ */
+export const getAdminSetUserStatusUrl = (profileId: string) => {
+  return `/api/admin/users/${profileId}/set-status`;
+};
+
+export const adminSetUserStatus = async (
+  profileId: string,
+  adminSetUserStatusBody: AdminSetUserStatusBody,
+  options?: RequestInit,
+): Promise<AdminSetUserStatus200> => {
+  return customFetch<AdminSetUserStatus200>(
+    getAdminSetUserStatusUrl(profileId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminSetUserStatusBody),
+    },
+  );
+};
+
+export const getAdminSetUserStatusMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminSetUserStatus>>,
+    TError,
+    { profileId: string; data: BodyType<AdminSetUserStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminSetUserStatus>>,
+  TError,
+  { profileId: string; data: BodyType<AdminSetUserStatusBody> },
+  TContext
+> => {
+  const mutationKey = ["adminSetUserStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminSetUserStatus>>,
+    { profileId: string; data: BodyType<AdminSetUserStatusBody> }
+  > = (props) => {
+    const { profileId, data } = props ?? {};
+
+    return adminSetUserStatus(profileId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminSetUserStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminSetUserStatus>>
+>;
+export type AdminSetUserStatusMutationBody = BodyType<AdminSetUserStatusBody>;
+export type AdminSetUserStatusMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Block or unblock a user (admin only)
+ */
+export const useAdminSetUserStatus = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminSetUserStatus>>,
+    TError,
+    { profileId: string; data: BodyType<AdminSetUserStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminSetUserStatus>>,
+  TError,
+  { profileId: string; data: BodyType<AdminSetUserStatusBody> },
+  TContext
+> => {
+  return useMutation(getAdminSetUserStatusMutationOptions(options));
+};
+
+/**
+ * @summary List every entitlement / payment record (admin only)
+ */
+export const getAdminListPaymentsUrl = () => {
+  return `/api/admin/payments`;
+};
+
+export const adminListPayments = async (
+  options?: RequestInit,
+): Promise<AdminListPayments200> => {
+  return customFetch<AdminListPayments200>(getAdminListPaymentsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAdminListPaymentsQueryKey = () => {
+  return [`/api/admin/payments`] as const;
+};
+
+export const getAdminListPaymentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof adminListPayments>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListPayments>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getAdminListPaymentsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof adminListPayments>>
+  > = ({ signal }) => adminListPayments({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof adminListPayments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AdminListPaymentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof adminListPayments>>
+>;
+export type AdminListPaymentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List every entitlement / payment record (admin only)
+ */
+
+export function useAdminListPayments<
+  TData = Awaited<ReturnType<typeof adminListPayments>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListPayments>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAdminListPaymentsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Recent audit events (admin only)
+ */
+export const getAdminListAuditUrl = (params?: AdminListAuditParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/audit?${stringifiedParams}`
+    : `/api/admin/audit`;
+};
+
+export const adminListAudit = async (
+  params?: AdminListAuditParams,
+  options?: RequestInit,
+): Promise<AdminListAudit200> => {
+  return customFetch<AdminListAudit200>(getAdminListAuditUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAdminListAuditQueryKey = (params?: AdminListAuditParams) => {
+  return [`/api/admin/audit`, ...(params ? [params] : [])] as const;
+};
+
+export const getAdminListAuditQueryOptions = <
+  TData = Awaited<ReturnType<typeof adminListAudit>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: AdminListAuditParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof adminListAudit>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getAdminListAuditQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof adminListAudit>>> = ({
+    signal,
+  }) => adminListAudit(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof adminListAudit>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AdminListAuditQueryResult = NonNullable<
+  Awaited<ReturnType<typeof adminListAudit>>
+>;
+export type AdminListAuditQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Recent audit events (admin only)
+ */
+
+export function useAdminListAudit<
+  TData = Awaited<ReturnType<typeof adminListAudit>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: AdminListAuditParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof adminListAudit>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAdminListAuditQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List annual report projects for the authenticated user
