@@ -861,6 +861,9 @@ importers:
 
   scripts:
     dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.105.1
+        version: 2.105.1
       '@workspace/db':
         specifier: workspace:*
         version: link:../lib/db
