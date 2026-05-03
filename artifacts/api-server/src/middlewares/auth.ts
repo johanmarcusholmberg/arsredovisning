@@ -22,6 +22,25 @@ import { eq } from "drizzle-orm";
 import { db, profilesTable } from "@workspace/db";
 import { getSupabaseAdmin } from "../lib/supabase.js";
 
+/**
+ * Hard-coded list of emails that should always be site-wide admins.
+ * Compared case-insensitively. Applied in two places:
+ *   1. New profile creation: row is inserted with is_admin = true.
+ *   2. Existing profile sign-in: if is_admin is currently false, it is
+ *      flipped to true (idempotent self-healing). This guarantees that
+ *      these users have admin access regardless of past DB state.
+ * To remove a user from this list, delete them here AND demote them via
+ * POST /admin/users/:profileId/set-admin (the next sign-in won't re-promote).
+ */
+const BOOTSTRAP_ADMIN_EMAILS = new Set<string>([
+  "johanmarcusholmberg@gmail.com",
+]);
+
+function isBootstrapAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return BOOTSTRAP_ADMIN_EMAILS.has(email.toLowerCase());
+}
+
 export async function requireAuth(
   req: Request,
   res: Response,
@@ -57,23 +76,43 @@ export async function requireAuth(
   // Auto-create profile row on first login.
   const authId = data.user.id;
   let [profile] = await db
-    .select({ id: profilesTable.id })
+    .select({ id: profilesTable.id, isAdmin: profilesTable.isAdmin })
     .from(profilesTable)
     .where(eq(profilesTable.authId, authId))
     .limit(1);
 
+  const userEmail = data.user.email ?? "";
+  const shouldBeAdmin = isBootstrapAdminEmail(userEmail);
+
   if (!profile) {
-    const email = data.user.email ?? "";
     const [created] = await db
       .insert(profilesTable)
       .values({
         authId,
-        email,
+        email: userEmail,
         displayName: data.user.user_metadata?.["full_name"] ?? null,
+        isAdmin: shouldBeAdmin,
       })
-      .returning({ id: profilesTable.id });
+      .returning({ id: profilesTable.id, isAdmin: profilesTable.isAdmin });
     profile = created;
-    req.log.info({ authId, email }, "Auto-created profile for new user");
+    req.log.info(
+      { authId, email: userEmail, isAdmin: shouldBeAdmin },
+      "Auto-created profile for new user",
+    );
+  } else if (shouldBeAdmin && !profile.isAdmin) {
+    // Self-healing promotion: a bootstrap-admin email signed in but their
+    // existing profile row was not flagged as admin. Flip it now so they
+    // get the access they're entitled to without manual DB intervention.
+    const [updated] = await db
+      .update(profilesTable)
+      .set({ isAdmin: true, updatedAt: new Date() })
+      .where(eq(profilesTable.id, profile.id))
+      .returning({ id: profilesTable.id, isAdmin: profilesTable.isAdmin });
+    profile = updated;
+    req.log.info(
+      { profileId: profile.id, email: userEmail },
+      "Promoted bootstrap-admin email to is_admin=true",
+    );
   }
 
   req.user = {
