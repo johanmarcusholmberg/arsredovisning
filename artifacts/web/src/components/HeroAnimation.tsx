@@ -6,21 +6,28 @@ import {
   ArrowRight,
   ShieldCheck,
   Loader2,
-  Sparkles,
   BookOpen,
+  Download,
+  PenLine,
 } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
 
 /**
- * Looping hero animation: SIE upload → account mapping → validation → ready.
- * Four "scenes" cycle every ~9s. Honours prefers-reduced-motion (renders the
- * final scene statically). Visuals reuse the same chrome as DemoSlideVisuals
- * so the look stays consistent with /demo.
+ * Looping hero animation walking through the user's natural journey:
+ * 1. Upload SIE     — "I dropped a file in"
+ * 2. Mapping        — "It understood my chart of accounts"
+ * 3. Validate       — "It checked my work"
+ * 4. Statements     — "I see real numbers in my report"
+ * 5. Ready          — "Sign + export — I'm done"
+ *
+ * Honours prefers-reduced-motion (renders the final scene statically).
+ * Visuals reuse the same chrome as DemoSlideVisuals so the look stays
+ * consistent with /demo.
  */
 const SCENE_MS = 3400;
-const TOTAL_SCENES = 4;
+const TOTAL_SCENES = 5;
 
-type Scene = 0 | 1 | 2 | 3;
+type Scene = 0 | 1 | 2 | 3 | 4;
 
 const mappingRows = [
   { acc: "3001", name: "Nettoomsättning" },
@@ -32,7 +39,7 @@ const mappingRows = [
 export function HeroAnimation() {
   const { t } = useLanguage();
   const reduce = useReducedMotion();
-  const [scene, setScene] = useState<Scene>(reduce ? 3 : 0);
+  const [scene, setScene] = useState<Scene>(reduce ? 4 : 0);
 
   useEffect(() => {
     if (reduce) return;
@@ -75,7 +82,8 @@ export function HeroAnimation() {
             {scene === 0 && <SceneUpload key="upload" />}
             {scene === 1 && <SceneMapping key="mapping" />}
             {scene === 2 && <SceneValidate key="validate" />}
-            {scene === 3 && <SceneReady key="ready" t={t} />}
+            {scene === 3 && <SceneStatements key="statements" />}
+            {scene === 4 && <SceneReady key="ready" t={t} />}
           </AnimatePresence>
         </div>
 
@@ -202,54 +210,151 @@ function SceneValidate() {
   );
 }
 
-function SceneReady({ t }: { t: (k: string) => string }) {
+function fmt(n: number) {
+  return n.toLocaleString("sv-SE").replace(/,/g, " ");
+}
+
+const incomeRows: { name: string; amount: number; bold?: boolean }[] = [
+  { name: "Nettoomsättning", amount: 8420000 },
+  { name: "Personalkostnader", amount: -3120000 },
+  { name: "Avskrivningar", amount: -410000 },
+  { name: "Övriga kostnader", amount: -3650000 },
+  { name: "Rörelseresultat", amount: 1240000, bold: true },
+];
+
+function SceneStatements() {
   return (
     <motion.div {...fadeUp} className="h-full flex flex-col">
-      <div className="flex items-center gap-2 mb-3">
-        <ShieldCheck className="size-4 text-emerald-600" />
-        <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">
-          {t("landing.hero.animation.ready")}
-        </p>
+      <div className="flex items-center justify-between mb-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-mono uppercase tracking-wider px-2 py-0.5">
+          Resultaträkning
+        </span>
+        <span className="text-[10px] text-muted-foreground">2024 · kr</span>
       </div>
 
-      {/* Stacked report-page mockup */}
-      <div className="relative flex-1">
-        <motion.div
-          initial={{ opacity: 0, y: 10, rotate: -1 }}
-          animate={{ opacity: 1, y: 0, rotate: -3 }}
-          transition={{ delay: 0.05, duration: 0.4 }}
-          className="absolute inset-x-4 top-2 rounded-lg border border-border bg-background p-3 shadow-md"
-        >
-          <ReportRows shaded />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0, rotate: 1.5 }}
-          transition={{ delay: 0.18, duration: 0.4 }}
-          className="absolute inset-x-1 top-6 rounded-lg border border-border bg-background p-3 shadow-lg"
-        >
-          <ReportRows />
-          <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5">
-            <Sparkles className="size-3" />
-            Nordic Design AB · 2024
-          </div>
-        </motion.div>
+      <div className="rounded-xl border border-border bg-background p-3 shadow-sm space-y-1">
+        {incomeRows.map((row, i) => (
+          <motion.div
+            key={row.name}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.12, duration: 0.28 }}
+            className={`grid grid-cols-[1fr_auto] items-baseline gap-x-3 text-[12px] ${
+              row.bold
+                ? "font-semibold text-foreground border-t border-border pt-1.5 mt-1"
+                : "text-foreground"
+            }`}
+          >
+            <span className="truncate">{row.name}</span>
+            <span
+              className={`text-right tabular-nums ${
+                row.amount < 0 && !row.bold ? "text-muted-foreground" : ""
+              }`}
+            >
+              {fmt(row.amount)}
+            </span>
+          </motion.div>
+        ))}
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: incomeRows.length * 0.12 + 0.05, duration: 0.3 }}
+        className="mt-2 inline-flex items-center gap-1.5 self-start text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5"
+      >
+        <CheckCircle2 className="size-3" />
+        Avstämt mot SIE
+      </motion.div>
     </motion.div>
   );
 }
 
-function ReportRows({ shaded = false }: { shaded?: boolean }) {
-  const tone = shaded ? "bg-muted/60" : "bg-muted";
+function SceneReady({ t }: { t: (k: string) => string }) {
+  const kpis = [
+    { label: "Nettoomsättning", value: 8420000, prev: 7180000 },
+    { label: "Rörelseresultat", value: 1240000, prev: 1015000 },
+    { label: "Årets resultat", value: 887000, prev: 712000 },
+  ];
   return (
-    <div className="space-y-1.5">
-      <div className={`h-2 rounded ${tone} w-3/5`} />
-      <div className={`h-2 rounded ${tone} w-4/5`} />
-      <div className={`h-2 rounded ${tone} w-2/3`} />
-      <div className="h-px bg-border my-1.5" />
-      <div className={`h-2 rounded ${tone} w-1/2`} />
-      <div className={`h-2 rounded ${tone} w-3/4`} />
-      <div className={`h-2 rounded ${tone} w-2/5`} />
-    </div>
+    <motion.div {...fadeUp} className="h-full flex flex-col">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="size-4 text-emerald-600" />
+          <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">
+            {t("landing.hero.animation.ready")}
+          </p>
+        </div>
+        <span className="text-[10px] font-mono text-muted-foreground">
+          12 sidor · PDF
+        </span>
+      </div>
+
+      {/* KPI tiles */}
+      <div className="grid grid-cols-3 gap-1.5 mb-2.5">
+        {kpis.map((k, i) => {
+          const delta = Math.round(((k.value - k.prev) / k.prev) * 100);
+          return (
+            <motion.div
+              key={k.label}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08, duration: 0.3 }}
+              className="rounded-lg border border-border bg-background p-2"
+            >
+              <p className="text-[9px] uppercase tracking-wider text-muted-foreground truncate">
+                {k.label}
+              </p>
+              <p className="text-[12px] font-semibold text-foreground tabular-nums leading-tight mt-0.5">
+                {fmt(k.value)}
+              </p>
+              <p className="text-[9px] font-medium text-emerald-600 tabular-nums mt-0.5">
+                +{delta}% vs 2023
+              </p>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Signature row */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.28, duration: 0.32 }}
+        className="rounded-lg border border-border bg-background p-2.5 mb-2"
+      >
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <PenLine className="size-3 text-muted-foreground" />
+          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+            Underskrifter
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px]">
+          {[
+            ["Anna Lind", "Ordförande"],
+            ["Erik Sjö", "Ledamot"],
+            ["Maria Holm", "Ledamot"],
+            ["Johan Berg", "VD"],
+          ].map(([name, role]) => (
+            <div key={name} className="flex items-center gap-1.5">
+              <CheckCircle2 className="size-2.5 text-emerald-600 shrink-0" />
+              <span className="text-foreground truncate">{name}</span>
+              <span className="text-muted-foreground/80 truncate">· {role}</span>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Export CTA preview */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.42, duration: 0.32 }}
+        className="mt-auto inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 shadow-sm"
+      >
+        <Download className="size-3.5" />
+        Exportera årsredovisning · PDF
+      </motion.div>
+    </motion.div>
   );
 }
