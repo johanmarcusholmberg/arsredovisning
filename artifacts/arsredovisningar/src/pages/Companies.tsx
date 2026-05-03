@@ -3,17 +3,19 @@ import {
   useListCompanies,
   getListCompaniesQueryKey,
 } from "@workspace/api-client-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building, Plus, ArrowRight, Calendar } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Building, Plus, ChevronRight } from "lucide-react";
 
 export function Companies() {
   const {
@@ -41,11 +43,13 @@ export function Companies() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-40" />
-          ))}
-        </div>
+        <Card className="shadow-sm overflow-hidden">
+          <div className="p-4 space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </Card>
       ) : isError ? (
         <div className="bg-destructive/10 text-destructive p-6 rounded-lg border border-destructive/20 text-center">
           <h3 className="font-bold text-lg mb-2">Error loading companies</h3>
@@ -71,49 +75,77 @@ export function Companies() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {companies.map((company) => (
-            <Link
-              key={company.id}
-              href={`/companies/${company.id}`}
-              className="group block"
-            >
-              <Card className="shadow-sm hover:shadow-md transition-shadow h-full cursor-pointer">
-                <CardHeader>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <Badge
-                      variant="outline"
-                      className="font-mono bg-muted/50"
-                    >
+        <Card className="shadow-sm overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[34%]">Name</TableHead>
+                <TableHead className="w-[16%]">Org. number</TableHead>
+                <TableHead className="w-[10%]">Form</TableHead>
+                <TableHead className="w-[14%]">Fiscal year</TableHead>
+                <TableHead className="w-[10%]">Framework</TableHead>
+                <TableHead className="hidden md:table-cell">Location</TableHead>
+                <TableHead className="w-[40px]" aria-label="Open" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {companies.map((company) => {
+                const location = [company.zipCode, company.city]
+                  .filter(Boolean)
+                  .join(" ");
+                return (
+                  <TableRow
+                    key={company.id}
+                    className="group cursor-pointer"
+                    onClick={(e) => {
+                      // Let the inner <Link> handle clicks; this is a
+                      // backup so the whole row is clickable for users who
+                      // miss the title link.
+                      const target = e.target as HTMLElement;
+                      if (target.closest("a")) return;
+                      const link = e.currentTarget.querySelector<HTMLAnchorElement>(
+                        "a[data-row-link]"
+                      );
+                      link?.click();
+                    }}
+                  >
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/companies/${company.id}`}
+                        data-row-link
+                        className="hover:underline focus:outline-none focus-visible:underline"
+                      >
+                        {company.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
                       {company.orgNumber}
-                    </Badge>
-                    <Badge variant="secondary">{company.legalForm}</Badge>
-                  </div>
-                  <CardTitle className="flex items-center justify-between gap-2">
-                    <span className="truncate">{company.name}</span>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                  </CardTitle>
-                  <CardDescription className="flex items-center gap-2 pt-1">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span className="font-mono text-xs">
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="font-normal">
+                        {company.legalForm}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
                       {company.fiscalYearStart} – {company.fiscalYearEnd}
-                    </span>
-                    <span className="ml-auto text-xs">
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
                       {company.accountingFramework}
-                    </span>
-                  </CardDescription>
-                </CardHeader>
-                {(company.address || company.city) && (
-                  <CardContent className="text-sm text-muted-foreground">
-                    {[company.address, company.zipCode, company.city]
-                      .filter(Boolean)
-                      .join(", ")}
-                  </CardContent>
-                )}
-              </Card>
-            </Link>
-          ))}
-        </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground truncate max-w-[200px]">
+                      {location || (
+                        <span className="text-muted-foreground/50">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/60 group-hover:text-primary transition-colors inline" />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
       )}
     </div>
   );
