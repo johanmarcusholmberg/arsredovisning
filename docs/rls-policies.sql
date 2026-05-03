@@ -28,7 +28,29 @@ $$;
 -- =============================================================================
 -- profiles
 -- =============================================================================
--- Users can read and write only their own profile row.
+-- Users can read their own profile row.
+--
+-- WRITE MODEL — IMPORTANT:
+--   Postgres RLS does NOT filter individual columns; a row-level UPDATE policy
+--   that allows `auth_id = auth.uid()` would let a user update ANY column on
+--   their own row from the client (including is_admin, status,
+--   available_project_credits, last_sign_in_at, role). To prevent that, we:
+--
+--     1. Do NOT create a generic UPDATE policy on profiles.
+--     2. Use column-level GRANTs on the `authenticated` role to whitelist
+--        exactly the fields the user is allowed to mutate:
+--           - display_name
+--           - default_ui_language
+--           - updated_at
+--     3. Add a narrow UPDATE policy that still requires the row to be the
+--        caller's own row, so the column whitelist cannot be used to mutate
+--        someone else's profile.
+--
+--   All sensitive fields (is_admin, status, role, available_project_credits,
+--   last_sign_in_at, email, auth_id) are writable ONLY via the API server's
+--   service-role connection through routes that enforce requireSiteAdmin or
+--   are part of the auth middleware (last_sign_in_at) / Supabase email-sync
+--   flow (email).
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
@@ -36,14 +58,33 @@ CREATE POLICY "profiles: own row read"
   ON profiles FOR SELECT
   USING (auth_id = auth.uid()::text);
 
-CREATE POLICY "profiles: own row insert"
-  ON profiles FOR INSERT
-  WITH CHECK (auth_id = auth.uid()::text);
-
-CREATE POLICY "profiles: own row update"
+-- Narrow UPDATE policy: only the owner's row can be touched at all. Combined
+-- with the column-level GRANTs below, this restricts ordinary users to
+-- changing display_name / default_ui_language / updated_at on their own row.
+CREATE POLICY "profiles: own row update (whitelisted columns)"
   ON profiles FOR UPDATE
   USING (auth_id = auth.uid()::text)
   WITH CHECK (auth_id = auth.uid()::text);
+
+-- Lock down column-level UPDATE privileges. Revoke the implicit table-wide
+-- UPDATE first, then grant only the user-editable columns. Service-role
+-- connections (used by the API server) bypass these grants entirely.
+REVOKE UPDATE ON profiles FROM authenticated;
+REVOKE UPDATE ON profiles FROM anon;
+
+GRANT UPDATE (display_name, default_ui_language, updated_at)
+  ON profiles
+  TO authenticated;
+
+-- INSERT and DELETE are reserved for the API server's service-role
+-- connection. Profile rows are created exclusively by requireAuth /
+-- syncProfile in the API server, so no client write path is needed.
+-- Revoking the grants makes any direct client attempt fail at the
+-- privilege layer, regardless of RLS policies.
+REVOKE INSERT ON profiles FROM authenticated;
+REVOKE INSERT ON profiles FROM anon;
+REVOKE DELETE ON profiles FROM authenticated;
+REVOKE DELETE ON profiles FROM anon;
 
 -- =============================================================================
 -- user_preferences
