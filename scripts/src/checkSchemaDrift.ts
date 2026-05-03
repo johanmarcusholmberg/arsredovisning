@@ -484,16 +484,28 @@ async function main() {
   // 3e. RLS / policies — informational by default; surfaces drift if a table in the schema has policies
   // documented in lib/db/drizzle/*_rls.sql but pg_policies does not show them.
   if (FLAGS.rls) {
-    const expectedRlsTables = new Set([
-      "annual_report_reclassification_suggestions",
-      "annual_report_reclassifications",
-      "annual_report_reclassification_audit_log",
-    ]);
+    // Mirrors the policies in lib/db/drizzle/0005_apply_full_rls.sql plus the
+    // reclassification policies from 0003_phase_6_5_reclassification_rls.sql.
+    // Every table listed here must have RLS enabled and at least the
+    // documented number of pg_policies rows. Adjust both this set and the
+    // counts when adding/removing policies in the *_rls.sql migration files.
     const expectedPolicyCounts: Record<string, number> = {
+      profiles: 3, // SELECT, INSERT, UPDATE (own row)
+      user_preferences: 3, // SELECT, INSERT, UPDATE (own row)
+      companies: 3, // read via project access, insert authed, update by owner
+      annual_report_projects: 4, // read, insert, update, delete
+      project_access: 4, // read own, read as owner, insert by owner, delete by owner
+      project_entitlements: 2, // read own, read for accessible projects (writes via service role)
+      audit_events: 1, // read for accessible projects (writes via service role)
+      project_snapshots: 1, // read for accessible projects
+      project_files: 4, // read, insert, update, delete
+      export_files: 2, // read, delete
+      reports: 3, // read, insert, update
       annual_report_reclassification_suggestions: 3, // SELECT, INSERT, UPDATE
       annual_report_reclassifications: 3,
       annual_report_reclassification_audit_log: 1, // SELECT only
     };
+    const expectedRlsTables = new Set(Object.keys(expectedPolicyCounts));
     const rlsByTable = new Map(rlsRes.rows.map((r) => [r.tablename, r.rowsecurity]));
     const polByTable: Record<string, number> = {};
     for (const p of policyRes.rows) polByTable[p.tablename] = (polByTable[p.tablename] || 0) + 1;
