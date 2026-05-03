@@ -1,10 +1,8 @@
-import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowRight, PlayCircle } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/hooks/useLanguage";
 import { DemoCarousel, type DemoSlideDefinition } from "@/components/demo/DemoCarousel";
-import { DemoPdfDownload } from "@/components/demo/DemoPdfDownload";
 import {
   ImportVisual,
   StatementsVisual,
@@ -103,9 +101,6 @@ export default function PublicDemoPage() {
               <p className="mt-2 text-sm md:text-base text-muted-foreground leading-relaxed">
                 {t("publicDemo.cta.subtitle")}
               </p>
-              <p className="mt-3 text-xs text-muted-foreground italic">
-                {t("publicDemo.cta.pdfNote")}
-              </p>
             </div>
             <div className="flex flex-col sm:flex-row md:flex-col gap-3 md:items-stretch">
               <Button asChild size="lg" className="gap-2">
@@ -114,13 +109,6 @@ export default function PublicDemoPage() {
                   <ArrowRight className="size-4" />
                 </a>
               </Button>
-              <DemoPdfDownload variant="outline" size="lg" />
-              <Link href="/pricing">
-                <Button variant="ghost" size="lg" className="w-full gap-2">
-                  <PlayCircle className="size-4" />
-                  {t("publicDemo.cta.howItWorks")}
-                </Button>
-              </Link>
             </div>
           </div>
         </motion.div>
