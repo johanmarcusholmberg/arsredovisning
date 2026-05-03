@@ -381,6 +381,57 @@ export const strings = {
 
     // ── A11y (P4-1) ──────────────────────────────────────────────────────
     "common.skip_to_content": "Hoppa till huvudinnehåll",
+
+    // ── Account status / license model (replaces credit wording) ─────────
+    "account.status.demo.badge": "Demo-konto",
+    "account.status.demo.title": "Du är i demo-läge",
+    "account.status.demo.body":
+      "Du kan utforska produkten med exempeldata. För att skapa en riktig årsredovisning behöver du låsa upp ett projekt. Ett köp gäller för ett bolag och ett räkenskapsår.",
+    "account.status.demo.cta_demo": "Visa demo",
+    "account.status.demo.cta_unlock": "Lås upp årsredovisning",
+    "account.status.locked.title": "Det här ingår när du låser upp ett projekt",
+    "account.status.locked.import": "Importera bokföringsdata (SIE)",
+    "account.status.locked.create": "Skapa bolag och projekt",
+    "account.status.locked.mapping": "Kontomappning enligt BAS",
+    "account.status.locked.statements": "Generera resultat- och balansräkning",
+    "account.status.locked.notes": "Noter och kassaflödesanalys",
+    "account.status.locked.validate": "Validera årsredovisningen",
+    "account.status.locked.export": "Exportera ren PDF/Word utan vattenmärke",
+    "account.status.licenses.title": "Aktiva projekt",
+    "account.status.licenses.subtitle":
+      "Varje köp gäller för ett bolag och ett räkenskapsår.",
+    "account.status.licenses.count_one": "1 aktivt projekt",
+    "account.status.licenses.count_many": "{n} aktiva projekt",
+    "account.status.licenses.admin":
+      "Du är administratör – alla projekt är upplåsta.",
+    "account.status.licenses.cta": "Gå till projektytan",
+    "account.status.licenses.empty":
+      "Inga aktiva projekt ännu. Lås upp ett projekt för att komma igång.",
+
+    // ── Upgrade / project license page ───────────────────────────────────
+    "upgrade.title": "Lås upp ditt projekt för årsredovisning",
+    "upgrade.subtitle":
+      "Ett köp gäller för ett bolag och ett räkenskapsår. När projektet är upplåst kan du importera bokföring, hantera noter och exportera en ren PDF.",
+    "upgrade.has_access.title": "Du har redan tillgång",
+    "upgrade.has_access.admin":
+      "Som administratör har du obegränsad åtkomst.",
+    "upgrade.has_access.body":
+      "Du har en aktiv projektlicens. Gå till översikten för att fortsätta.",
+    "upgrade.has_access.cta": "Gå till min översikt",
+    "upgrade.included.title": "Vad ingår i en projektlicens",
+    "upgrade.included.company": "1 bolag (organisationsnummer och uppgifter)",
+    "upgrade.included.year": "1 räkenskapsår",
+    "upgrade.included.report":
+      "1 färdigställd årsredovisning (PDF + Word, utan vattenmärke)",
+    "upgrade.included.editing": "Obegränsad redigering tills rapporten exporteras",
+    "upgrade.try.title": "Vill du prova först?",
+    "upgrade.try.body":
+      "Du kan köra hela flödet i demoarbetsytan utan kostnad. All export blir vattenmärkt och ingen riktig data lagras.",
+    "upgrade.try.cta": "Öppna demo",
+    "upgrade.request.title": "Begär projektlicens",
+    "upgrade.request.body":
+      "Stripe-betalning är inte aktiverad ännu. Kontakta oss för att få en projektlicens manuellt tilldelad.",
+    "upgrade.request.cta": "Mejla teamet",
   },
 
   en: {
@@ -736,6 +787,55 @@ export const strings = {
       "You came from the demo — get started quickly with a sample company.",
 
     "common.skip_to_content": "Skip to main content",
+
+    "account.status.demo.badge": "Demo account",
+    "account.status.demo.title": "You're in demo mode",
+    "account.status.demo.body":
+      "You can explore the product with sample data. To create a real annual report, unlock a paid project. One purchase applies to one company and one financial year.",
+    "account.status.demo.cta_demo": "View demo",
+    "account.status.demo.cta_unlock": "Unlock annual report project",
+    "account.status.locked.title": "What's included when you unlock a project",
+    "account.status.locked.import": "Import accounting data (SIE)",
+    "account.status.locked.create": "Create company and project",
+    "account.status.locked.mapping": "Map accounts to BAS",
+    "account.status.locked.statements": "Generate income statement and balance sheet",
+    "account.status.locked.notes": "Notes and cash-flow statement",
+    "account.status.locked.validate": "Validate the annual report",
+    "account.status.locked.export": "Export clean PDF/Word without watermark",
+    "account.status.licenses.title": "Active projects",
+    "account.status.licenses.subtitle":
+      "Each purchase applies to one company and one financial year.",
+    "account.status.licenses.count_one": "1 active project",
+    "account.status.licenses.count_many": "{n} active projects",
+    "account.status.licenses.admin":
+      "You're an administrator – all projects are unlocked.",
+    "account.status.licenses.cta": "Go to project workspace",
+    "account.status.licenses.empty":
+      "No active projects yet. Unlock a project to get started.",
+
+    "upgrade.title": "Unlock your annual report project",
+    "upgrade.subtitle":
+      "One purchase applies to one company and one financial year. Once unlocked, you can import bookkeeping, manage notes and export a clean PDF.",
+    "upgrade.has_access.title": "You already have access",
+    "upgrade.has_access.admin":
+      "As an administrator you have unlimited access.",
+    "upgrade.has_access.body":
+      "You have an active project license. Go to your overview to continue.",
+    "upgrade.has_access.cta": "Go to my overview",
+    "upgrade.included.title": "What's in a project license",
+    "upgrade.included.company": "1 company (organisation number and details)",
+    "upgrade.included.year": "1 financial year",
+    "upgrade.included.report":
+      "1 finished annual report (PDF + Word, no watermark)",
+    "upgrade.included.editing": "Unlimited editing until the report is exported",
+    "upgrade.try.title": "Want to try first?",
+    "upgrade.try.body":
+      "You can run the whole flow in the demo workspace for free. All exports are watermarked and no real data is stored.",
+    "upgrade.try.cta": "Open demo",
+    "upgrade.request.title": "Request a project license",
+    "upgrade.request.body":
+      "Stripe payment isn't enabled yet. Contact us to have a project license assigned manually.",
+    "upgrade.request.cta": "Email the team",
   },
 } as const satisfies Record<Language, Record<string, string>>;
 

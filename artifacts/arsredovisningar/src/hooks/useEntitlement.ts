@@ -51,6 +51,7 @@ export function useEntitlement() {
     canCreateProject: entitlement?.canCreateProject ?? false,
     availableProjectCredits: entitlement?.availableProjectCredits ?? 0,
     canEnterRealWorkspace: isPaid,
+    paidProjectIds,
     canAccessProject: (projectId: string) =>
       isAdmin || paidProjectIds.includes(projectId),
   };

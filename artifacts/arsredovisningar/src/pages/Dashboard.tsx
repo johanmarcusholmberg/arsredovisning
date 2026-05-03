@@ -30,7 +30,13 @@ import { useToast } from "@/hooks/use-toast";
 import type { StringKey } from "@/i18n/strings";
 import { useEffect } from "react";
 import { useEntitlement } from "@/hooks/useEntitlement";
-import { Sparkles, Lock } from "lucide-react";
+import {
+  Sparkles,
+  Lock,
+  ShieldCheck,
+  PlayCircle,
+  KeyRound,
+} from "lucide-react";
 
 const STATUS_KEY: Record<string, StringKey> = {
   draft: "report.status.draft",
@@ -65,32 +71,130 @@ function NewCompanyCTA() {
 }
 
 /**
- * Banner shown to free users explaining that the real workspace is
- * paywalled and pointing them at /upgrade. Hidden for paid users so
- * we don't nag.
+ * Account status card shown to free (demo) users in place of the old
+ * credit-based banner. Communicates that the account is in demo/unpaid
+ * mode and offers two clear actions: explore demo, or unlock a real
+ * project. Hidden for paid users — they get <ActiveLicensesCard /> instead.
  */
-function PaywallBanner() {
-  const { isLoading, isFree, availableProjectCredits, isAdmin } = useEntitlement();
+function DemoAccountCard() {
+  const { t } = useLanguage();
+  const { isLoading, isFree } = useEntitlement();
   if (isLoading || !isFree) return null;
   return (
     <Card className="border-primary/40 bg-primary/5">
-      <CardContent className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 py-4">
-        <div className="flex items-start gap-3">
-          <div className="bg-primary/10 text-primary p-2 rounded-md">
-            <Sparkles className="h-5 w-5" />
+      <CardContent className="py-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="bg-primary/10 text-primary p-2 rounded-md">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div className="space-y-1">
+              <Badge variant="secondary" className="mb-1">
+                {t("account.status.demo.badge")}
+              </Badge>
+              <p className="font-semibold text-base">
+                {t("account.status.demo.title")}
+              </p>
+              <p className="text-sm text-muted-foreground max-w-2xl">
+                {t("account.status.demo.body")}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold">Lås upp din riktiga årsredovisning</p>
-            <p className="text-sm text-muted-foreground">
-              {isAdmin
-                ? "Du är admin — alla åtgärder är upplåsta."
-                : `Du har ${availableProjectCredits} projektkrediter. Köp en kredit för att skapa ett bolag och ett räkenskapsår.`}
+          <div className="flex flex-col sm:flex-row gap-2 md:flex-col md:items-end shrink-0">
+            <Button asChild variant="outline">
+              <a href="/demo">
+                <PlayCircle className="h-4 w-4 mr-2" />
+                {t("account.status.demo.cta_demo")}
+              </a>
+            </Button>
+            <Button asChild>
+              <Link href="/upgrade">
+                <KeyRound className="h-4 w-4 mr-2" />
+                {t("account.status.demo.cta_unlock")}
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Lists the gated capabilities a user gets after unlocking a project.
+ * Shown only to free users so they understand what payment unlocks.
+ */
+function LockedFeaturesCard() {
+  const { t } = useLanguage();
+  const { isLoading, isFree } = useEntitlement();
+  if (isLoading || !isFree) return null;
+  const items: StringKey[] = [
+    "account.status.locked.import",
+    "account.status.locked.create",
+    "account.status.locked.mapping",
+    "account.status.locked.statements",
+    "account.status.locked.notes",
+    "account.status.locked.validate",
+    "account.status.locked.export",
+  ];
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Lock className="h-4 w-4 text-muted-foreground" />
+          {t("account.status.locked.title")}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm text-muted-foreground">
+          {items.map((key) => (
+            <li key={key} className="flex items-start gap-2">
+              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/60 shrink-0" />
+              <span>{t(key)}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Active license summary for paid users. Replaces the credit-balance
+ * messaging — instead we surface that the user has one or more active
+ * annual-report projects unlocked (one per company + fiscal year).
+ */
+function ActiveLicensesCard() {
+  const { t } = useLanguage();
+  const { isLoading, isPaid, isAdmin, paidProjectIds } = useEntitlement();
+  if (isLoading || !isPaid) return null;
+  const count = paidProjectIds.length;
+  const countLabel = isAdmin
+    ? t("account.status.licenses.admin")
+    : count === 1
+      ? t("account.status.licenses.count_one")
+      : count === 0
+        ? t("account.status.licenses.empty")
+        : t("account.status.licenses.count_many").replace("{n}", String(count));
+  return (
+    <Card className="border-green-200 bg-green-50/40">
+      <CardContent className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 py-5">
+        <div className="flex items-start gap-3">
+          <div className="bg-green-500/10 text-green-700 p-2 rounded-md">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div className="space-y-1">
+            <p className="font-semibold text-base">
+              {t("account.status.licenses.title")}
+            </p>
+            <p className="text-sm text-muted-foreground max-w-2xl">
+              {countLabel} · {t("account.status.licenses.subtitle")}
             </p>
           </div>
         </div>
-        <Button asChild>
-          <Link href="/upgrade">
-            Visa upplägg
+        <Button asChild variant="outline">
+          <Link href="/companies">
+            {t("account.status.licenses.cta")}
             <ArrowRight className="h-4 w-4 ml-2" />
           </Link>
         </Button>
@@ -168,8 +272,9 @@ export function Dashboard() {
         {!showWelcome && <NewCompanyCTA />}
       </div>
 
-      <PaywallBanner />
-
+      <DemoAccountCard />
+      <ActiveLicensesCard />
+      <LockedFeaturesCard />
 
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
