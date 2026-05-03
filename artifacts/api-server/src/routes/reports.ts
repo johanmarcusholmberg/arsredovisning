@@ -1,6 +1,12 @@
 import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
-import { db, companiesTable, reportsTable } from "@workspace/db";
+import {
+  db,
+  companiesTable,
+  reportsTable,
+  annualReportProjectsTable,
+  projectEntitlementsTable,
+} from "@workspace/db";
 import {
   CreateReportBody,
   CreateReportParams,
@@ -103,16 +109,21 @@ router.post("/companies/:companyId/reports", async (req, res): Promise<void> => 
     return;
   }
 
+  const fiscalYearStart =
+    (parsed.data.fiscalYearStart as unknown) instanceof Date
+      ? (parsed.data.fiscalYearStart as unknown as Date).toISOString().slice(0, 10)
+      : String(parsed.data.fiscalYearStart);
+  const fiscalYearEnd =
+    (parsed.data.fiscalYearEnd as unknown) instanceof Date
+      ? (parsed.data.fiscalYearEnd as unknown as Date).toISOString().slice(0, 10)
+      : String(parsed.data.fiscalYearEnd);
+
   const [report] = await db
     .insert(reportsTable)
     .values({
       companyId: params.data.companyId,
-      fiscalYearStart: (parsed.data.fiscalYearStart as unknown) instanceof Date
-        ? (parsed.data.fiscalYearStart as unknown as Date).toISOString().slice(0, 10)
-        : String(parsed.data.fiscalYearStart),
-      fiscalYearEnd: (parsed.data.fiscalYearEnd as unknown) instanceof Date
-        ? (parsed.data.fiscalYearEnd as unknown as Date).toISOString().slice(0, 10)
-        : String(parsed.data.fiscalYearEnd),
+      fiscalYearStart,
+      fiscalYearEnd,
       accountingFramework: parsed.data.accountingFramework,
       status: "draft",
       completionPercent: 0,
@@ -121,12 +132,67 @@ router.post("/companies/:companyId/reports", async (req, res): Promise<void> => 
     })
     .returning();
 
+  // Auto-create the matching annual_report_projects row + a manual_grant
+  // entitlement so the report can immediately import SIE / CSV / Excel files.
+  // Previously this step was missing — every newly created report opened the
+  // import page with "Inget projekt kopplat" and was effectively blocked.
+  // We deduplicate by (company, fiscalYear) so re-runs are safe.
+  const [existingProject] = await db
+    .select({ id: annualReportProjectsTable.id })
+    .from(annualReportProjectsTable)
+    .where(
+      and(
+        eq(annualReportProjectsTable.companyId, params.data.companyId),
+        eq(annualReportProjectsTable.fiscalYearStart, fiscalYearStart),
+        eq(annualReportProjectsTable.fiscalYearEnd, fiscalYearEnd),
+      ),
+    )
+    .limit(1);
+
+  let projectId: string | null = existingProject?.id ?? null;
+  if (!projectId) {
+    try {
+      const [project] = await db
+        .insert(annualReportProjectsTable)
+        .values({
+          companyId: params.data.companyId,
+          fiscalYearStart,
+          fiscalYearEnd,
+          accountingFramework: parsed.data.accountingFramework,
+          status: "draft",
+          noteNumberingScheme: "sequential",
+          createdByProfileId: profileId,
+        })
+        .returning({ id: annualReportProjectsTable.id });
+      projectId = project?.id ?? null;
+
+      if (projectId) {
+        await db.insert(projectEntitlementsTable).values({
+          projectId,
+          profileId,
+          entitlementType: "manual_grant",
+          source: "auto_grant_on_report_create",
+          isActive: true,
+        });
+      }
+    } catch (err) {
+      // Best-effort: report row is already persisted. Log and continue so the
+      // user gets their report; they can still revisit the import page once
+      // the project is created out-of-band.
+      req.log.warn(
+        { err, reportId: report.id, companyId: params.data.companyId },
+        "Failed to auto-create annual_report_projects row for new report",
+      );
+    }
+  }
+
   await logAuditEvent({
     eventType: "report.created",
     actorProfileId: profileId,
     companyId: company.id,
     payload: {
       reportId: report.id,
+      projectId,
       fiscalYearStart: report.fiscalYearStart,
       fiscalYearEnd: report.fiscalYearEnd,
     },

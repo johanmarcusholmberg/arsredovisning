@@ -1,5 +1,5 @@
 import { useRoute, Link } from "wouter";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetProjectForReport,
@@ -135,6 +135,66 @@ export function MappingPage() {
     queryClient.invalidateQueries({ queryKey: getListAccountMappingsQueryKey(projectId, queryParams) });
   };
 
+  // ── Auto-apply most recent template for returning customers ──────────────
+  // Hooks MUST run unconditionally on every render (rules of hooks), so this
+  // sits above the early returns below. The effect itself no-ops until the
+  // gating conditions are met (project resolved, mappings loaded, no manual
+  // edits yet, at least one template available, and we haven't applied yet
+  // this session).
+  const autoAppliedRef = useRef<Set<string>>(new Set());
+  const allRows = rows ?? [];
+  const hasManualEdits = allRows.some((r) => r.status === "manually_mapped");
+  const templateCount = templates?.length ?? 0;
+  useEffect(() => {
+    if (!projectId) return;
+    if (autoAppliedRef.current.has(projectId)) return;
+    if (applyTemplate.isPending) return;
+    if (allRows.length === 0) return; // need a post-import baseline
+    if (hasManualEdits) return; // user already started editing — don't overwrite
+    if (!templates || templates.length === 0) return;
+
+    const sessionKey = `mapping-template-autoapplied:${projectId}`;
+    if (typeof window !== "undefined" && window.sessionStorage.getItem(sessionKey)) {
+      autoAppliedRef.current.add(projectId);
+      return;
+    }
+
+    // Pick the most recent template (templates are typically returned ordered
+    // by createdAt asc; take the last one).
+    const latest = templates[templates.length - 1];
+    if (!latest) return;
+
+    autoAppliedRef.current.add(projectId);
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(sessionKey, "1");
+    }
+
+    applyTemplate.mutate(
+      { projectId, templateId: latest.id },
+      {
+        onSuccess: (resp) => {
+          invalidate();
+          if (resp.appliedCount > 0) {
+            toast({
+              title: "Sparad mall tillämpad",
+              description: `${resp.appliedCount} kontomappningar återanvändes från "${latest.name}". Granska och justera vid behov.`,
+            });
+          }
+        },
+        onError: () => {
+          // Allow retry next mount if the apply failed.
+          autoAppliedRef.current.delete(projectId);
+          if (typeof window !== "undefined") {
+            window.sessionStorage.removeItem(sessionKey);
+          }
+        },
+      },
+    );
+    // We intentionally depend only on the trigger conditions, not on the
+    // mutation function identity, to keep this fire-once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, allRows.length, hasManualEdits, templateCount]);
+
   // ── Loading / no project ─────────────────────────────────────────────────
   if (isResolvingProject) {
     return (
@@ -185,7 +245,7 @@ export function MappingPage() {
   }
 
   // ── Partition by confidence ──────────────────────────────────────────────
-  const all = rows ?? [];
+  const all = allRows;
   const lowOrUnmapped = all.filter((r) => r.confidence === "low" || r.confidence === "unmapped" || r.status === "needs_review");
   const high = all.filter((r) => !lowOrUnmapped.includes(r) && r.confidence === "high");
   const medium = all.filter((r) => r.confidence === "medium" && !lowOrUnmapped.includes(r));
@@ -312,13 +372,17 @@ export function MappingPage() {
       ) : all.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground space-y-2">
-            <p>Inga mappningar hittades.</p>
+            <p className="font-medium text-foreground">
+              Mappning kräver aktiv årsredovisning
+            </p>
             <p className="text-sm">
               Bekräfta först en import på{" "}
               <Link href={`/reports/${reportId}/import`} className="text-primary hover:underline">
                 Import-sidan
               </Link>{" "}
-              för att köra automappningen.
+              för att köra automappningen. Återkommande kunder får sina sparade
+              kontomappningar tillämpade automatiskt — endast eventuella
+              uppdateringar behöver göras.
             </p>
           </CardContent>
         </Card>

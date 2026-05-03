@@ -227,14 +227,26 @@ export function ReportWorkspace() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {report.status !== "complete" && (
+          {report.status !== "complete" ? (
             <Button
               onClick={() => handleStatusChange("complete")}
               variant="outline"
               className="border-green-500/30 text-green-600 hover:bg-green-500/10"
+              disabled={updateReport.isPending}
             >
               <CheckCircle2 className="mr-2 h-4 w-4" />
               Markera som klar
+            </Button>
+          ) : (
+            <Button
+              onClick={() => handleStatusChange("in_progress")}
+              variant="outline"
+              className="border-amber-500/40 text-amber-700 hover:bg-amber-500/10"
+              disabled={updateReport.isPending}
+              title="Återöppna rapporten för redigering"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Ångra klarmarkering
             </Button>
           )}
           <Button asChild>

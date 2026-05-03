@@ -2,6 +2,10 @@ import { Link } from "wouter";
 import {
   useListCompanies,
   getListCompaniesQueryKey,
+  useListReports,
+  getListReportsQueryKey,
+  type AnnualReport,
+  type AnnualReportStatus,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +20,85 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Building, Plus, ChevronRight } from "lucide-react";
+
+const statusMeta: Record<
+  AnnualReportStatus,
+  { label: string; cls: string }
+> = {
+  draft: { label: "Utkast", cls: "bg-slate-500/10 text-slate-700 border-slate-500/30" },
+  in_progress: { label: "Pågående", cls: "bg-blue-500/10 text-blue-700 border-blue-500/30" },
+  complete: { label: "Klar", cls: "bg-green-500/10 text-green-700 border-green-500/30" },
+  exported: { label: "Exporterad", cls: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30" },
+};
+
+function pickLatestReport(reports: AnnualReport[] | undefined): AnnualReport | null {
+  if (!reports || reports.length === 0) return null;
+  return [...reports].sort((a, b) =>
+    b.fiscalYearEnd.localeCompare(a.fiscalYearEnd),
+  )[0];
+}
+
+function CompanyReportCell({ companyId }: { companyId: string }) {
+  const { data: reports, isLoading } = useListReports(companyId, {
+    query: { queryKey: getListReportsQueryKey(companyId) },
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-5 w-24" />;
+  }
+
+  const latest = pickLatestReport(reports);
+  if (!latest) {
+    return <span className="text-xs text-muted-foreground/60">Ingen rapport</span>;
+  }
+
+  const meta = statusMeta[latest.status];
+  return (
+    <div className="flex flex-col gap-1 min-w-[140px]">
+      <Badge variant="outline" className={`${meta.cls} w-fit text-[11px]`}>
+        {meta.label}
+      </Badge>
+      <div className="flex items-center gap-2">
+        <div className="h-1 w-20 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary"
+            style={{ width: `${latest.completionPercent}%` }}
+          />
+        </div>
+        <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+          {latest.completionPercent}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function CompanyReportCountCell({ companyId }: { companyId: string }) {
+  const { data: reports, isLoading } = useListReports(companyId, {
+    query: { queryKey: getListReportsQueryKey(companyId) },
+  });
+  if (isLoading) return <Skeleton className="h-4 w-10" />;
+  const count = reports?.length ?? 0;
+  return (
+    <span className="text-xs font-mono text-muted-foreground tabular-nums">
+      {count}
+    </span>
+  );
+}
+
+function CompanyLatestYearCell({ companyId }: { companyId: string }) {
+  const { data: reports, isLoading } = useListReports(companyId, {
+    query: { queryKey: getListReportsQueryKey(companyId) },
+  });
+  if (isLoading) return <Skeleton className="h-4 w-16" />;
+  const latest = pickLatestReport(reports);
+  if (!latest) return <span className="text-muted-foreground/50">—</span>;
+  return (
+    <span className="text-xs font-mono text-muted-foreground tabular-nums">
+      {new Date(latest.fiscalYearEnd).getFullYear()}
+    </span>
+  );
+}
 
 export function Companies() {
   const {
@@ -79,12 +162,14 @@ export function Companies() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[34%]">Name</TableHead>
-                <TableHead className="w-[16%]">Org. number</TableHead>
-                <TableHead className="w-[10%]">Form</TableHead>
-                <TableHead className="w-[14%]">Fiscal year</TableHead>
-                <TableHead className="w-[10%]">Framework</TableHead>
-                <TableHead className="hidden md:table-cell">Location</TableHead>
+                <TableHead className="w-[24%]">Name</TableHead>
+                <TableHead className="w-[14%]">Org. number</TableHead>
+                <TableHead className="w-[8%]">Form</TableHead>
+                <TableHead className="w-[8%]">Framework</TableHead>
+                <TableHead className="w-[16%]">Senaste årsredovisning</TableHead>
+                <TableHead className="w-[7%] text-right">År</TableHead>
+                <TableHead className="w-[7%] text-right">Antal</TableHead>
+                <TableHead className="hidden lg:table-cell">Location</TableHead>
                 <TableHead className="w-[40px]" aria-label="Open" />
               </TableRow>
             </TableHeader>
@@ -126,13 +211,19 @@ export function Companies() {
                         {company.legalForm}
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
-                      {company.fiscalYearStart} – {company.fiscalYearEnd}
-                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {company.accountingFramework}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground truncate max-w-[200px]">
+                    <TableCell>
+                      <CompanyReportCell companyId={company.id} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <CompanyLatestYearCell companyId={company.id} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <CompanyReportCountCell companyId={company.id} />
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground truncate max-w-[200px]">
                       {location || (
                         <span className="text-muted-foreground/50">—</span>
                       )}
