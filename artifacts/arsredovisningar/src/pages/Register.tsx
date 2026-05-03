@@ -109,7 +109,6 @@ export function Register() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
                   className="h-11"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -127,7 +126,6 @@ export function Register() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="new-password"
-                  placeholder="Min. 8 characters"
                 />
               </div>
               <div className="space-y-2">

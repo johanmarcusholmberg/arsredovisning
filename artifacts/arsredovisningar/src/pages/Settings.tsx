@@ -155,7 +155,6 @@ export function Settings() {
                   id="displayName"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your name"
                   maxLength={120}
                 />
               </div>

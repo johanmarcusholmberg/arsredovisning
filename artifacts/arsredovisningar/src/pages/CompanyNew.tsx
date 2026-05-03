@@ -133,7 +133,7 @@ export function CompanyNew() {
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem className="col-span-2">
                   <FormLabel>Company Name</FormLabel>
-                  <FormControl><Input placeholder="Acme AB" {...field} className="h-11" /></FormControl>
+                  <FormControl><Input {...field} className="h-11" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -206,7 +206,7 @@ export function CompanyNew() {
               <FormField control={form.control} name="address" render={({ field }) => (
                 <FormItem className="col-span-2">
                   <FormLabel>Street Address</FormLabel>
-                  <FormControl><Input placeholder="Storgatan 1" {...field} className="h-11" /></FormControl>
+                  <FormControl><Input {...field} className="h-11" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -222,7 +222,7 @@ export function CompanyNew() {
               <FormField control={form.control} name="city" render={({ field }) => (
                 <FormItem>
                   <FormLabel>City</FormLabel>
-                  <FormControl><Input placeholder="Stockholm" {...field} className="h-11" /></FormControl>
+                  <FormControl><Input {...field} className="h-11" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />

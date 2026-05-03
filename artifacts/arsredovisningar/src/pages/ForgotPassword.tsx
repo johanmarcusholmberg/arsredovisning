@@ -117,7 +117,6 @@ export function ForgotPassword() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="m@example.com"
                     className="h-11"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

@@ -385,7 +385,6 @@ export function ReviewView() {
               <div className="border-t pt-3 space-y-2">
                 <Input
                   type="email"
-                  placeholder="namn@exempel.se"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                 />
