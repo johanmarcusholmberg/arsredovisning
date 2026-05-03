@@ -50,65 +50,108 @@ export function DemoCarousel({ slides }: DemoCarouselProps) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "ArrowLeft") scrollPrev();
-      else if (e.key === "ArrowRight") scrollNext();
+      // Ignore when the user is typing in an input/textarea/select or
+      // editing contenteditable content, so we don't hijack their typing.
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        scrollPrev();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        scrollNext();
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [scrollPrev, scrollNext]);
 
   return (
-    <div className="relative">
-      <div className="overflow-hidden rounded-2xl" ref={emblaRef}>
-        <div className="flex">
-          {slides.map((slide, idx) => (
-            <div
-              key={slide.key}
-              className="flex-[0_0_100%] min-w-0 px-1"
-              aria-hidden={selectedIndex !== idx}
-              role="group"
-              aria-roledescription="slide"
-              aria-label={`${idx + 1} / ${slides.length}: ${slide.title}`}
-            >
-              <article className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden h-[760px] md:h-[520px]">
-                <div className="grid md:grid-cols-2 gap-0 h-full">
-                  <div className="p-6 md:p-10 flex flex-col justify-center bg-gradient-to-br from-primary/5 via-transparent to-transparent overflow-hidden">
-                    <span className="text-[11px] font-mono uppercase tracking-wider text-primary/80 mb-3">
-                      {t("publicDemo.slide.label")} {idx + 1} / {slides.length}
-                    </span>
-                    <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground leading-tight">
-                      {slide.title}
-                    </h3>
-                    <p className="mt-3 text-sm md:text-base text-primary/90 font-medium">
-                      {slide.subtitle}
-                    </p>
-                    <p className="mt-4 text-sm md:text-base text-muted-foreground leading-relaxed">
-                      {slide.body}
-                    </p>
+    <div
+      className="relative"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label={t("publicDemo.nav.dots")}
+    >
+      {/* Slide track with side arrows positioned over the slide edges */}
+      <div className="relative">
+        <div className="overflow-hidden rounded-2xl" ref={emblaRef}>
+          <div className="flex">
+            {slides.map((slide, idx) => (
+              <div
+                key={slide.key}
+                className="flex-[0_0_100%] min-w-0 px-1"
+                aria-hidden={selectedIndex !== idx}
+                role="group"
+                aria-roledescription="slide"
+                aria-label={`${idx + 1} / ${slides.length}: ${slide.title}`}
+              >
+                <article className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden h-[760px] md:h-[520px]">
+                  <div className="grid md:grid-cols-2 gap-0 h-full">
+                    <div className="p-6 md:p-10 flex flex-col justify-center bg-gradient-to-br from-primary/5 via-transparent to-transparent overflow-hidden">
+                      <span className="text-[11px] font-mono uppercase tracking-wider text-primary/80 mb-3">
+                        {t("publicDemo.slide.label")} {idx + 1} / {slides.length}
+                      </span>
+                      <h3 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground leading-tight">
+                        {slide.title}
+                      </h3>
+                      <p className="mt-3 text-sm md:text-base text-primary/90 font-medium">
+                        {slide.subtitle}
+                      </p>
+                      <p className="mt-4 text-sm md:text-base text-muted-foreground leading-relaxed">
+                        {slide.body}
+                      </p>
+                    </div>
+                    <div className="bg-muted/30 border-t md:border-t-0 md:border-l border-border p-5 md:p-8 flex items-center justify-center overflow-hidden">
+                      <div className="w-full max-w-md">{slide.visual}</div>
+                    </div>
                   </div>
-                  <div className="bg-muted/30 border-t md:border-t-0 md:border-l border-border p-5 md:p-8 flex items-center justify-center overflow-hidden">
-                    <div className="w-full max-w-md">{slide.visual}</div>
-                  </div>
-                </div>
-              </article>
-            </div>
-          ))}
+                </article>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Controls */}
-      <div className="mt-5 flex items-center justify-between gap-4">
+        {/* Side arrows — absolutely positioned, vertically centered on the slide.
+            On small screens they sit just inside the slide; on md+ they sit
+            slightly outside to avoid covering content. */}
         <button
           type="button"
           onClick={scrollPrev}
           disabled={!canPrev}
           aria-label={t("publicDemo.nav.prev")}
-          className="inline-flex items-center justify-center size-10 rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="absolute top-1/2 -translate-y-1/2 left-2 md:-left-5 z-10 inline-flex items-center justify-center size-11 md:size-12 rounded-full border border-border bg-background/95 text-foreground shadow-md hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed backdrop-blur-sm"
         >
-          <ChevronLeft className="size-5" />
+          <ChevronLeft className="size-5 md:size-6" />
         </button>
+        <button
+          type="button"
+          onClick={scrollNext}
+          disabled={!canNext}
+          aria-label={t("publicDemo.nav.next")}
+          className="absolute top-1/2 -translate-y-1/2 right-2 md:-right-5 z-10 inline-flex items-center justify-center size-11 md:size-12 rounded-full border border-border bg-background/95 text-foreground shadow-md hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed backdrop-blur-sm"
+        >
+          <ChevronRight className="size-5 md:size-6" />
+        </button>
+      </div>
 
-        <div className="flex items-center gap-2" role="tablist" aria-label={t("publicDemo.nav.dots")}>
+      {/* Dot indicators below the slide */}
+      <div className="mt-5 flex items-center justify-center">
+        <div
+          className="flex items-center gap-2"
+          role="tablist"
+          aria-label={t("publicDemo.nav.dots")}
+        >
           {slides.map((slide, idx) => (
             <button
               key={slide.key}
@@ -125,16 +168,6 @@ export function DemoCarousel({ slides }: DemoCarouselProps) {
             />
           ))}
         </div>
-
-        <button
-          type="button"
-          onClick={scrollNext}
-          disabled={!canNext}
-          aria-label={t("publicDemo.nav.next")}
-          className="inline-flex items-center justify-center size-10 rounded-full border border-border bg-background text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <ChevronRight className="size-5" />
-        </button>
       </div>
     </div>
   );
