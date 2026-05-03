@@ -38,7 +38,7 @@ export function SidebarLayout({ children }: { children: ReactNode }) {
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton asChild isActive={location.startsWith("/companies")}>
-                      <Link href="/companies/new">
+                      <Link href="/companies">
                         <Building className="h-4 w-4" />
                         <span>Companies</span>
                       </Link>

@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SidebarLayout } from "./components/layout/SidebarLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Dashboard } from "./pages/Dashboard";
+import { Companies } from "./pages/Companies";
 import { CompanyNew } from "./pages/CompanyNew";
 import { CompanyDetail } from "./pages/CompanyDetail";
 import { ReportWorkspace } from "./pages/ReportWorkspace";
@@ -40,6 +41,7 @@ function AppRoutes() {
       <SidebarLayout>
         <Switch>
           <Route path="/" component={Dashboard} />
+          <Route path="/companies" component={Companies} />
           <Route path="/companies/new" component={CompanyNew} />
           <Route path="/companies/:companyId" component={CompanyDetail} />
           <Route path="/reports/:reportId" component={ReportWorkspace} />
