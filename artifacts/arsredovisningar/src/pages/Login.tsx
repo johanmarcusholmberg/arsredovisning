@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Briefcase, AlertCircle } from "lucide-react";
+import { Briefcase, AlertCircle, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function Login() {
@@ -31,7 +31,17 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 relative">
+      {/* Plain anchor (not wouter Link): the marketing homepage lives in a
+          different artifact at "/", so we need a real navigation, not an
+          SPA route change inside arsredovisningar. */}
+      <a
+        href="/"
+        className="absolute top-4 left-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to homepage
+      </a>
       <div className="w-full max-w-md space-y-6 animate-in zoom-in-95 duration-500">
         <div className="flex flex-col items-center text-center space-y-2">
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 mb-4">
