@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import {
   db,
   reportsTable,
@@ -26,6 +26,71 @@ async function getReportWithCompany(reportId: string, profileId: string) {
       ),
     );
   return row ?? null;
+}
+
+/**
+ * Ensure `manualNumberOverride` is unique per report.
+ *
+ * When a user assigns override=N to a note, any OTHER note on the same report
+ * that already holds N (or that gets bumped into a new collision) is shifted
+ * upward by one. The walk continues until the chain terminates at a free slot,
+ * mirroring how list-renumbering works in spreadsheet-style tools: assigning
+ * "3" to a new row pushes the existing 3 to 4, the existing 4 to 5, and so on.
+ *
+ * Sequential auto-numbering for notes WITHOUT an override is handled later by
+ * `recalculateNoteNumbers`, which fills 1..N around the claimed override slots.
+ *
+ * MUST run inside a `db.transaction` so a partial chain never leaves the report
+ * with duplicate overrides on disk if any UPDATE fails midway.
+ */
+async function cascadeShiftManualOverrides(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  reportId: string,
+  excludeNoteId: string,
+  startNumber: number,
+): Promise<void> {
+  if (startNumber < 1) return;
+
+  const others = await tx
+    .select()
+    .from(reportNotesTable)
+    .where(
+      and(
+        eq(reportNotesTable.reportId, reportId),
+        ne(reportNotesTable.id, excludeNoteId),
+      ),
+    );
+
+  const occupied = new Map<number, string>();
+  for (const n of others) {
+    if (n.manualNumberOverride !== null && n.manualNumberOverride >= 1) {
+      occupied.set(n.manualNumberOverride, n.id);
+    }
+  }
+
+  // Walk upward, bumping each collider into the next slot. The hard cap is a
+  // safety net — the chain can only be as long as `others.length`, so this
+  // bound is generous and just prevents an unbounded loop if the data is
+  // corrupted in some unexpected way.
+  const maxSteps = others.length + 1;
+  let steps = 0;
+  let current = startNumber;
+  while (occupied.has(current)) {
+    if (++steps > maxSteps) {
+      throw new Error(
+        `cascadeShiftManualOverrides: aborted after ${maxSteps} steps on report ${reportId}`,
+      );
+    }
+    const colliderId = occupied.get(current)!;
+    const next = current + 1;
+    await tx
+      .update(reportNotesTable)
+      .set({ manualNumberOverride: next, updatedAt: new Date() })
+      .where(eq(reportNotesTable.id, colliderId));
+    occupied.delete(current);
+    occupied.set(next, colliderId);
+    current = next;
+  }
 }
 
 async function getNote(noteId: string, reportId: string) {
@@ -182,11 +247,29 @@ router.patch(
     if (body.currentYearValue !== undefined) update.currentYearValue = body.currentYearValue;
     if (body.previousYearValue !== undefined) update.previousYearValue = body.previousYearValue;
 
-    const [updated] = await db
-      .update(reportNotesTable)
-      .set(update)
-      .where(eq(reportNotesTable.id, noteId))
-      .returning();
+    // Cascade-shift + target update run in one transaction so a mid-chain
+    // failure cannot leave duplicate overrides behind. Clearing the override
+    // (null) needs no cascade — recalculateNoteNumbers will fill the freed
+    // slot sequentially.
+    const [updated] = await db.transaction(async (tx) => {
+      if (
+        body.manualNumberOverride !== undefined &&
+        body.manualNumberOverride !== null &&
+        body.manualNumberOverride >= 1
+      ) {
+        await cascadeShiftManualOverrides(
+          tx,
+          reportId,
+          noteId,
+          body.manualNumberOverride,
+        );
+      }
+      return tx
+        .update(reportNotesTable)
+        .set(update)
+        .where(eq(reportNotesTable.id, noteId))
+        .returning();
+    });
 
     // Renumber if status changed (especially in/out of not_applicable) or sortOrder changed
     const needsRenumber =
