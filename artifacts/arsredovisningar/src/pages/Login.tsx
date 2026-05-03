@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Info } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,7 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { signIn } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -70,15 +71,12 @@ export function Login() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setErrorMessage(null);
 
     const { error } = await signIn(email, password);
 
     if (error) {
-      toast({
-        variant: "destructive",
-        title: t("login.error.toast_title"),
-        description: t(mapAuthErrorToKey(error.message)),
-      });
+      setErrorMessage(t(mapAuthErrorToKey(error.message)));
       setLoading(false);
     } else {
       navigate("/");
@@ -111,6 +109,17 @@ export function Login() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {errorMessage ? (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  data-testid="login-error"
+                  className="flex items-start gap-2 rounded-md border border-border bg-muted/60 px-3 py-2 text-sm text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200"
+                >
+                  <Info className="size-4 mt-0.5 shrink-0 text-muted-foreground/80" />
+                  <span className="leading-snug">{errorMessage}</span>
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <Label htmlFor="email">{t("common.email")}</Label>
                 <Input
