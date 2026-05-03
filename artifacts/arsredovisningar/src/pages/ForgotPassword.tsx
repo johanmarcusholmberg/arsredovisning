@@ -11,14 +11,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Briefcase, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Briefcase, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/hooks/useLanguage";
+import {
+  AuthLanguageSwitcher,
+  BackToHomepageLink,
+} from "@/components/auth/AuthChrome";
 
 export function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { resetPassword } = useAuth();
+  const { t } = useLanguage();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -28,8 +34,6 @@ export function ForgotPassword() {
     // is identical whether or not the address has an account. Surfacing
     // backend error text here would leak account existence (or at minimum
     // produce distinguishable behaviour) to unauthenticated callers.
-    // Real transport errors are silently swallowed; the user can simply
-    // re-request a new link if no email arrives.
     void resetPassword(email.trim()).catch(() => {
       /* swallow */
     });
@@ -44,44 +48,34 @@ export function ForgotPassword() {
 
   return (
     <div className="auth-brand min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 relative">
-      {/* Plain anchor (not wouter Link): the marketing homepage lives in a
-          different artifact at "/", so we need a real navigation. */}
-      <a
-        href="/"
-        className="absolute top-4 left-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to homepage
-      </a>
+      <BackToHomepageLink />
+      <AuthLanguageSwitcher />
       <div className="w-full max-w-md space-y-6 animate-in zoom-in-95 duration-500">
         <div className="flex flex-col items-center text-center space-y-2">
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 mb-4">
             <Briefcase className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Forgot your password?</h1>
-          <p className="text-muted-foreground">
-            We'll email you a link to set a new one.
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {t("forgot.title")}
+          </h1>
+          <p className="text-muted-foreground">{t("forgot.subtitle")}</p>
         </div>
 
         <Card className="shadow-xl border-border/50">
           {submitted ? (
             <>
               <CardHeader>
-                <CardTitle>Check your inbox</CardTitle>
+                <CardTitle>{t("forgot.success.title")}</CardTitle>
                 <CardDescription>
-                  If an account exists for <span className="font-medium">{email}</span>,
-                  you'll receive an email with a link to reset your password.
-                  The link is valid for a limited time.
+                  {t("forgot.success.body_prefix")}
+                  <span className="font-medium">{email}</span>
+                  {t("forgot.success.body_suffix")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-start gap-2 p-3 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-sm">
                   <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span>
-                    Didn't get it? Check your spam folder, or try again with a
-                    different email address.
-                  </span>
+                  <span>{t("forgot.success.spam_hint")}</span>
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col space-y-3">
@@ -93,27 +87,27 @@ export function ForgotPassword() {
                     setEmail("");
                   }}
                 >
-                  Use a different email
+                  {t("forgot.success.use_other")}
                 </Button>
                 <Link
                   href="/login"
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline"
                 >
-                  Back to sign in
+                  {t("forgot.back_to_signin")}
                 </Link>
               </CardFooter>
             </>
           ) : (
             <form onSubmit={handleSubmit}>
               <CardHeader>
-                <CardTitle>Reset password</CardTitle>
+                <CardTitle>{t("forgot.card.title")}</CardTitle>
                 <CardDescription>
-                  Enter the email address associated with your account.
+                  {t("forgot.card.description")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t("common.email")}</Label>
                   <Input
                     id="email"
                     type="email"
@@ -132,13 +126,13 @@ export function ForgotPassword() {
                   className="w-full h-11 text-base font-medium"
                   disabled={loading || !email.trim()}
                 >
-                  {loading ? "Sending…" : "Send reset link"}
+                  {loading ? t("forgot.submitting") : t("forgot.submit")}
                 </Button>
                 <Link
                   href="/login"
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline"
                 >
-                  Back to sign in
+                  {t("forgot.back_to_signin")}
                 </Link>
               </CardFooter>
             </form>

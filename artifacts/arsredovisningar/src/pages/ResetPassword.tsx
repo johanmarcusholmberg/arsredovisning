@@ -11,9 +11,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Briefcase, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Briefcase, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { useLanguage } from "@/hooks/useLanguage";
+import { useToast } from "@/hooks/use-toast";
+import { mapAuthErrorToKey } from "@/i18n/strings";
+import {
+  AuthLanguageSwitcher,
+  BackToHomepageLink,
+} from "@/components/auth/AuthChrome";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -34,11 +41,12 @@ const MIN_PASSWORD_LENGTH = 8;
  */
 export function ResetPassword() {
   const { updatePassword, session } = useAuth();
+  const { t } = useLanguage();
+  const { toast } = useToast();
   const [, navigate] = useLocation();
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -62,27 +70,24 @@ export function ResetPassword() {
     const search = new URLSearchParams(window.location.search);
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const errCode = search.get("error_code") ?? hash.get("error_code");
-    const errDesc = search.get("error_description") ?? hash.get("error_description");
+    const errDesc =
+      search.get("error_description") ?? hash.get("error_description");
     const err = search.get("error") ?? hash.get("error");
     if (err || errCode || errDesc) {
       setLinkError(
         (errDesc ? decodeURIComponent(errDesc.replace(/\+/g, " ")) : null) ||
           errCode ||
           err ||
-          "Unknown error"
+          "Unknown error",
       );
       setRecoveryReady(false);
       return;
     }
 
-    // If a session already exists at mount (either pre-authed user or
-    // supabase-js has already finished hash parsing), accept it.
     if (session) {
       setRecoveryReady(true);
       return;
     }
-    // Otherwise listen for the recovery event. If it doesn't arrive within
-    // a short window we mark the link as invalid/expired.
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setRecoveryReady(true);
@@ -99,14 +104,21 @@ export function ResetPassword() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
 
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+      toast({
+        variant: "destructive",
+        title: t("reset.form.title"),
+        description: t("reset.error.too_short"),
+      });
       return;
     }
     if (password !== confirm) {
-      setError("The two passwords do not match.");
+      toast({
+        variant: "destructive",
+        title: t("reset.form.title"),
+        description: t("reset.error.mismatch"),
+      });
       return;
     }
 
@@ -115,7 +127,11 @@ export function ResetPassword() {
     setLoading(false);
 
     if (error) {
-      setError(error.message);
+      toast({
+        variant: "destructive",
+        title: t("reset.form.title"),
+        description: t(mapAuthErrorToKey(error.message)),
+      });
       return;
     }
     setSuccess(true);
@@ -126,33 +142,26 @@ export function ResetPassword() {
 
   return (
     <div className="auth-brand min-h-screen w-full flex items-center justify-center bg-muted/30 p-4 relative">
-      {/* Plain anchor (not wouter Link): the marketing homepage lives in a
-          different artifact at "/", so we need a real navigation. */}
-      <a
-        href="/"
-        className="absolute top-4 left-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to homepage
-      </a>
+      <BackToHomepageLink />
+      <AuthLanguageSwitcher />
       <div className="w-full max-w-md space-y-6 animate-in zoom-in-95 duration-500">
         <div className="flex flex-col items-center text-center space-y-2">
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 mb-4">
             <Briefcase className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Set a new password</h1>
-          <p className="text-muted-foreground">
-            Choose a strong password you haven't used before.
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {t("reset.title")}
+          </h1>
+          <p className="text-muted-foreground">{t("reset.subtitle")}</p>
         </div>
 
         <Card className="shadow-xl border-border/50">
           {recoveryReady === null ? (
             <>
               <CardHeader>
-                <CardTitle>Verifying link…</CardTitle>
+                <CardTitle>{t("reset.verifying.title")}</CardTitle>
                 <CardDescription>
-                  Hang tight while we validate your reset link.
+                  {t("reset.verifying.description")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -162,23 +171,20 @@ export function ResetPassword() {
           ) : recoveryReady === false ? (
             <>
               <CardHeader>
-                <CardTitle>Link invalid or expired</CardTitle>
+                <CardTitle>{t("reset.invalid.title")}</CardTitle>
                 <CardDescription>
-                  This reset link is no longer valid. Reset links expire shortly
-                  after they're sent and can only be used once.
+                  {t("reset.invalid.description")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span>
-                    Please request a new password reset email and click the
-                    most recent link.
-                  </span>
+                  <span>{t("reset.invalid.hint")}</span>
                 </div>
                 {linkError && (
                   <p className="text-xs text-muted-foreground">
-                    Supabase reported: <span className="font-mono">{linkError}</span>
+                    {t("reset.invalid.supabase_reported")}{" "}
+                    <span className="font-mono">{linkError}</span>
                   </p>
                 )}
               </CardContent>
@@ -187,49 +193,44 @@ export function ResetPassword() {
                   className="w-full h-11"
                   onClick={() => navigate("/forgot-password")}
                 >
-                  Request new link
+                  {t("reset.invalid.request_new")}
                 </Button>
                 <Link
                   href="/login"
                   className="text-sm text-muted-foreground hover:text-foreground hover:underline"
                 >
-                  Back to sign in
+                  {t("forgot.back_to_signin")}
                 </Link>
               </CardFooter>
             </>
           ) : success ? (
             <>
               <CardHeader>
-                <CardTitle>Password updated</CardTitle>
+                <CardTitle>{t("reset.success.title")}</CardTitle>
                 <CardDescription>
-                  Your password has been changed. Redirecting you to the
-                  dashboard…
+                  {t("reset.success.description")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2 p-3 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 text-sm">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  Success — you're signed in.
+                  {t("reset.success.signed_in")}
                 </div>
               </CardContent>
             </>
           ) : (
             <form onSubmit={handleSubmit}>
               <CardHeader>
-                <CardTitle>New password</CardTitle>
+                <CardTitle>{t("reset.form.title")}</CardTitle>
                 <CardDescription>
-                  Pick a password with at least {MIN_PASSWORD_LENGTH} characters.
+                  {t("reset.form.description")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {error && (
-                  <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    {error}
-                  </div>
-                )}
                 <div className="space-y-2">
-                  <Label htmlFor="new-password">New password</Label>
+                  <Label htmlFor="new-password">
+                    {t("reset.form.new_password")}
+                  </Label>
                   <Input
                     id="new-password"
                     type="password"
@@ -243,7 +244,9 @@ export function ResetPassword() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm new password</Label>
+                  <Label htmlFor="confirm-password">
+                    {t("reset.form.confirm_password")}
+                  </Label>
                   <Input
                     id="confirm-password"
                     type="password"
@@ -262,7 +265,9 @@ export function ResetPassword() {
                   className="w-full h-11 text-base font-medium"
                   disabled={loading || !password || !confirm}
                 >
-                  {loading ? "Updating…" : "Update password"}
+                  {loading
+                    ? t("reset.form.submitting")
+                    : t("reset.form.submit")}
                 </Button>
               </CardFooter>
             </form>
