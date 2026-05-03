@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   FileText, CheckCircle2, ArrowRight, Banknote, ScrollText,
-  Link2, ShieldCheck, Sparkles, ChevronLeft, ChevronRight,
+  Link2, ShieldCheck, ChevronLeft, ChevronRight,
   Maximize2,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -85,7 +85,7 @@ function StatementCard({
         </span>
         <p className="text-[10px] text-muted-foreground">{unit}</p>
       </div>
-      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[10px] items-center pb-1 border-b border-border">
+      <div className="grid grid-cols-[minmax(0,1fr)_5rem_5rem_1.75rem] gap-x-3 text-[10px] items-center pb-1 border-b border-border">
         <span className="text-muted-foreground">{t("publicDemo.statements.col.post")}</span>
         <span className="text-muted-foreground text-right">{t("publicDemo.statements.col.amount")}</span>
         <span className="text-muted-foreground text-right">{t("publicDemo.statements.col.prev")}</span>
@@ -152,7 +152,7 @@ function Row({
 }) {
   return (
     <div
-      className={`grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center ${
+      className={`grid grid-cols-[minmax(0,1fr)_5rem_5rem_1.75rem] gap-x-3 items-center text-xs ${
         bold ? "font-semibold text-foreground border-t border-border pt-1.5" : "text-foreground"
       }`}
     >
@@ -624,20 +624,6 @@ function FlipReport({
   // (Nordic Design AB · n/n) doesn't visually crowd the page content.
   const padding = isLg ? "px-[6%] pt-[6%] pb-[9%]" : "px-3 pt-3 pb-5";
 
-  const demoBadge = (
-    <span
-      className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 font-bold text-amber-800 uppercase tracking-wider shadow-sm"
-      style={
-        isLg
-          ? { fontSize: "12px", padding: "4px 10px" }
-          : { fontSize: "9px", padding: "2px 6px" }
-      }
-    >
-      <Sparkles style={isLg ? { width: 14, height: 14 } : { width: 10, height: 10 }} />
-      DEMO
-    </span>
-  );
-
   const sideArrowBtn = (dir: "prev" | "next") => {
     const isPrev = dir === "prev";
     return (
@@ -657,11 +643,6 @@ function FlipReport({
 
   return (
     <div className={isLg ? "w-full flex flex-col items-center" : "w-full"}>
-      {/* DEMO badge above the page (both variants, like the popup) */}
-      <div className={isLg ? "mb-2 flex justify-center" : "mb-1.5 flex justify-center"}>
-        {demoBadge}
-      </div>
-
       {/* Page + side arrows row (arrows only for lg) */}
       <div
         className={
