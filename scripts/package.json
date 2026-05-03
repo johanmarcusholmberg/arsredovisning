@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "setup-storage-buckets": "tsx ./src/setup-storage-buckets.ts",
     "seed-mapping-rules": "tsx ./src/seed-mapping-rules.ts",
+    "seed-demo-project": "tsx ./src/seed-demo-project.ts",
     "check-schema-drift": "tsx ./src/checkSchemaDrift.ts",
     "check-phase7-regressions": "tsx ./src/checkPhase7Regressions.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"

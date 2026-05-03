@@ -14,6 +14,13 @@ const router: IRouter = Router();
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// TODO(collaboration backlog): this helper restricts access to the report's
+// owning company (companies.created_by_profile_id = profileId). That means a
+// collaborator with a valid project_access / report_collaborators role on the
+// project will currently get 404 from every GET /reports/:id/notes endpoint.
+// When wiring real collaboration, replace this with a permissions check that
+// also accepts entries in project_access / report_collaborators. Tracked as a
+// UX/collaboration follow-up — NOT a payment blocker.
 async function getReportWithCompany(reportId: string, profileId: string) {
   const [row] = await db
     .select({ report: reportsTable, company: companiesTable })

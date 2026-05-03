@@ -22,6 +22,7 @@
 
 import { eq } from "drizzle-orm";
 import { db, annualReportProjectsTable } from "@workspace/db";
+import { logger } from "../lib/logger.js";
 
 // ---------------------------------------------------------------------------
 // Demo project identity
@@ -32,7 +33,10 @@ import { db, annualReportProjectsTable } from "@workspace/db";
  * This is a fixed seed value — do not change it once set.
  * All demo interactions reference this project ID.
  *
- * TODO: Set this to the actual demo project UUID once the seed script is run.
+ * The matching row is inserted by `pnpm --filter @workspace/scripts run seed-demo-project`.
+ * Run that script after every deploy / fresh database so the demo workspace
+ * is guaranteed to exist. Use `assertDemoProjectExists()` below to verify it
+ * at runtime and fail fast (with a clear message) if the seed is missing.
  */
 export const DEMO_PROJECT_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -147,3 +151,52 @@ export function mustWatermark(isDemo: boolean, isPaid: boolean): boolean {
   if (isDemo) return true;
   return !isPaid;
 }
+
+// ---------------------------------------------------------------------------
+// Demo seed verification
+// ---------------------------------------------------------------------------
+
+/**
+ * Verifies that the shared demo project row exists in the database.
+ *
+ * The Årsredovisningar app references DEMO_PROJECT_ID from many places
+ * (entitlement gate, cover-sheet renderer, export readiness, etc.). If the
+ * row is missing — for example, on a fresh deploy where `seed-demo-project`
+ * was forgotten — those callsites would hit hard-to-diagnose 500s.
+ *
+ * This helper lets callers fail gracefully with a clear, actionable message:
+ *
+ *   const ok = await ensureDemoSeedExists();
+ *   if (!ok) return res.status(503).json({
+ *     error: "demo_unavailable",
+ *     message: "Demo workspace not initialised. Contact support.",
+ *   });
+ *
+ * The result is cached for the lifetime of the process to avoid one DB
+ * round-trip per demo request once seeded. We never cache a negative result
+ * — that way, running the seed script and hitting refresh starts working
+ * immediately without restarting the server.
+ */
+let demoSeedConfirmed = false;
+
+export async function ensureDemoSeedExists(): Promise<boolean> {
+  if (demoSeedConfirmed) return true;
+
+  const [row] = await db
+    .select({ id: annualReportProjectsTable.id })
+    .from(annualReportProjectsTable)
+    .where(eq(annualReportProjectsTable.id, DEMO_PROJECT_ID))
+    .limit(1);
+
+  if (row) {
+    demoSeedConfirmed = true;
+    return true;
+  }
+
+  logger.warn(
+    { demoProjectId: DEMO_PROJECT_ID },
+    "Demo project row is missing. Run `pnpm --filter @workspace/scripts run seed-demo-project` to create it.",
+  );
+  return false;
+}
+

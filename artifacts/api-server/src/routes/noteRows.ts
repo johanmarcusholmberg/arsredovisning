@@ -19,6 +19,11 @@ const router: IRouter = Router();
 
 // ─── Auth helpers (same shape as notes.ts) ───────────────────────────────────
 
+// TODO(collaboration backlog): owner-only check via companies.created_by_profile_id.
+// Collaborators with valid project_access / report_collaborators roles cannot
+// currently read note rows — every GET will return 404. Replace with a proper
+// permissions helper when collaboration is wired. UX follow-up, not a payment
+// blocker.
 async function getReportWithCompany(reportId: string, profileId: string) {
   const [row] = await db
     .select({ report: reportsTable, company: companiesTable })

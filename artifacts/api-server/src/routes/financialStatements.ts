@@ -20,6 +20,11 @@ const router: IRouter = Router();
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// TODO(collaboration backlog): owner-only access — collaborators on the
+// project will currently see 404 for financial-statement reads. When real
+// collaboration ships, replace the createdByProfileId check with one that
+// also accepts project_access / report_collaborators entries. Not a payment
+// blocker; a UX follow-up.
 async function getReportWithCompany(reportId: string, profileId: string) {
   const [row] = await db
     .select({ report: reportsTable, company: companiesTable })

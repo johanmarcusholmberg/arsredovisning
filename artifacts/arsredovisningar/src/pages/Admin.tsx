@@ -340,6 +340,13 @@ function UsersTab() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 rounded-md border border-dashed border-muted-foreground/30 bg-muted/40 p-3 text-xs text-muted-foreground">
+          <strong className="text-foreground">Internt:</strong> Kolumnen
+          &quot;Krediter&quot; och knappen för att lägga till krediter är ett
+          internt admin-verktyg för test och manuella kompensationer. Den
+          kundvända modellen är <em>projektlicens</em> — kunder ser aldrig
+          ordet &quot;krediter&quot; i appen och kan inte ändra det själva.
+        </div>
         {usersQ.isLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : (
