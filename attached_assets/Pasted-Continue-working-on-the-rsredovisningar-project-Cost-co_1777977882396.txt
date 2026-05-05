@@ -1,0 +1,66 @@
+Continue working on the Årsredovisningar project.
+
+Cost-control instruction:
+Keep this task small and targeted. Do not refactor, redesign, rebuild auth, or run broad testing. Fix only the current login/signup access blocker.
+
+Current issue:
+The previous 404 router issue seems partly fixed, but clicking “Logga in” or “Skapa konto” still does not work.
+
+Now I get a browser/server error:
+
+“sidan fungerar inte”
+“HTTP ERROR 502”
+
+This happens after pressing:
+- “Logga in”
+- “Skapa konto”
+
+Important:
+This is no longer the app’s internal 404 page. It looks like the request is being routed to a Replit/server/proxy target that is not responding.
+
+Do not:
+- rebuild authentication
+- replace Supabase/auth/admin/security logic
+- weaken RLS or protected admin logic
+- change database policies
+- redesign the login/signup pages
+- do broad repo-wide checks unless directly needed
+- run expensive or unrelated tests
+
+Task:
+Find the smallest fix for the 502 when opening login/signup.
+
+Investigate only:
+1. What exact URL the browser opens after clicking “Logga in”.
+2. What exact URL the browser opens after clicking “Skapa konto”.
+3. Whether `/login` and `/signup` should directly render the forms instead of redirecting to `/arsredovisningar/login` and `/arsredovisningar/register`.
+4. Whether `RedirectToApp` is sending users to a path/host/artifact that does not exist or is not running in Replit.
+5. Whether the workspace/app server is actually running and reachable at the redirect target.
+6. Whether this is caused by iframe/top-frame redirect behavior in Replit preview.
+
+Preferred minimal fix:
+- Avoid cross-artifact or proxy redirects for login/signup if they cause 502.
+- Make `/login` render the existing login form directly inside the current web app if possible.
+- Make `/signup` render the existing registration form directly inside the current web app if possible.
+- Alternatively, update the redirect target to the correct working local route/host if there is already a proper target.
+- Do not create duplicate auth logic if existing components can be reused.
+- Do not move large parts of the app.
+
+Expected behavior:
+- Clicking “Logga in” opens a usable login form without 404 or 502.
+- Clicking “Skapa konto” opens a usable registration form without 404 or 502.
+- Directly visiting `/login` works.
+- Directly visiting `/signup` works.
+- Home page `/` still works.
+
+Minimal verification only:
+- Verify `/` renders.
+- Verify `/login` renders the login form without 502.
+- Verify `/signup` renders the registration form without 502.
+- Do not perform full auth/admin/security testing; I will test that myself.
+
+When done, summarize briefly:
+- exact cause of the 502
+- whether redirect/proxy/cross-artifact routing was the cause
+- files changed
+- exact URLs I should test manually
