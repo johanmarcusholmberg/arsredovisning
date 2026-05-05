@@ -1,0 +1,52 @@
+Continue working on the Årsredovisningar project.
+
+Cost-control instruction:
+Keep this task small and targeted. Do not spend time on broad testing, refactoring, redesign, backend rewrites, or exploratory improvements. Fix only the issue described below.
+
+Issue:
+I cannot reach the login or create-account form.
+
+When I click “Logga in” or “Skapa konto” in the top navigation, I get the app’s 404 page:
+“404 Page Not Found – Did you forget to add the page to the router?”
+
+This looks like a frontend routing/link mismatch, not a full authentication problem.
+
+Do not:
+- rebuild authentication
+- replace Supabase/auth/admin/security logic
+- weaken RLS or protected admin logic
+- change backend auth unless absolutely required
+- redesign the login/register pages
+- do broad manual testing for me
+- make unrelated UI changes
+
+Task:
+Find and fix only the missing or incorrect frontend routes/links for:
+1. Login page
+2. Create account / registration page
+
+Check only:
+- what path “Logga in” links to
+- what path “Skapa konto” links to
+- whether those paths exist in the router
+- whether existing login/register components are registered in the router
+- whether a public route is accidentally missing or wrapped in a protected route
+
+Preferred fix:
+- If login/register components already exist, register them in the router or update the header links to match the existing routes.
+- If one component is missing, create only the simplest working page needed to render the existing auth form.
+- Keep public pages public: home, demo, pricing, login, registration.
+- Keep protected pages protected: dashboard/workspace/admin.
+
+Minimal verification only:
+- Confirm the login URL renders a login form instead of 404.
+- Confirm the create-account URL renders a registration form instead of 404.
+- Confirm the home page still renders.
+
+I will test actual login, registration, admin access, protected-route behavior, and refresh behavior myself.
+
+When done, summarize briefly:
+- broken path(s)
+- exact fix
+- files changed
+- URLs I should test

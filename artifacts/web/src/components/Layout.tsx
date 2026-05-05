@@ -9,8 +9,13 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-const APP_LOGIN_URL = "/arsredovisningar/login";
-const APP_SIGNUP_URL = "/arsredovisningar/register";
+// Link to the web app's own /login and /signup routes (registered in App.tsx)
+// rather than directly to the workspace artifact. Those routes wrap
+// <RedirectToApp> which escapes the preview-iframe wrapper before navigating
+// to the workspace app, so the navigation works reliably even when the link
+// is clicked from inside the canvas/preview iframe.
+const APP_LOGIN_URL = "/login";
+const APP_SIGNUP_URL = "/signup";
 
 export function Layout({ children }: LayoutProps) {
   const { t } = useLanguage();
