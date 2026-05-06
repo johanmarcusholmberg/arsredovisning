@@ -20,6 +20,7 @@
  * See .env.example for the full list with annotations.
  */
 
+import "dotenv/config";
 import app from "./app";
 import { logger } from "./lib/logger";
 
