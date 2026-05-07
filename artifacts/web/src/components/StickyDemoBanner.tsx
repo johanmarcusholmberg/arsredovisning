@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/hooks/useLanguage";
+import { getProductRegisterUrl } from "@/lib/productAppUrl";
 import { track } from "@/lib/track";
 
 const DISMISS_KEY = "demoBannerDismissed";
-const APP_SIGNUP_URL = "/arsredovisningar/register?from=demo";
 
 /**
  * Sticky bottom banner shown on /demo once the user has scrolled past the
@@ -23,6 +23,7 @@ export function StickyDemoBanner({ revealAt = 800 }: { revealAt?: number }) {
   const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const signupUrl = getProductRegisterUrl({ fromDemo: true });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -69,7 +70,7 @@ export function StickyDemoBanner({ revealAt = 800 }: { revealAt?: number }) {
           className="gap-1 shrink-0"
           onClick={() => track("demo_signup_click")}
         >
-          <a href={APP_SIGNUP_URL} target="_top" rel="noopener">
+          <a href={signupUrl} target="_top" rel="noopener">
             {t("publicDemo.banner.cta")}
             <ArrowRight className="size-3.5" />
           </a>

@@ -6,6 +6,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { Layout } from "@/components/Layout";
 import { RedirectToApp } from "@/components/RedirectToApp";
+import {
+  getProductAppUrl,
+  getProductLoginUrl,
+  getProductRegisterUrl,
+} from "@/lib/productAppUrl";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/LandingPage";
 import PublicDemoPage from "@/pages/PublicDemoPage";
@@ -36,19 +41,19 @@ function Router() {
       <Switch>
         <Route path="/" component={LandingPage} />
         <Route path="/login">
-          <RedirectToApp to="/arsredovisningar/login" />
+          <RedirectToApp to={getProductLoginUrl()} />
         </Route>
         <Route path="/signup">
-          <RedirectToApp to="/arsredovisningar/register" />
+          <RedirectToApp to={getProductRegisterUrl()} />
         </Route>
         <Route path="/dashboard">
-          <RedirectToApp to="/arsredovisningar/" />
+          <RedirectToApp to={getProductAppUrl()} />
         </Route>
         <Route path="/workspace/:rest*">
-          <RedirectToApp to="/arsredovisningar/" />
+          <RedirectToApp to={getProductAppUrl()} />
         </Route>
         <Route path="/workspace">
-          <RedirectToApp to="/arsredovisningar/" />
+          <RedirectToApp to={getProductAppUrl()} />
         </Route>
         <Route path="/demo" component={PublicDemoPage} />
         <Route path="/admin/demo-environment/:section?" component={AdminDemoEnvironment} />
