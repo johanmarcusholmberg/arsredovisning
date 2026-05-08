@@ -30,6 +30,11 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "pnpm --filter @workspace/arsredovisningar run dev"
+waitForPort = 22133
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "pnpm --filter @workspace/web run dev"
 waitForPort = 22333
 
