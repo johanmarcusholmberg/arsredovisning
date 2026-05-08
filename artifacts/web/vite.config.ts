@@ -66,6 +66,12 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    proxy: {
+      "/arsredovisningar": {
+        target: "http://localhost:22133",
+        changeOrigin: false,
+      },
+    },
   },
   preview: {
     port,

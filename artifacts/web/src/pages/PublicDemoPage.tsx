@@ -1,10 +1,10 @@
 import { useEffect } from "react";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useSeo } from "@/lib/useSeo";
-import { getProductRegisterUrl } from "@/lib/productAppUrl";
 import { track } from "@/lib/track";
 import { StickyDemoBanner } from "@/components/StickyDemoBanner";
 import { DemoCarousel, type DemoSlideDefinition } from "@/components/demo/DemoCarousel";
@@ -16,9 +16,10 @@ import {
   FinishedVisual,
 } from "@/components/demo/DemoSlideVisuals";
 
+const DEMO_SIGNUP_URL = "/signup?from=demo";
+
 export default function PublicDemoPage() {
   const { t } = useLanguage();
-  const signupUrl = getProductRegisterUrl({ fromDemo: true });
   useSeo({
     title: t("seo.demo.title"),
     description: t("seo.demo.description"),
@@ -123,10 +124,10 @@ export default function PublicDemoPage() {
                 className="gap-2"
                 onClick={() => track("demo_signup_click")}
               >
-                <a href={signupUrl} target="_top" rel="noopener">
+                <Link href={DEMO_SIGNUP_URL}>
                   {t("publicDemo.cta.start")}
                   <ArrowRight className="size-4" />
-                </a>
+                </Link>
               </Button>
             </div>
           </div>

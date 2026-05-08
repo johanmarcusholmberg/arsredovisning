@@ -9,11 +9,6 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-// Link to the web app's own /login and /signup routes (registered in App.tsx)
-// rather than directly to the workspace artifact. Those routes wrap
-// <RedirectToApp> which escapes the preview-iframe wrapper before navigating
-// to the workspace app, so the navigation works reliably even when the link
-// is clicked from inside the canvas/preview iframe.
 const APP_LOGIN_URL = "/login";
 const APP_SIGNUP_URL = "/signup";
 
@@ -68,10 +63,10 @@ export function Layout({ children }: LayoutProps) {
               {/* Language selector intentionally moved to the footer.
                   Login / Signup remain in the header. */}
               <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex text-sm">
-                <a href={APP_LOGIN_URL} target="_top" rel="noopener">{t("nav.login")}</a>
+                <Link href={APP_LOGIN_URL}>{t("nav.login")}</Link>
               </Button>
               <Button asChild size="sm" className="hidden sm:inline-flex text-sm">
-                <a href={APP_SIGNUP_URL} target="_top" rel="noopener">{t("nav.signup")}</a>
+                <Link href={APP_SIGNUP_URL}>{t("nav.signup")}</Link>
               </Button>
 
               <button
@@ -102,19 +97,17 @@ export function Layout({ children }: LayoutProps) {
                   {link.label}
                 </Link>
               ))}
-              <a
+              <Link
                 href={APP_LOGIN_URL}
-                target="_top"
-                rel="noopener"
                 onClick={() => setMobileOpen(false)}
                 className="block px-3 py-2 text-sm text-muted-foreground"
               >
                 {t("nav.login")}
-              </a>
+              </Link>
               <Button asChild size="sm" className="w-full">
-                <a href={APP_SIGNUP_URL} target="_top" rel="noopener" onClick={() => setMobileOpen(false)}>
+                <Link href={APP_SIGNUP_URL} onClick={() => setMobileOpen(false)}>
                   {t("nav.signup")}
-                </a>
+                </Link>
               </Button>
             </div>
           </div>
