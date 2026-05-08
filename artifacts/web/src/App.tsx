@@ -24,6 +24,15 @@ import ContactPage from "@/pages/legal/ContactPage";
 
 const queryClient = new QueryClient();
 
+function getSignupRedirectUrl() {
+  if (typeof window === "undefined") {
+    return getProductRegisterUrl();
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return getProductRegisterUrl({ fromDemo: params.get("from") === "demo" });
+}
+
 function ScrollToTop() {
   const [location] = useLocation();
   useEffect(() => {
@@ -44,7 +53,7 @@ function Router() {
           <RedirectToApp to={getProductLoginUrl()} />
         </Route>
         <Route path="/signup">
-          <RedirectToApp to={getProductRegisterUrl()} />
+          <RedirectToApp to={getSignupRedirectUrl()} />
         </Route>
         <Route path="/dashboard">
           <RedirectToApp to={getProductAppUrl()} />
