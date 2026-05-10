@@ -4,6 +4,14 @@
 
 This project is a pnpm monorepo web application designed for preparing Swedish annual reports (årsredovisningar) for accounting firms. It ensures ÅRL compliance by generating reports exclusively in Swedish, while offering a dual-language (Swedish/English) UI. The system streamlines report generation through features like financial statement creation, AI-drafted note management, robust validation, collaboration tools, and a comprehensive audit trail. The ambition is to provide a comprehensive, compliant, and efficient solution for annual report preparation.
 
+## Replit Preview
+
+This is a multi-artifact monorepo. In Replit preview, both `artifacts/web: web`
+and `artifacts/arsredovisningar: web` workflows must be running for the
+login/signup redirect chain to work. See
+[`docs/REPLIT_PREVIEW.md`](docs/REPLIT_PREVIEW.md) for the route map and the
+"502 on /login or /signup" troubleshooting entry.
+
 ## User Preferences
 
 - The UI language can be toggled between Swedish and English.

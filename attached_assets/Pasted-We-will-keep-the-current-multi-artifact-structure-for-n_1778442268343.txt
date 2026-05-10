@@ -1,0 +1,74 @@
+We will keep the current multi-artifact structure for now.
+
+Goal:
+Make the existing beta setup easier to understand and less fragile in Replit preview, without consolidating apps or redesigning the auth flow.
+
+Context:
+- This project has at least two frontend artifacts:
+  - `artifacts/web`
+  - `artifacts/arsredovisningar`
+- `artifacts/web` contains the beta entry/landing pages.
+- `artifacts/arsredovisningar` contains the actual product app, including login/register/dashboard.
+- Login/signup currently work through this route chain:
+  - `/login` → `/arsredovisningar/login`
+  - `/signup` → `/arsredovisningar/register`
+- In Replit preview, these routes only work if both workflows are running:
+  - `artifacts/web: web`
+  - `artifacts/arsredovisningar: web`
+- If `artifacts/arsredovisningar: web` is stopped, `/login` and `/signup` can return 502 even if the code is correct.
+
+Task:
+Do not change the app architecture.
+Do not move login/register pages.
+Do not duplicate auth pages into `artifacts/web`.
+Do not redesign UI.
+
+Please do the following:
+
+1. Add clear Replit preview documentation
+Add a short developer note in the most appropriate existing documentation file, or create a small focused doc if none exists.
+
+The note should explain:
+- The project currently uses multiple frontend artifacts.
+- In Replit preview, both workflows must be running:
+  - `artifacts/web: web`
+  - `artifacts/arsredovisningar: web`
+- `/login` and `/signup` redirect into the product app:
+  - `/login` → `/arsredovisningar/login`
+  - `/signup` → `/arsredovisningar/register`
+- A 502 on login/signup in Replit preview usually means the `artifacts/arsredovisningar: web` workflow is stopped.
+- First troubleshooting step: restart `artifacts/arsredovisningar: web`.
+
+2. Add a lightweight health/check note if appropriate
+If there is already a README, dev setup page, or Replit troubleshooting section, add this there.
+If there is no obvious place, create something like:
+- `docs/REPLIT_PREVIEW.md`
+or another clearly named file.
+
+Keep it short and practical.
+
+3. Do not make functional code changes unless you find an actual mismatch
+Only change code if you discover that the documented route chain is no longer true.
+
+4. Validate current behavior
+After documentation is added, verify:
+- `/` loads
+- `/login` reaches the login screen when both workflows are running
+- `/signup` reaches the register screen when both workflows are running
+- `/arsredovisningar/login` loads
+- `/arsredovisningar/register` loads
+
+5. Git safety
+Before making changes, show:
+- `git status --short`
+- `git log --oneline origin/main..HEAD`
+- `git diff --stat origin/main..HEAD`
+
+Do not touch unrelated files.
+Do not push to GitHub.
+After changes, summarize:
+- Files changed
+- Exact documentation added
+- Validation results
+- Whether any code changed
+- Whether there are local commits not yet pushed
