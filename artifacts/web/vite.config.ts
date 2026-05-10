@@ -77,5 +77,11 @@ export default defineConfig({
     port,
     host: "0.0.0.0",
     allowedHosts: true,
+    proxy: {
+      "/arsredovisningar": {
+        target: "http://localhost:22133",
+        changeOrigin: false,
+      },
+    },
   },
 });
