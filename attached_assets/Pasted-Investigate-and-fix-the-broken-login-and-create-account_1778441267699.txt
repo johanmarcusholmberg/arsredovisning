@@ -1,0 +1,62 @@
+Investigate and fix the broken login and create-account flow.
+
+Context:
+- This is the Årsredovisningar project.
+- The public website is in `artifacts/web`.
+- The product/workspace app is in `artifacts/arsredovisningar`.
+- The public website has header buttons like “Logga in” and “Skapa konto”.
+- These buttons should take the user to working login/register pages for the actual product app.
+- Right now, clicking “Logga in” or “Skapa konto” still results in an error or broken page.
+- Do not redesign the site. This task is only to make authentication navigation work reliably.
+
+What to investigate:
+1. Check all login/signup/create-account links in the public website, especially:
+   - Header navigation
+   - Mobile menu
+   - Hero CTA buttons
+   - Demo/free trial CTA buttons
+   - Footer links if any
+2. Verify the correct route structure between:
+   - `artifacts/web`
+   - `artifacts/arsredovisningar`
+   - any Replit reverse proxy or route forwarding configuration
+3. Check whether the issue is caused by:
+   - Wrong paths such as `/login`, `/signup`, `/arsredovisningar/login`, `/arsredovisningar/register`
+   - Incorrect `target="_top"` usage
+   - Incorrect use of `<a>` instead of the project router’s `Link`
+   - Missing routes in the product app
+   - Redirect loops
+   - Replit preview/proxy path mismatch
+   - Supabase/auth environment variables missing or not being read by the correct artifact
+
+Expected behavior:
+- From the public website:
+  - “Logga in” should open the working product login page.
+  - “Skapa konto” / create account should open the working product registration page.
+- The flow should work in Replit preview.
+- The flow should also be safe for production deployment.
+- Do not create duplicate login/register pages unless absolutely necessary.
+- Prefer using the existing product app auth pages and route structure.
+- Keep the solution minimal and robust.
+
+Implementation requirements:
+- Fix all affected CTA/navigation links consistently.
+- If there is a redirect component, make sure it points to a route that actually exists and works.
+- If the product app expects login/register under a specific base path, align the public website links with that.
+- If the Replit proxy config is the issue, update it carefully without breaking preview of the public website or product app.
+- Do not change unrelated UI, database schema, payments, annual-report logic, or admin functionality.
+
+Validation:
+After fixing, test and report:
+1. Public homepage loads.
+2. Clicking “Logga in” opens a working login page.
+3. Clicking “Skapa konto” opens a working create-account/register page.
+4. The same works from desktop and mobile navigation.
+5. There are no console errors related to routing/auth.
+6. Typecheck/build relevant affected artifacts if available and reasonably quick.
+
+Before finishing:
+- Summarize exactly which files were changed.
+- Explain the root cause.
+- Explain the final route paths now used.
+- Ask me before pushing to GitHub.
